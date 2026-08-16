@@ -1,0 +1,116 @@
+﻿@page "/retencion-cliente"
+
+<PageTitle>Retención de Cliente</PageTitle>
+
+<div class="retencion-header-row">
+    <div>
+        <div class="breadcrumb">Clientes <span class="breadcrumb-sep">›</span> Ejecutar Retención Manual</div>
+        <h1 class="detalle-title">Retención de Cliente</h1>
+    </div>
+    <div class="retencion-actions">
+        <button class="btn-cancelar" @onclick="Cancelar">Cancelar</button>
+        <button class="btn-confirmar" @onclick="ConfirmarEjecutar">▷ Confirmar y Ejecutar</button>
+    </div>
+</div>
+
+<div class="ia-banner">
+    <div class="ia-icon">✨</div>
+    <div class="ia-content">
+        <h3>Campaña Sugerida por IA</h3>
+        <p>Recomendamos la Campaña de Fidelización Gold. Este cliente responde positivamente a incentivos exclusivos tras periodos de baja actividad.</p>
+        <div class="ia-aviso">⚠ Aviso: Esta campaña ya fue enviada a Javier hace 15 días</div>
+    </div>
+</div>
+
+<div class="card seccion-card">
+    <div class="seccion-header">HISTORIAL DE ACCIONES DE RETENCIÓN</div>
+    <table class="historial-table">
+        <thead>
+            <tr>
+                <th>CAMPAÑA</th>
+                <th>CANAL</th>
+                <th>FECHA</th>
+                <th>RESULTADO</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var h in historial)
+            {
+                <tr>
+                    <td class="campana-nombre">@h.Campana</td>
+                    <td><span class="canal-cell">@h.CanalIcono @h.Canal</span></td>
+                    <td class="fecha-cell">@h.Fecha</td>
+                    <td><span class="resultado-badge @h.ResultadoClase">@h.Resultado</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="card seccion-card">
+    <div class="seccion-header">SELECCIONAR CAMPAÑA EXISTENTE</div>
+
+    <div class="form-block">
+        <label class="form-label">Campaña</label>
+        <select class="campana-select" @bind="campanaSeleccionada">
+            <option>Campaña de Fidelización Gold</option>
+            <option>Campaña Q4</option>
+            <option>Upgrade Premium</option>
+        </select>
+    </div>
+
+    <div class="canal-incentivo-row">
+        <div class="canal-incentivo-item">
+            <span class="cii-label">CANAL</span>
+            <span class="cii-value canal-whatsapp">📱 WhatsApp</span>
+        </div>
+        <div class="canal-incentivo-item">
+            <span class="cii-label">INCENTIVO</span>
+            <span class="cii-value">Cupón de Descuento 20%</span>
+        </div>
+    </div>
+
+    <div class="form-block">
+        <label class="form-label">Vista Previa del Mensaje</label>
+        <div class="mensaje-preview">
+            "Hola {nombre_cliente}, como miembro Gold valoramos tu lealtad. Te ofrecemos un {incentivo} exclusivo para tu renovación. ¿Hablamos?"
+        </div>
+    </div>
+
+    <div class="form-block programacion-block">
+        <label class="form-label">Programación del Envío</label>
+        <div class="radio-row">
+            <label class="radio-option">
+                <input type="radio" name="programacion" checked="@(programacion == "ahora")" @onchange='() => programacion = "ahora"' />
+                Enviar Ahora
+            </label>
+            <label class="radio-option">
+                <input type="radio" name="programacion" checked="@(programacion == "programar")" @onchange='() => programacion = "programar"' />
+                Programar Envío
+            </label>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string campanaSeleccionada = "Campaña de Fidelización Gold";
+    private string programacion = "ahora";
+
+    private record AccionHistorial(string Campana, string Canal, string CanalIcono, string Fecha, string Resultado, string ResultadoClase);
+
+    private List<AccionHistorial> historial = new()
+    {
+        new("Campaña Q4", "Email", "@", "Hace 3 días", "Sin respuesta", "resultado-neutro"),
+        new("Upgrade Premium", "Consultoría", "🎧", "May 2023", "Cupón canjeado", "resultado-exito"),
+    };
+
+    private void Cancelar()
+    {
+        // TODO: navegar de vuelta al detalle del cliente
+    }
+
+    private void ConfirmarEjecutar()
+    {
+        // TODO: lógica real de ejecución de campaña
+    }
+}

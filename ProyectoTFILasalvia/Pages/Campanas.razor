@@ -1,0 +1,156 @@
+﻿@page "/campanas"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+
+<PageTitle>Historial de Campañas</PageTitle>
+
+<div class="page-header camp-header">
+    <div>
+        <h1 class="detalle-title camp-title">Historial de Campañas</h1>
+        <p class="camp-subtitle">Gestión y seguimiento de acciones de retención ejecutadas.</p>
+    </div>
+    <button class="btn-crear-campana" @onclick="IrACrearCampana">⊕ CREAR CAMPAÑA MANUAL</button>
+</div>
+
+<div class="card camp-filtros-card">
+    <div class="filtro-grupo">
+        <label class="filtro-label">Canal</label>
+        <select class="filtro-select">
+            <option>Todos los canales</option>
+            <option>Email</option>
+            <option>WhatsApp</option>
+        </select>
+    </div>
+    <div class="filtro-grupo">
+        <label class="filtro-label">Rango de Fecha</label>
+        <div class="filtro-rango">
+            <input type="text" class="filtro-fecha" value="10/01/2023" />
+            <span class="filtro-rango-sep">a</span>
+            <input type="text" class="filtro-fecha" value="10/31/2023" />
+        </div>
+    </div>
+    <div class="filtro-grupo">
+        <label class="filtro-label">Estado</label>
+        <select class="filtro-select">
+            <option>Cualquiera</option>
+            <option>Activa</option>
+            <option>Finalizada</option>
+        </select>
+    </div>
+    <button class="btn-limpiar-filtro">Limpiar Filtro</button>
+    <button class="btn-filtro-icon">☰</button>
+</div>
+
+<div class="card camp-kpi-card">
+    <div class="camp-kpi-item">
+        <div class="camp-kpi-label">Éxito Global</div>
+        <div class="camp-kpi-value">68.5% <span class="camp-kpi-badge">+12%</span></div>
+        <div class="camp-kpi-bar"><div class="camp-kpi-fill" style="width:68.5%"></div></div>
+    </div>
+    <div class="camp-kpi-item">
+        <div class="camp-kpi-label">KPI Objetivo Alcanzado</div>
+        <div class="camp-kpi-value">82% <span class="camp-kpi-sub-inline">de campañas</span></div>
+        <div class="camp-kpi-desc">Superando la meta del 75%</div>
+    </div>
+    <div class="camp-kpi-item">
+        <div class="camp-kpi-label">Canal Más Efectivo</div>
+        <div class="camp-kpi-value camp-kpi-canal">💬 WhatsApp</div>
+        <div class="camp-kpi-desc">Tasa de conversión <strong>64%</strong></div>
+    </div>
+    <div class="camp-kpi-item">
+        <div class="camp-kpi-label">Impacto Reducción Churn</div>
+        <div class="camp-kpi-value camp-kpi-negativo">-4.2%</div>
+        <div class="camp-kpi-desc">Impacto directo este mes</div>
+    </div>
+</div>
+
+<div class="card camp-table-card">
+    <table class="camp-table">
+        <thead>
+            <tr>
+                <th>NOMBRE DE CAMPAÑA</th>
+                <th>CANAL</th>
+                <th>OBJETIVO</th>
+                <th>TASA DE ÉXITO</th>
+                <th>ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in campanas)
+            {
+                <tr>
+                    <td class="camp-nombre">
+                        @if (c.Nombre == "50% Descuento")
+                        {
+                            <a href="campana-detalle" class="camp-nombre-link">@c.Nombre</a>
+                        }
+                        else
+                        {
+                            @c.Nombre
+                        }
+                    </td>
+                    <td><span class="camp-canal-cell">@c.CanalIcono @c.Canal</span></td>
+                    <td class="camp-objetivo">@c.Objetivo</td>
+                    <td><span class="camp-tasa-badge">@c.Tasa%</span></td>
+                    <td class="camp-acciones-cell">
+                        <button class="camp-acciones-btn" @onclick="() => ToggleMenu(c.Id)">⋮</button>
+
+                        @if (menuAbiertoId == c.Id)
+                        {
+                            <div class="camp-menu-dropdown" @onmouseleave="CerrarMenu">
+                                <button class="camp-menu-item" @onclick="() => IrAEditarCampana(c.Id)">
+                                    ✏️ Editar campaña
+                                </button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="camp-pagination">
+        <span class="pagination-info">Mostrando 1-4 de 24 campañas</span>
+        <div class="pagination-controls">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">4</button>
+            <button class="page-btn">5</button>
+            <button class="page-btn">6</button>
+            <button class="page-btn">›</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Id de la fila cuyo menú "⋮" está abierto (null si no hay ninguno abierto).
+    private string? menuAbiertoId;
+
+    private record Campana(string Id, string Nombre, string Canal, string CanalIcono, string Objetivo, double Tasa);
+    private List<Campana> campanas = new()
+    {
+        new("camp-001", "25% Descuento", "Email", "✉️", "1,500 usuarios", 68.2),
+        new("camp-002", "50% Descuento", "WhatsApp", "💬", "800 usuarios", 12.5),
+    };
+
+    private void ToggleMenu(string id)
+    {
+        menuAbiertoId = menuAbiertoId == id ? null : id;
+    }
+
+    private void CerrarMenu()
+    {
+        menuAbiertoId = null;
+    }
+
+    private void IrACrearCampana()
+    {
+        Navigation.NavigateTo("/campanas/crear");
+    }
+
+    private void IrAEditarCampana(string id)
+    {
+        Navigation.NavigateTo($"/campanas/editar/{id}");
+    }
+}

@@ -1,0 +1,139 @@
+﻿@page "/clientes"
+
+<PageTitle>Gestión de Clientes</PageTitle>
+
+<div class="page-header">
+    <h1>Gestión de Clientes</h1>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<!-- Card de filtros -->
+<div class="card cli-filtros-card">
+    <div class="filtro-grupo">
+        <label class="filtro-label">PLAN</label>
+        <select class="filtro-select" @bind="planSeleccionado">
+            <option>Todos</option>
+            <option>Premium Gold</option>
+            <option>Básico Mensual</option>
+        </select>
+    </div>
+    <div class="filtro-grupo">
+        <label class="filtro-label">ESTADO DE SUSCRIPCIÓN</label>
+        <select class="filtro-select" @bind="estadoSeleccionado">
+            <option>Cualquier estado</option>
+            <option>Al día</option>
+            <option>Pendiente</option>
+            <option>Vencido</option>
+        </select>
+    </div>
+    <button class="btn-aplicar-filtros" @onclick="AplicarFiltros">▽ Aplicar Filtros</button>
+</div>
+
+<!-- Card de tabla -->
+<div class="card cli-table-card">
+    <div class="cli-table-header">
+        <h3>Clientes</h3>
+        <div class="cli-table-actions">
+            <div class="search-box cli-search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Buscar cliente..." @bind="textoBusqueda" @bind:event="oninput" />
+            </div>
+            <button class="btn-filtro-icon">☰</button>
+        </div>
+    </div>
+
+    <table class="cli-table">
+        <thead>
+            <tr>
+                <th>CLIENTE</th>
+                <th>EMAIL</th>
+                <th>ÚLTIMA INTERACCIÓN</th>
+                <th>ÚLTIMA VISITA</th>
+                <th>HISTORIAL PAGOS</th>
+                <th>PLAN</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in ClientesFiltrados)
+            {
+                <tr>
+                    <td>
+                        <div class="client-cell">
+                            <div class="cli-avatar @c.AvatarClase">@c.Iniciales</div>
+                            <div class="client-name">@c.Nombre</div>
+                        </div>
+                    </td>
+                    <td class="cli-email">@c.Email</td>
+                    <td>@c.UltimaInteraccion</td>
+                    <td>@c.UltimaVisita</td>
+                    <td><span class="cli-pago-badge @EstadoClase(c.EstadoPago)">@c.EstadoPago</span></td>
+                    <td><a href="#" class="cli-plan-link">@c.Plan</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="pred-pagination">
+        <span class="pagination-info">Mostrando 1-10 de 1,248 clientes</span>
+        <div class="pagination-controls">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <span>...</span>
+            <button class="page-btn">125</button>
+            <button class="page-btn">›</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string planSeleccionado = "Todos";
+    private string estadoSeleccionado = "Cualquier estado";
+    private string textoBusqueda = "";
+
+    private record Cliente(
+        string Iniciales,
+        string AvatarClase,
+        string Nombre,
+        string Email,
+        string UltimaInteraccion,
+        string UltimaVisita,
+        string EstadoPago,
+        string Plan);
+
+    private List<Cliente> clientes = new()
+    {
+        new("CR", "cli-avatar-azul",   "Carlos Ruiz",     "carlos.ruiz@email.com",    "Hace 2 horas", "Hace 2 días",  "Al día",    "Premium Gold"),
+        new("SL", "cli-avatar-ambar",  "Sofia Larrea",    "sofia.larrea@gmail.com",   "Hace 3 días",  "Hace 5 días",  "Pendiente", "Básico Mensual"),
+        new("MF", "cli-avatar-rojo",   "Mateo Fernández", "mateo.fdez@outlook.com",   "Hace 14 días", "Hace 20 días", "Vencido",   "Premium Gold"),
+        new("LM", "cli-avatar-azul",   "Lucía Méndez",    "lucia.mendez@icloud.com",  "Ayer",         "Hace 2 horas", "Al día",    "Básico Mensual"),
+    };
+
+    // Filtrado en memoria por plan, estado y texto de búsqueda.
+    private IEnumerable<Cliente> ClientesFiltrados =>
+        clientes.Where(c =>
+            (planSeleccionado == "Todos" || c.Plan == planSeleccionado) &&
+            (estadoSeleccionado == "Cualquier estado" || c.EstadoPago == estadoSeleccionado) &&
+            (string.IsNullOrWhiteSpace(textoBusqueda) ||
+                c.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+                c.Email.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)));
+
+    private string EstadoClase(string estado) => estado switch
+    {
+        "Al día" => "cli-pago-al-dia",
+        "Pendiente" => "cli-pago-pendiente",
+        "Vencido" => "cli-pago-vencido",
+        _ => ""
+    };
+
+    private void AplicarFiltros()
+    {
+        // El filtrado ya es reactivo vía ClientesFiltrados; acá iría, en un
+        // escenario real, la llamada al backend con los filtros seleccionados.
+    }
+}

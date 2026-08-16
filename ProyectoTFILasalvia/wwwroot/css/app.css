@@ -1,6 +1,6 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    RESET Y BASE GENERAL
-   Estilos base que aplican a toda la aplicaci�n, sin importar la pantalla.
+   Estilos base que aplican a toda la aplicación, sin importar la pantalla.
    ========================================================================== */
 * {
     box-sizing: border-box;
@@ -20,7 +20,7 @@ body {
 
 
 /* ==========================================================================
-   SIDEBAR (men� lateral)
+   SIDEBAR (menú lateral)
    General: aparece en todas las pantallas porque vive en MainLayout.razor.
    ========================================================================== */
 .sidebar {
@@ -30,10 +30,10 @@ body {
     display: flex;
     flex-direction: column;
     padding: 20px 0;
-    transition: width 0.2s ease; /* animaci�n suave al colapsar/expandir */
+    transition: width 0.2s ease; /* animación suave al colapsar/expandir */
 }
 
-    /* Estado colapsado: el sidebar se achica y solo se ven los �conos */
+    /* Estado colapsado: el sidebar se achica y solo se ven los íconos */
     .sidebar.collapsed {
         width: 72px;
     }
@@ -41,7 +41,7 @@ body {
         .sidebar.collapsed .nav-text,
         .sidebar.collapsed .user-info,
         .sidebar.collapsed .brand-text {
-            display: none; /* ocultamos el texto, dejamos solo �conos */
+            display: none; /* ocultamos el texto, dejamos solo íconos */
         }
 
         .sidebar.collapsed .nav-link {
@@ -84,10 +84,10 @@ body {
 }
 
 .sidebar.collapsed .oi-grid-two-up {
-    display: none; /* ocultamos el �cono del logo, dejamos solo el bot�n */
+    display: none; /* ocultamos el ícono del logo, dejamos solo el botón */
 }
 
-/* Bot�n para minimizar/expandir el sidebar */
+/* Botón para minimizar/expandir el sidebar */
 .collapse-btn {
     margin-left: auto;
     background: #f0f2f6;
@@ -177,8 +177,8 @@ body {
 
 
 /* ==========================================================================
-   CONTENIDO PRINCIPAL (contenedor gen�rico)
-   General: el �rea donde se renderiza cada pantalla (@Body en MainLayout).
+   CONTENIDO PRINCIPAL (contenedor genérico)
+   General: el área donde se renderiza cada pantalla (@Body en MainLayout).
    ========================================================================== */
 .main-content {
     flex: 1;
@@ -206,9 +206,9 @@ body {
 
 
 /* ==========================================================================
-   CARD BASE (componente gen�rico reutilizable)
+   CARD BASE (componente genérico reutilizable)
    General: usado por Dashboard y se va a reutilizar en otras pantallas
-   (Clientes, Campa�as, Reportes, etc.) como contenedor de bloques.
+   (Clientes, Campañas, Reportes, etc.) como contenedor de bloques.
    ========================================================================== */
 .card {
     background: #fff;
@@ -221,9 +221,9 @@ body {
 
 /* ==========================================================================
    PANTALLA: DASHBOARD (Pages/Dashboard.razor)
-   Todo lo de ac� para abajo hasta la pr�xima pantalla es espec�fico
-   del Panel de Retenci�n. Si se borra Dashboard.razor, se puede borrar
-   tambi�n todo este bloque.
+   Todo lo de acá para abajo hasta la próxima pantalla es específico
+   del Panel de Retención. Si se borra Dashboard.razor, se puede borrar
+   también todo este bloque.
    ========================================================================== */
 
 /* --- KPIs superiores (Tasa de churn / Clientes en riesgo / Recuperados) --- */
@@ -278,7 +278,7 @@ body {
     background: #fdeaea;
 }
 
-/* --- Fila con gr�fico de tendencia + distribuci�n de riesgo --- */
+/* --- Fila con gráfico de tendencia + distribución de riesgo --- */
 .main-row {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -345,7 +345,7 @@ body {
     font-size: 17px;
 }
 
-/* Donut de distribuci�n de riesgo (Alto/Medio/Bajo) */
+/* Donut de distribución de riesgo (Alto/Medio/Bajo) */
 .risk-donut {
     width: 180px;
     height: 180px;
@@ -418,7 +418,7 @@ body {
     background: #dfe3ea;
 }
 
-/* --- Tabla de clientes en riesgo cr�tico --- */
+/* --- Tabla de clientes en riesgo crítico --- */
 .table-card h3 {
     margin: 0 0 4px 0;
 }
@@ -515,4 +515,2001 @@ body {
 
 /* ==========================================================================
    FIN PANTALLA: DASHBOARD
+   ========================================================================== */
+/* ==========================================================================
+   PANTALLA: PREDICCIONES (Pages/Predicciones.razor)
+   Todo lo de acá para abajo hasta la próxima pantalla es específico
+   del Motor de Predicciones ML. Si se borra Predicciones.razor, se puede
+   borrar también todo este bloque.
+   ========================================================================== */
+
+/* --- Header con buscador (reemplaza al header simple en esta pantalla) --- */
+.pred-header {
+    margin-bottom: 24px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 8px 14px;
+    width: 320px;
+}
+
+    .search-box input {
+        border: none;
+        outline: none;
+        font-size: 14px;
+        width: 100%;
+        background: transparent;
+    }
+
+.search-icon {
+    color: #8a90a2;
+    font-size: 14px;
+}
+
+/* --- Título + botón exportar --- */
+.pred-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+    .pred-title-row h1 {
+        font-size: 26px;
+        margin: 0 0 8px 0;
+    }
+
+.pred-subtitle {
+    color: #8a90a2;
+    font-size: 14px;
+    max-width: 620px;
+    margin: 0;
+}
+
+.btn-exportar {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .btn-exportar:hover {
+        background: #f6f7fa;
+    }
+
+/* --- KPIs de Riesgo Alto / Medio / Bajo --- */
+.pred-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.pred-kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.pred-kpi-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+.label-alto {
+    color: #d63939;
+}
+
+.label-medio {
+    color: #2f6fed;
+}
+
+.label-bajo {
+    color: #8a90a2;
+}
+
+.pred-kpi-icon {
+    font-size: 16px;
+}
+
+.pred-kpi-value {
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.pred-kpi-sub {
+    font-size: 13px;
+    color: #8a90a2;
+    margin-bottom: 14px;
+}
+
+.pred-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pred-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.fill-alto {
+    background: #d63939;
+}
+
+.fill-medio {
+    background: #2f6fed;
+}
+
+.fill-bajo {
+    background: #b7bdc9;
+}
+
+/* --- Filtros y ordenamiento sobre la tabla --- */
+.pred-filter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-label {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-right: 4px;
+}
+
+.filter-pill {
+    border: 1px solid #e5e8ee;
+    background: #fff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #555b6a;
+}
+
+    .filter-pill:hover {
+        background: #f6f7fa;
+    }
+
+    .filter-pill.active-alto {
+        background: #d63939;
+        color: #fff;
+        border-color: #d63939;
+    }
+
+    .filter-pill.active-medio {
+        background: #2f6fed;
+        color: #fff;
+        border-color: #2f6fed;
+    }
+
+    .filter-pill.active-bajo {
+        background: #8a90a2;
+        color: #fff;
+        border-color: #8a90a2;
+    }
+
+    .filter-pill.active-todos {
+        background: #111;
+        color: #fff;
+        border-color: #111;
+    }
+
+.sort-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 8px 28px 8px 12px; /* más espacio a la derecha para la flecha */
+    font-size: 13px;
+    color: #555b6a;
+    background: #fff;
+    appearance: none; /* sacamos la flecha nativa fea del navegador */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+}
+
+/* --- Tabla de predicciones --- */
+.pred-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .pred-table th {
+        text-align: left;
+        font-size: 12px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        border-bottom: 1px solid #eef0f4;
+        padding: 10px 8px;
+    }
+
+    .pred-table td {
+        padding: 16px 8px;
+        border-bottom: 1px solid #f4f5f8;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+.client-avatar-initials {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #eef0f4;
+    color: #555b6a;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.prob-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 140px;
+}
+
+.prob-percent {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.prob-bar-pred {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.prob-fill-pred {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.nivel-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.factor-cell {
+    color: #555b6a;
+}
+
+/* Clases de color compartidas según nivel de riesgo (texto, barra y badge) */
+.nivel-alto {
+    color: #d63939;
+}
+
+.nivel-medio {
+    color: #2f6fed;
+}
+
+.nivel-bajo {
+    color: #8a90a2;
+}
+
+span.nivel-badge.nivel-alto {
+    background: #fdeaea;
+}
+
+span.nivel-badge.nivel-medio {
+    background: #eaf1fd;
+}
+
+span.nivel-badge.nivel-bajo {
+    background: #f0f2f6;
+}
+
+div.prob-fill-pred.nivel-alto {
+    background: #d63939;
+}
+
+div.prob-fill-pred.nivel-medio {
+    background: #2f6fed;
+}
+
+div.prob-fill-pred.nivel-bajo {
+    background: #b7bdc9;
+}
+
+/* --- Paginación --- */
+.pred-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-btn {
+    border: 1px solid #e5e8ee;
+    background: #fff;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 8px; 
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #555b6a;
+    white-space: nowrap; 
+}
+
+    .page-btn.active {
+        background: #111;
+        color: #fff;
+        border-color: #111;
+    }
+
+    .page-btn:hover:not(.active) {
+        background: #f6f7fa;
+    }
+
+/* ==========================================================================
+   FIN PANTALLA: PREDICCIONES
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: DETALLE DE PREDICCIÓN (Pages/PrediccionDetalleCarlos.razor)
+   Por ahora hardcodeada para Carlos Ruiz. Cuando se programe la lógica real
+   esto se va a convertir en una ruta con parámetro (ej: /prediccion/{id}).
+   ========================================================================== */
+
+.back-link {
+    color: #2f6fed;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+/* Hace clickeable el nombre de un cliente en la tabla de Predicciones */
+.client-name-link {
+    color: #111;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .client-name-link:hover {
+        text-decoration: underline;
+        color: #2f6fed;
+    }
+
+.detalle-title {
+    font-size: 26px;
+    margin: 20px 0 10px 0;
+}
+
+.riesgo-tag {
+    display: inline-block;
+    color: #d63939;
+    background: #fdeaea;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+}
+
+.detalle-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.detalle-col-izq,
+.detalle-col-der {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.card-subtitle {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin: 0 0 16px 0;
+}
+
+.card-subtitle-dark {
+    font-size: 16px;
+    color: #1e2432;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* --- Card de perfil --- */
+.perfil-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.perfil-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #f0f2f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.perfil-nombre {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.perfil-email {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.perfil-datos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 1px solid #eef0f4;
+    padding-top: 14px;
+}
+
+.perfil-dato {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.dato-label {
+    color: #8a90a2;
+}
+
+.dato-value {
+    font-weight: 600;
+    color: #1e2432;
+}
+
+/* --- Card vs. media del segmento --- */
+.segmento-item {
+    margin-bottom: 14px;
+}
+
+    .segmento-item:last-child {
+        margin-bottom: 0;
+    }
+
+.segmento-label {
+    font-size: 13px;
+    color: #555b6a;
+    margin-bottom: 4px;
+}
+
+.segmento-value {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+    .segmento-value.negativo {
+        color: #d63939;
+    }
+
+/* --- Botón de acción de retención --- */
+.btn-accion-retencion {
+    background: #2f6fed;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+    .btn-accion-retencion:hover {
+        background: #2559c9;
+    }
+
+.btn-icon {
+    font-size: 16px;
+}
+
+/* --- Card de factores de riesgo --- */
+.factores-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.periodo-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 6px 26px 6px 10px;
+    font-size: 12px;
+    color: #555b6a;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.factores-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+}
+
+.factores-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.factor-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.factor-nombre {
+    color: #555b6a;
+}
+
+.factor-valor {
+    font-weight: 700;
+}
+
+    .factor-valor.factor-negativo {
+        color: #d63939;
+    }
+
+    .factor-valor.factor-positivo {
+        color: #2f9e5c;
+    }
+
+.factor-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.factor-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+    .factor-fill.fill-negativo {
+        background: #d63939;
+    }
+
+    .factor-fill.fill-positivo {
+        background: #2f6fed;
+    }
+
+.factor-desc {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.radar-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.radar-svg {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+}
+
+/* --- Card de evolución de engagement --- */
+.engagement-svg {
+    width: 100%;
+    height: 220px;
+}
+
+.engagement-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #8a90a2;
+    margin-top: 8px;
+}
+
+/* ==========================================================================
+   FIN PANTALLA: DETALLE DE PREDICCIÓN
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: RETENCIÓN DE CLIENTE (Pages/RetencionCliente.razor)
+   Por ahora hardcodeada para Carlos Ruiz, igual que la de detalle.
+   ========================================================================== */
+
+.breadcrumb {
+    font-size: 13px;
+    color: #8a90a2;
+    margin-bottom: 6px;
+}
+
+.breadcrumb-sep {
+    margin: 0 4px;
+}
+
+.retencion-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.retencion-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-cancelar {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1e2432;
+}
+
+    .btn-cancelar:hover {
+        background: #f6f7fa;
+    }
+
+.btn-confirmar {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .btn-confirmar:hover {
+        background: #333;
+    }
+
+/* --- Banner de campaña sugerida por IA --- */
+.ia-banner {
+    background: linear-gradient(135deg, #2f6fed, #4c6ef5);
+    border-radius: 12px;
+    padding: 22px 24px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+.ia-icon {
+    background: rgba(255,255,255,0.2);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.ia-content h3 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+}
+
+.ia-content p {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    opacity: 0.9;
+    max-width: 560px;
+    line-height: 1.5;
+}
+
+.ia-aviso {
+    background: rgba(255,255,255,0.15);
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+/* --- Cards de sección con header gris --- */
+.seccion-card {
+    padding: 0;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.seccion-header {
+    background: #f6f7fa;
+    padding: 14px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #555b6a;
+    letter-spacing: .5px;
+    border-bottom: 1px solid #eef0f4;
+}
+
+/* --- Tabla de historial --- */
+.historial-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .historial-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        padding: 14px 20px 8px 20px;
+    }
+
+    .historial-table td {
+        padding: 12px 20px;
+        font-size: 14px;
+        border-top: 1px solid #f4f5f8;
+    }
+
+.campana-nombre {
+    font-weight: 600;
+}
+
+.canal-cell {
+    color: #555b6a;
+}
+
+.fecha-cell {
+    color: #8a90a2;
+}
+
+.resultado-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.resultado-neutro {
+    background: #f0f2f6;
+    color: #555b6a;
+}
+
+.resultado-exito {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+/* --- Formulario de selección de campaña --- */
+.form-block {
+    padding: 20px 20px 0 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e2432;
+    margin-bottom: 8px;
+}
+
+.campana-select {
+    width: 100%;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+}
+
+.canal-incentivo-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    background: #f6f7fa;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 20px 0 20px;
+}
+
+.canal-incentivo-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cii-label {
+    font-size: 11px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+.cii-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.canal-whatsapp {
+    color: #2f6fed;
+}
+
+.mensaje-preview {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 14px;
+    color: #1e2432;
+    line-height: 1.6;
+    background: #fff;
+}
+
+.programacion-block {
+    padding-bottom: 20px;
+}
+
+.radio-row {
+    display: flex;
+    gap: 24px;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fafbfc;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+    .radio-option input[type="radio"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+/* ==========================================================================
+   FIN PANTALLA: RETENCIÓN DE CLIENTE
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CAMPAÑAS (Pages/Campanas.razor)
+   ========================================================================== */
+
+.camp-header {
+    align-items: flex-start;
+}
+
+.camp-title {
+    margin: 0 0 6px 0;
+    font-size: 22px;
+}
+
+.camp-subtitle {
+    color: #8a90a2;
+    font-size: 13px;
+    margin: 0;
+}
+
+.btn-crear-campana {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .btn-crear-campana:hover {
+        background: #333;
+    }
+
+/* --- Fila de filtros --- */
+.camp-filtros-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto auto;
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0; /* evita que el select/input empuje la columna más de la cuenta */
+}
+
+.filtro-label {
+    font-size: 12px;
+    color: #555b6a;
+    font-weight: 600;
+}
+
+.filtro-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 30px 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.filtro-rango {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filtro-fecha {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    width: 110px;
+}
+
+.filtro-rango-sep {
+    color: #8a90a2;
+    font-size: 13px;
+}
+
+.btn-limpiar-filtro {
+    background: none;
+    border: none;
+    color: #2f6fed;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 9px 4px;
+}
+
+    .btn-limpiar-filtro:hover {
+        text-decoration: underline;
+    }
+
+.btn-filtro-icon {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    color: #555b6a;
+}
+
+    .btn-filtro-icon:hover {
+        background: #f6f7fa;
+    }
+
+/* --- Fila de KPIs --- */
+.camp-kpi-card {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-bottom: 18px;
+}
+
+.camp-kpi-item {
+    border-right: 1px solid #eef0f4;
+    padding-right: 24px;
+}
+
+    .camp-kpi-item:last-child {
+        border-right: none;
+        padding-right: 0;
+    }
+
+.camp-kpi-label {
+    font-size: 13px;
+    color: #555b6a;
+    margin-bottom: 8px;
+}
+
+.camp-kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e2432;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+    .camp-kpi-value.camp-kpi-negativo {
+        color: #d63939;
+    }
+
+    .camp-kpi-value.camp-kpi-canal {
+        font-size: 18px;
+    }
+
+.camp-kpi-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2f9e5c;
+    background: #e3f7ea;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.camp-kpi-sub-inline {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 400;
+}
+
+.camp-kpi-desc {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+    .camp-kpi-desc strong {
+        color: #1e2432;
+    }
+
+.camp-kpi-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.camp-kpi-fill {
+    height: 100%;
+    background: #2f6fed;
+    border-radius: 4px;
+}
+
+/* --- Tabla de campañas --- */
+.camp-table-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.camp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .camp-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        background: #f6f7fa;
+        padding: 14px 20px;
+        border-bottom: 1px solid #eef0f4;
+    }
+
+    .camp-table td {
+        padding: 16px 20px;
+        font-size: 14px;
+        border-bottom: 1px solid #f4f5f8;
+    }
+
+.camp-nombre {
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.camp-canal-cell {
+    color: #555b6a;
+}
+
+.camp-objetivo {
+    color: #555b6a;
+}
+
+.camp-tasa-badge {
+    background: #eaf1fd;
+    color: #2f6fed;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.camp-acciones-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #8a90a2;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+    .camp-acciones-btn:hover {
+        color: #1e2432;
+    }
+
+.camp-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+}
+
+/* ==========================================================================
+   FIN PANTALLA: CAMPAÑAS
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: DETALLE DE CAMPAÑA (Pages/CampanaDetalle.razor)
+   Por ahora hardcodeada para "50% Descuento". Cuando se programe la lógica
+   real esto se va a convertir en una ruta con parámetro (ej: /campana/{id}).
+   ========================================================================== */
+
+.camp-nombre-link {
+    color: #1e2432;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .camp-nombre-link:hover {
+        color: #2f6fed;
+        text-decoration: underline;
+    }
+
+.camp-detalle-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.camp-detalle-title {
+    margin: 0 0 6px 0;
+    font-size: 24px;
+}
+
+.camp-detalle-canal {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+/* --- KPIs superiores --- */
+.camp-detalle-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.camp-detalle-kpi-label {
+    font-size: 11px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+}
+
+.camp-detalle-kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.camp-detalle-kpi-up {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2f9e5c;
+}
+
+.camp-detalle-kpi-meta {
+    font-size: 14px;
+    font-weight: 400;
+    color: #8a90a2;
+}
+
+.camp-detalle-kpi-sub {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+/* --- Card de rendimiento temporal (gráfico de barras) --- */
+.camp-rendimiento-card {
+    margin-bottom: 18px;
+}
+
+.camp-rendimiento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.camp-rendimiento-sub {
+    font-size: 12px;
+    color: #8a90a2;
+    margin: 4px 0 0 0;
+}
+
+.camp-rendimiento-leyenda {
+    display: flex;
+    gap: 16px;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #555b6a;
+}
+
+.leyenda-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-conversion {
+    background: #2f6fed;
+}
+
+.dot-leidos {
+    background: #dfe3ea;
+}
+
+.camp-chart-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 200px; 
+    padding-top: 20px;
+}
+
+.camp-chart-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.camp-chart-bar-wrap {
+    width: 32px;
+    display: flex;
+    flex-direction: column-reverse;
+    border-radius: 4px 4px 0 0;
+    overflow: hidden;
+}
+
+.camp-chart-bar-leido {
+    background: #dfe3ea;
+    width: 100%;
+}
+
+.camp-chart-bar-conversion {
+    background: #2f6fed;
+    width: 100%;
+}
+
+.camp-chart-label {
+    font-size: 11px;
+    color: #8a90a2;
+}
+
+/* --- Card de socios impactados --- */
+.camp-socios-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.camp-socios-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+.camp-socios-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.camp-socios-filtros {
+    display: flex;
+    gap: 16px;
+}
+
+.filtro-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filtro-inline-label {
+    font-size: 13px;
+    color: #555b6a;
+}
+
+.filtro-inline-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 7px 26px 7px 10px;
+    font-size: 13px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.camp-socios-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .camp-socios-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        background: #f6f7fa;
+        padding: 12px 20px;
+        border-top: 1px solid #eef0f4;
+        border-bottom: 1px solid #eef0f4;
+    }
+
+    .camp-socios-table td {
+        padding: 14px 20px;
+        font-size: 14px;
+        border-bottom: 1px solid #f4f5f8;
+        vertical-align: middle;
+    }
+
+.socio-id {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.estado-envio-cell {
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.estado-leido {
+    color: #2f9e5c;
+}
+
+.estado-entregado {
+    color: #2f6fed;
+}
+
+.resultado-badge-camp {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.resultado-rescatado {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+.resultado-sin-accion {
+    background: #f0f2f6;
+    color: #8a90a2;
+}
+
+.resultado-clic {
+    background: #eaf1fd;
+    color: #2f6fed;
+}
+
+.camp-socios-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+}
+
+/* ==========================================================================
+   FIN PANTALLA: DETALLE DE CAMPAÑA
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CREAR / EDITAR CAMPAÑA (Pages/CampanaForm.razor)
+   Un solo componente cubre CU06 (Crear Campaña) y CU07 (Editar Campaña).
+   ========================================================================== */
+.camp-form-title {
+    margin-bottom: 4px;
+}
+
+.camp-form-layout {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.camp-form-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.camp-form-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.camp-form-label-icon {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.camp-form-sublabel {
+    font-size: 11px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-top: 4px;
+}
+
+.camp-form-input {
+    width: 100%;
+}
+
+.campana-select:disabled {
+    background: #f4f6f9;
+    color: #8a90a2;
+    cursor: not-allowed;
+}
+
+.input-error {
+    border-color: #d63939 !important;
+}
+
+.camp-form-error {
+    font-size: 12px;
+    color: #d63939;
+}
+/* --- Selector de canal --- */
+.camp-form-canal-row {
+    display: flex;
+    gap: 12px;
+}
+
+.camp-form-canal-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555b6a;
+    cursor: pointer;
+}
+
+    .camp-form-canal-btn:hover {
+        background: #f6f7fa;
+    }
+
+.camp-form-canal-btn-active {
+    border-color: #2f6fed;
+    background: #eaf1fd;
+    color: #2f6fed;
+}
+/* --- Editor de mensaje --- */
+.camp-form-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.camp-form-plantilla-link {
+    background: none;
+    border: none;
+    color: #2f6fed;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .camp-form-plantilla-link:hover {
+        text-decoration: underline;
+    }
+
+.camp-form-toolbar {
+    display: flex;
+    gap: 14px;
+    padding: 8px 10px;
+    border: 1px solid #e5e8ee;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: #fafbfc;
+    font-size: 13px;
+    color: #555b6a;
+}
+
+.camp-form-textarea {
+    width: 100%;
+    border: 1px solid #e5e8ee;
+    border-radius: 0 0 8px 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    font-family: inherit;
+    resize: vertical;
+}
+/* --- Incentivo + Objetivo --- */
+.camp-form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+/* --- Confirmación y acciones --- */
+.camp-form-confirmacion {
+    background: #e3f7ea;
+    color: #2f9e5c;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.camp-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 4px;
+}
+/* --- Vista previa --- */
+.camp-form-col-preview {
+    position: sticky;
+    top: 20px;
+}
+
+.camp-form-preview-wrap {
+    background: #1b1f27;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.camp-form-preview-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #23272f;
+}
+
+.camp-form-preview-dots {
+    display: flex;
+    gap: 6px;
+}
+
+    .camp-form-preview-dots i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        background: #555b6a;
+    }
+
+        .camp-form-preview-dots i:nth-child(1) {
+            background: #d63939;
+        }
+
+        .camp-form-preview-dots i:nth-child(2) {
+            background: #f2c079;
+        }
+
+        .camp-form-preview-dots i:nth-child(3) {
+            background: #2f9e5c;
+        }
+
+.camp-form-preview-titulo {
+    color: #dfe3ea;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.camp-form-preview-email {
+    background: #fff;
+    padding: 22px 20px;
+}
+
+    .camp-form-preview-email h3 {
+        margin: 0 0 14px 0;
+        font-size: 17px;
+        color: #1e2432;
+    }
+
+.camp-form-preview-saludo {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+}
+
+.camp-form-preview-cuerpo {
+    font-size: 14px;
+    color: #1e2432;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 0 0 16px 0;
+}
+
+.camp-form-beneficio-box {
+    background: #eaf1fd;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.camp-form-beneficio-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: #2f6fed;
+    margin-bottom: 6px;
+}
+
+.camp-form-beneficio-valor {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2f6fed;
+}
+
+.camp-form-preview-cta {
+    width: 100%;
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 14px;
+}
+
+.camp-form-preview-footer {
+    font-size: 11px;
+    color: #8a90a2;
+    text-align: center;
+}
+
+    .camp-form-preview-footer a {
+        color: #2f6fed;
+    }
+/* --- Vista previa WhatsApp --- */
+.camp-form-preview-whatsapp {
+    background: #e5ded6;
+    padding: 20px;
+    min-height: 320px;
+}
+
+.camp-form-preview-wa-bubble {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    max-width: 90%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    position: relative;
+}
+
+.camp-form-beneficio-box-wa {
+    background: #f0f2f6;
+}
+
+    .camp-form-beneficio-box-wa .camp-form-beneficio-label,
+    .camp-form-beneficio-box-wa .camp-form-beneficio-valor {
+        color: #2f9e5c;
+    }
+
+.camp-form-preview-wa-hora {
+    display: block;
+    text-align: right;
+    font-size: 11px;
+    color: #8a90a2;
+    margin-top: 6px;
+}
+
+/* --- Menú desplegable de acciones (⋮) en la tabla de Campañas --- */
+.camp-acciones-cell {
+    position: relative;
+    text-align: right;
+}
+
+.camp-menu-dropdown {
+    position: absolute;
+    right: 20px;
+    top: 100%;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    min-width: 170px;
+    z-index: 20;
+    overflow: hidden;
+    text-align: left;
+}
+
+.camp-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #1e2432;
+    cursor: pointer;
+}
+
+    .camp-menu-item:hover {
+        background: #f6f7fa;
+    }
+
+
+/* ==========================================================================
+   FIN PANTALLA: CREAR / EDITAR CAMPAÑA
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CLIENTES (Pages/Clientes.razor)
+   ========================================================================== */
+.cli-filtros-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 20px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.btn-aplicar-filtros {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    cursor: pointer;
+    white-space: nowrap;
+    height: fit-content;
+}
+
+    .btn-aplicar-filtros:hover {
+        background: #333;
+    }
+/* --- Card de tabla --- */
+.cli-table-card {
+    padding: 20px;
+}
+
+.cli-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+    .cli-table-header h3 {
+        margin: 0;
+        font-size: 17px;
+    }
+
+.cli-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cli-search-box {
+    width: 260px;
+}
+/* --- Tabla --- */
+.cli-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .cli-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        border-bottom: 1px solid #eef0f4;
+        padding: 10px 8px;
+    }
+
+    .cli-table td {
+        padding: 16px 8px;
+        border-bottom: 1px solid #f4f5f8;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+.cli-email {
+    color: #555b6a;
+}
+/* --- Avatares con iniciales --- */
+.cli-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.cli-avatar-azul {
+    background: #4c6ef5;
+}
+
+.cli-avatar-ambar {
+    background: #e0a13a;
+}
+
+.cli-avatar-rojo {
+    background: #e07a6b;
+}
+/* --- Badge de historial de pagos --- */
+.cli-pago-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cli-pago-al-dia {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+.cli-pago-pendiente {
+    background: #fdf3e3;
+    color: #c98a1f;
+}
+
+.cli-pago-vencido {
+    background: #fdeaea;
+    color: #d63939;
+}
+/* --- Link de plan --- */
+.cli-plan-link {
+    color: #2f6fed;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+    .cli-plan-link:hover {
+        text-decoration: underline;
+    }
+/* ==========================================================================
+   FIN PANTALLA: CLIENTES
    ========================================================================== */

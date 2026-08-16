@@ -1,0 +1,162 @@
+﻿@page "/campana-detalle"
+
+<PageTitle>50% Descuento</PageTitle>
+
+<div class="page-header">
+    <a href="campanas" class="back-link">‹ Volver a Campañas</a>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<div class="camp-detalle-title-row">
+    <div>
+        <h1 class="detalle-title camp-detalle-title">50% Descuento</h1>
+        <div class="camp-detalle-canal">📱 WhatsApp Business</div>
+    </div>
+    <button class="btn-exportar">⬇ Exportar Reporte</button>
+</div>
+
+<div class="camp-detalle-kpi-row">
+    <div class="card camp-detalle-kpi-card">
+        <div class="camp-detalle-kpi-label">TASA DE APERTURA</div>
+        <div class="camp-detalle-kpi-value">92.4% <span class="camp-detalle-kpi-up">↑4.2%</span></div>
+        <div class="camp-detalle-kpi-sub">1,240 mensajes entregados</div>
+    </div>
+
+    <div class="card camp-detalle-kpi-card">
+        <div class="camp-detalle-kpi-label">CLICS EN ENLACE</div>
+        <div class="camp-detalle-kpi-value">18.7% <span class="camp-detalle-kpi-up">↑1.5%</span></div>
+        <div class="camp-detalle-kpi-sub">232 interacciones únicas</div>
+    </div>
+
+    <div class="card camp-detalle-kpi-card">
+        <div class="camp-detalle-kpi-label">SOCIOS RECUPERADOS</div>
+        <div class="camp-detalle-kpi-value">86 <span class="camp-detalle-kpi-meta">/ 350 objetivo</span></div>
+        <div class="camp-detalle-kpi-sub">Conversión del 6.9%</div>
+    </div>
+</div>
+
+<div class="card camp-rendimiento-card">
+    <div class="camp-rendimiento-header">
+        <div>
+            <h3 class="card-subtitle-dark">Rendimiento Temporal</h3>
+            <p class="camp-rendimiento-sub">Distribución de conversiones durante los primeros 7 días</p>
+        </div>
+        <div class="camp-rendimiento-leyenda">
+            <span class="leyenda-item"><span class="leyenda-dot dot-conversion"></span> Conversiones</span>
+            <span class="leyenda-item"><span class="leyenda-dot dot-leidos"></span> Mensajes Leídos</span>
+        </div>
+    </div>
+
+    <div class="camp-chart-container">
+        @foreach (var dia in rendimiento)
+        {
+            <div class="camp-chart-col">
+                <div class="camp-chart-bar-wrap">
+                    <div class="camp-chart-bar-leido" style="height:@(dia.Leidos)px"></div>
+                    <div class="camp-chart-bar-conversion" style="height:@(dia.Conversiones)px"></div>
+                </div>
+                <div class="camp-chart-label">@dia.Dia</div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card camp-socios-card">
+    <div class="camp-socios-header">
+        <h3 class="camp-socios-title">Socios Impactados</h3>
+        <div class="camp-socios-filtros">
+            <div class="filtro-inline">
+                <span class="filtro-inline-label">Plan</span>
+                <select class="filtro-inline-select">
+                    <option>Todos</option>
+                    <option>Premium Gold</option>
+                    <option>Básico Mensual</option>
+                </select>
+            </div>
+            <div class="filtro-inline">
+                <span class="filtro-inline-label">Resultado</span>
+                <select class="filtro-inline-select">
+                    <option>Todos</option>
+                    <option>Rescatado</option>
+                    <option>Sin acción</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <table class="camp-socios-table">
+        <thead>
+            <tr>
+                <th>SOCIO</th>
+                <th>PLAN ACTUAL</th>
+                <th>ESTADO ENVÍO</th>
+                <th>RESULTADO</th>
+                <th>FECHA ACCIÓN</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in socios)
+            {
+                <tr>
+                    <td>
+                        <div class="client-cell">
+                            <div class="client-avatar-initials">@s.Iniciales</div>
+                            <div>
+                                <div class="client-name">@s.Nombre</div>
+                                <div class="socio-id">ID: @s.Id</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>@s.Plan</td>
+                    <td><span class="estado-envio-cell @s.EstadoClase">@s.EstadoIcono @s.Estado</span></td>
+                    <td><span class="resultado-badge-camp @s.ResultadoClase">@s.Resultado</span></td>
+                    <td class="fecha-cell">@s.Fecha</td>
+                    <td><button class="camp-acciones-btn">⋮</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="camp-socios-pagination">
+        <span class="pagination-info">Mostrando 1-4 de 1,240 socios</span>
+        <div class="pagination-controls">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <span>...</span>
+            <button class="page-btn">310</button>
+            <button class="page-btn">›</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private record RendimientoDia(string Dia, int Leidos, int Conversiones);
+
+    private List<RendimientoDia> rendimiento = new()
+{
+    new("Día 1", 70, 25),
+    new("2", 100, 65),
+    new("3", 80, 55),
+    new("4", 60, 25),
+    new("5", 55, 15),
+    new("6", 55, 15),
+    new("7", 30, 8),
+};
+
+    private record Socio(string Iniciales, string Nombre, string Id, string Plan, string Estado, string EstadoIcono, string EstadoClase, string Resultado, string ResultadoClase, string Fecha);
+
+    private List<Socio> socios = new()
+    {
+        new("AM", "Alejandro Martínez", "#48291", "Premium Gold", "Leído", "✓", "estado-leido", "RESCATADO", "resultado-rescatado", "15 Jun 2024, 14:20"),
+        new("LR", "Lucía Rodríguez", "#48302", "Básico Mensual", "Entregado", "✓", "estado-entregado", "SIN ACCIÓN", "resultado-sin-accion", "15 Jun 2024, 09:15"),
+        new("CP", "Carlos Peralta", "#48315", "Premium Gold", "Leído", "✓", "estado-leido", "CLIC EN ENLACE", "resultado-clic", "16 Jun 2024, 11:05"),
+        new("SG", "Sofía García", "#48329", "Básico Mensual", "Leído", "✓", "estado-leido", "RESCATADO", "resultado-rescatado", "17 Jun 2024, 18:45"),
+    };
+}

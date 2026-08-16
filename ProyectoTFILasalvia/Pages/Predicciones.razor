@@ -1,0 +1,144 @@
+﻿@page "/predicciones"
+
+<PageTitle>Motor de Predicciones ML</PageTitle>
+
+<div class="page-header">
+    <div></div>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<div class="pred-title-row">
+    <div>
+        <h1>Motor de Predicciones ML</h1>
+        <p class="pred-subtitle">Visualización en tiempo real del modelo de propensión al abandono. Los datos se actualizan cada 24 horas basados en el comportamiento de uso y facturación.</p>
+    </div>
+    <button class="btn-exportar">⬇ Exportar Informe</button>
+</div>
+
+<div class="pred-kpi-row">
+    <div class="card pred-kpi-card">
+        <div class="pred-kpi-top">
+            <span class="pred-kpi-label label-alto">RIESGO ALTO</span>
+            <span class="pred-kpi-icon icon-alto">⚠️</span>
+        </div>
+        <div class="pred-kpi-value">128</div>
+        <div class="pred-kpi-sub">Clientes con probabilidad > 75%</div>
+        <div class="pred-bar"><div class="pred-bar-fill fill-alto" style="width:15%"></div></div>
+    </div>
+
+    <div class="card pred-kpi-card">
+        <div class="pred-kpi-top">
+            <span class="pred-kpi-label label-medio">RIESGO MEDIO</span>
+            <span class="pred-kpi-icon icon-medio">📉</span>
+        </div>
+        <div class="pred-kpi-value">452</div>
+        <div class="pred-kpi-sub">Clientes con probabilidad 40-75%</div>
+        <div class="pred-bar"><div class="pred-bar-fill fill-medio" style="width:45%"></div></div>
+    </div>
+
+    <div class="card pred-kpi-card">
+        <div class="pred-kpi-top">
+            <span class="pred-kpi-label label-bajo">RIESGO BAJO</span>
+            <span class="pred-kpi-icon icon-bajo">✅</span>
+        </div>
+        <div class="pred-kpi-value">2,841</div>
+        <div class="pred-kpi-sub">Clientes con probabilidad &lt; 40%</div>
+        <div class="pred-bar"><div class="pred-bar-fill fill-bajo" style="width:85%"></div></div>
+    </div>
+</div>
+
+<div class="card pred-table-card">
+    <div class="pred-filter-row">
+        <div class="filter-left">
+            <span class="filter-label">FILTRAR POR RIESGO:</span>
+            <button class="filter-pill @(filtroActivo == "Alto" ? "active-alto" : "")" @onclick='() => filtroActivo = "Alto"'>Alto</button>
+            <button class="filter-pill @(filtroActivo == "Medio" ? "active-medio" : "")" @onclick='() => filtroActivo = "Medio"'>Medio</button>
+            <button class="filter-pill @(filtroActivo == "Bajo" ? "active-bajo" : "")" @onclick='() => filtroActivo = "Bajo"'>Bajo</button>
+            <button class="filter-pill @(filtroActivo == "Todos" ? "active-todos" : "")" @onclick='() => filtroActivo = "Todos"'>Ver todos</button>
+        </div>
+        <select class="sort-select">
+            <option>Ordenar por Probabilidad</option>
+            <option>Ordenar por Nombre</option>
+            <option>Ordenar por Nivel de Riesgo</option>
+        </select>
+    </div>
+
+    <table class="pred-table">
+        <thead>
+            <tr>
+                <th>CLIENTE</th>
+                <th>PROBABILIDAD DE ABANDONO</th>
+                <th>NIVEL DE RIESGO</th>
+                <th>FACTOR PRINCIPAL DE RIESGO</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in predicciones)
+            {
+                <tr>
+                    <td>
+                        <div class="client-cell">
+                            <div class="client-avatar-initials">@p.Iniciales</div>
+                            @if (p.Nombre == "Carlos Ruiz")
+                            {
+                                <a href="prediccion-detalle" class="client-name client-name-link">@p.Nombre</a>
+                            }
+                            else
+                            {
+                                <div class="client-name">@p.Nombre</div>
+                            }
+                        </div>
+                    </td>
+                    <td>
+                        <div class="prob-cell">
+                            <span class="prob-percent @NivelClase(p.Nivel)">@p.Probabilidad%</span>
+                            <div class="prob-bar-pred"><div class="prob-fill-pred @NivelClase(p.Nivel)" style="width:@(p.Probabilidad)%"></div></div>
+                        </div>
+                    </td>
+                    <td><span class="nivel-badge @NivelClase(p.Nivel)">@p.Nivel</span></td>
+                    <td class="factor-cell">@p.Factor</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="pred-pagination">
+        <span class="pagination-info">Mostrando 5 de 3,421 clientes analizados</span>
+        <div class="pagination-controls">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <span>...</span>
+            <button class="page-btn">685</button>
+            <button class="page-btn">›</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string filtroActivo = "Alto";
+
+    private record Prediccion(string Iniciales, string Nombre, double Probabilidad, string Nivel, string Factor);
+
+    private List<Prediccion> predicciones = new()
+    {
+        new("TC", "Carlos Ruiz", 92.4, "Alto", "Baja frecuencia de uso"),
+        new("IL", "Sofia Gonzalez", 81.1, "Alto", "Retraso recurrente en pagos"),
+        new("GN", "Juan Perez", 58.7, "Medio", "Tickets de soporte sin cerrar"),
+        new("SS", "Lucia Mendez", 42.2, "Medio", "Salida de contacto principal"),
+        new("OL", "Mateo Fernandez", 12.5, "Bajo", "Uso óptimo de funciones"),
+    };
+
+    private string NivelClase(string nivel) => nivel switch
+    {
+        "Alto" => "nivel-alto",
+        "Medio" => "nivel-medio",
+        "Bajo" => "nivel-bajo",
+        _ => ""
+    };
+}

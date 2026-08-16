@@ -1,0 +1,317 @@
+﻿@page "/campanas/crear"
+@page "/campanas/editar/{CampanaId}"
+@using System.Linq
+@inject NavigationManager Navigation
+
+<PageTitle>@(EsEdicion ? "Editar Campaña" : "Crear Campaña")</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="detalle-title camp-form-title">@(EsEdicion ? "Editar Campaña" : "Crear Campaña")</h1>
+        <p class="camp-subtitle">
+            @(EsEdicion
+                        ? "Modificá los datos de esta campaña de retención."
+                        : "Configurá los parámetros básicos para iniciar tu acción de retención predictiva.")
+        </p>
+    </div>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<div class="camp-form-layout">
+
+    <!-- ===================== COLUMNA IZQUIERDA: FORMULARIO ===================== -->
+    <div class="camp-form-col">
+
+        <!-- Nombre de campaña -->
+        <div class="card camp-form-card">
+            <label class="form-label">NOMBRE DE LA CAMPAÑA</label>
+            <input class="campana-select camp-form-input @(errores.Contains("nombre") ? "input-error" : "")"
+                   @bind="nombreCampana" @bind:event="oninput"
+                   disabled="@EsEdicion"
+                   placeholder="Ej: Campaña de Retención Premium" />
+            @if (errores.Contains("nombre"))
+            {
+                <span class="camp-form-error">El nombre de la campaña es obligatorio.</span>
+            }
+        </div>
+
+        <!-- Canal de envío -->
+        <div class="card camp-form-card">
+            <label class="form-label camp-form-label-icon">🔀 Canal de Envío</label>
+            <div class="camp-form-canal-row">
+                <button type="button"
+                        class="camp-form-canal-btn @(canal == "Email" ? "camp-form-canal-btn-active" : "")"
+                        @onclick='() => CambiarCanal("Email")'>
+                    ✉️ Email
+                </button>
+                <button type="button"
+                        class="camp-form-canal-btn @(canal == "WhatsApp" ? "camp-form-canal-btn-active" : "")"
+                        @onclick='() => CambiarCanal("WhatsApp")'>
+                    💬 WhatsApp
+                </button>
+            </div>
+        </div>
+
+        <!-- Editor de mensaje -->
+        <div class="card camp-form-card">
+            <div class="camp-form-editor-header">
+                <label class="form-label camp-form-label-icon">📝 Editor de Mensaje</label>
+                <button type="button" class="camp-form-plantilla-link" @onclick="CargarPlantillaBase">
+                    Cargar Plantilla Base
+                </button>
+            </div>
+
+            @if (canal == "Email")
+            {
+                <label class="camp-form-sublabel">ASUNTO</label>
+                <input class="campana-select camp-form-input @(errores.Contains("asunto") ? "input-error" : "")"
+                       @bind="asunto" @bind:event="oninput" />
+                @if (errores.Contains("asunto"))
+                {
+                    <span class="camp-form-error">El asunto es obligatorio para campañas por Email.</span>
+                }
+            }
+
+            <label class="camp-form-sublabel">CUERPO DEL MENSAJE</label>
+            <div class="camp-form-toolbar">
+                <span><b>B</b></span>
+                <span><i>I</i></span>
+                <span>🔗</span>
+            </div>
+            <textarea class="camp-form-textarea @(errores.Contains("mensaje") ? "input-error" : "")"
+                      rows="6"
+                      @bind="mensaje" @bind:event="oninput"></textarea>
+            @if (errores.Contains("mensaje"))
+            {
+                <span class="camp-form-error">El mensaje no puede estar vacío.</span>
+            }
+        </div>
+
+        <!-- Incentivo + Objetivo -->
+        <div class="camp-form-row-2">
+            <div class="card camp-form-card">
+                <label class="form-label camp-form-label-icon">🎁 Incentivo</label>
+                <select class="campana-select camp-form-input @(errores.Contains("incentivo") ? "input-error" : "")"
+                        @bind="incentivo">
+                    <option value="">Seleccionar incentivo...</option>
+                    @foreach (var op in incentivosDisponibles)
+                    {
+                        <option value="@op">@op</option>
+                    }
+                </select>
+                @if (errores.Contains("incentivo"))
+                {
+                    <span class="camp-form-error">Elegí un incentivo.</span>
+                }
+            </div>
+            <div class="card camp-form-card">
+                <label class="form-label camp-form-label-icon">🎯 Objetivo</label>
+                <label class="camp-form-sublabel">CLIENTES A RECUPERAR</label>
+                <input type="number" min="1"
+                       class="campana-select camp-form-input @(errores.Contains("objetivo") ? "input-error" : "")"
+                       @bind="objetivo" />
+                @if (errores.Contains("objetivo"))
+                {
+                    <span class="camp-form-error">Ingresá una cantidad válida.</span>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(mensajeConfirmacion))
+        {
+            <div class="camp-form-confirmacion">✔ @mensajeConfirmacion</div>
+        }
+
+        <div class="camp-form-actions">
+            <button type="button" class="btn-cancelar" @onclick="Cancelar">Cancelar</button>
+            <button type="button" class="btn-confirmar" @onclick="GuardarCampana">
+                Guardar campaña ✓
+            </button>
+        </div>
+    </div>
+
+    <!-- ===================== COLUMNA DERECHA: VISTA PREVIA ===================== -->
+    <div class="camp-form-col-preview">
+        <div class="camp-form-preview-wrap">
+            <div class="camp-form-preview-topbar">
+                <span class="camp-form-preview-dots">
+                    <i></i><i></i><i></i>
+                </span>
+                <span class="camp-form-preview-titulo">Vista Previa: @canal</span>
+            </div>
+
+            @if (canal == "Email")
+            {
+                <div class="camp-form-preview-email">
+                    <h3>@(string.IsNullOrWhiteSpace(asunto) ? "Asunto del mensaje" : asunto)</h3>
+                    <p class="camp-form-preview-saludo">Hola @NombreClienteEjemplo,</p>
+                    <p class="camp-form-preview-cuerpo">@MensajeConSalto</p>
+
+                    @if (!string.IsNullOrEmpty(incentivo))
+                    {
+                        <div class="camp-form-beneficio-box">
+                            <div class="camp-form-beneficio-label">TU BENEFICIO ESPECIAL</div>
+                            <div class="camp-form-beneficio-valor">@incentivo</div>
+                        </div>
+                    }
+
+                    <button class="camp-form-preview-cta">Canjear Beneficio Ahora</button>
+                    <div class="camp-form-preview-footer">
+                        ¿Ya no querés recibir estos correos? <a href="#">Desuscribirme</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="camp-form-preview-whatsapp">
+                    <div class="camp-form-preview-wa-bubble">
+                        <p class="camp-form-preview-cuerpo">@MensajeConSalto</p>
+                        @if (!string.IsNullOrEmpty(incentivo))
+                        {
+                            <div class="camp-form-beneficio-box camp-form-beneficio-box-wa">
+                                <div class="camp-form-beneficio-label">TU BENEFICIO ESPECIAL</div>
+                                <div class="camp-form-beneficio-valor">@incentivo</div>
+                            </div>
+                        }
+                        <span class="camp-form-preview-wa-hora">10:24 ✓✓</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Si viene con valor, el formulario entra en modo edición (CU07).
+    /// Si es null/vacío, entra en modo creación (CU06).
+    /// </summary>
+    [Parameter]
+    public string? CampanaId { get; set; }
+
+    private bool EsEdicion => !string.IsNullOrWhiteSpace(CampanaId);
+
+    private string nombreCampana = "";
+    private string canal = "Email";
+    private string asunto = "";
+    private string mensaje = "";
+    private string incentivo = "";
+    private int? objetivo;
+    private string mensajeConfirmacion = "";
+    private HashSet<string> errores = new();
+
+    private readonly List<string> incentivosDisponibles = new()
+    {
+        "50% Descuento",
+        "25% Descuento",
+        "Consultoría Gratuita",
+        "Extensión de Servicio"
+    };
+
+    private const string plantillaBase =
+        "¡Te extrañamos! Tenemos un regalo exclusivo para ti\n\n" +
+        "Hola {nombre_cliente},\n\n" +
+        "Notamos que no has visitado nuestras instalaciones últimamente y queremos que vuelvas. " +
+        "Como eres uno de nuestros clientes más valorados, hemos activado un beneficio especial " +
+        "para tu próxima renovación.";
+
+    private string NombreClienteEjemplo => "María";
+
+    // Reemplaza el placeholder de la plantilla por un nombre de ejemplo para la vista previa.
+    private string MensajeConSalto =>
+        (mensaje ?? "").Replace("{nombre_cliente}", NombreClienteEjemplo);
+
+    protected override void OnInitialized()
+    {
+        if (EsEdicion)
+        {
+            CargarCampanaExistente(CampanaId!);
+        }
+        else
+        {
+            CargarPlantillaBase();
+        }
+    }
+
+    /// <summary>
+    /// Simula la carga de una campaña ya existente (paso 2 - 4 de CU07).
+    /// En un escenario real esto vendría de un servicio / repositorio.
+    /// </summary>
+    private void CargarCampanaExistente(string id)
+    {
+        // TODO: reemplazar por la consulta real a la campaña por id.
+        nombreCampana = "50% Descuento";
+        canal = "WhatsApp";
+        asunto = "";
+        mensaje = "Hola {nombre_cliente}, como cliente valorado tenés un beneficio especial esperándote.";
+        incentivo = "50% Descuento";
+        objetivo = 350;
+    }
+
+    private void CargarPlantillaBase()
+    {
+        mensaje = plantillaBase;
+        if (canal == "Email" && string.IsNullOrWhiteSpace(asunto))
+        {
+            asunto = "¡Te extrañamos! Tenemos un regalo exclusivo para ti";
+        }
+    }
+
+    private void CambiarCanal(string nuevoCanal)
+    {
+        canal = nuevoCanal;
+        // El campo Asunto solo aplica a Email (paso 5 CU06 / paso 7 CU07).
+        if (canal != "Email")
+        {
+            asunto = "";
+        }
+    }
+
+    private bool Validar()
+    {
+        errores.Clear();
+
+        if (string.IsNullOrWhiteSpace(nombreCampana)) errores.Add("nombre");
+        if (canal == "Email" && string.IsNullOrWhiteSpace(asunto)) errores.Add("asunto");
+        if (string.IsNullOrWhiteSpace(mensaje)) errores.Add("mensaje");
+        if (string.IsNullOrWhiteSpace(incentivo)) errores.Add("incentivo");
+        if (objetivo is null or <= 0) errores.Add("objetivo");
+
+        return errores.Count == 0;
+    }
+
+    private void GuardarCampana()
+    {
+        if (!Validar())
+        {
+            mensajeConfirmacion = "";
+            return;
+        }
+
+        // TODO: reemplazar por la persistencia real (crear o actualizar según EsEdicion).
+        mensajeConfirmacion = EsEdicion
+            ? "Campaña actualizada exitosamente."
+            : "Campaña creada exitosamente.";
+
+        StateHasChanged();
+        _ = RedirigirConDelay();
+    }
+
+    private async Task RedirigirConDelay()
+    {
+        // Pequeña pausa para que el usuario alcance a ver el mensaje de confirmación
+        // antes de volver al historial de campañas (paso 15 de CU06 / CU07).
+        await Task.Delay(1200);
+        Navigation.NavigateTo("/campanas");
+    }
+
+    private void Cancelar()
+    {
+        // Descarta los cambios y vuelve al historial sin guardar (alterno 11.1 / 10.1).
+        Navigation.NavigateTo("/campanas");
+    }
+}

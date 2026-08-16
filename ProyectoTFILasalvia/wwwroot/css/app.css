@@ -1,0 +1,518 @@
+/* ==========================================================================
+   RESET Y BASE GENERAL
+   Estilos base que aplican a toda la aplicación, sin importar la pantalla.
+   ========================================================================== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f9;
+    color: #1e2432;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+
+/* ==========================================================================
+   SIDEBAR (menú lateral)
+   General: aparece en todas las pantallas porque vive en MainLayout.razor.
+   ========================================================================== */
+.sidebar {
+    width: 240px;
+    background: #ffffff;
+    border-right: 1px solid #e5e8ee;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    transition: width 0.2s ease; /* animación suave al colapsar/expandir */
+}
+
+    /* Estado colapsado: el sidebar se achica y solo se ven los íconos */
+    .sidebar.collapsed {
+        width: 72px;
+    }
+
+        .sidebar.collapsed .nav-text,
+        .sidebar.collapsed .user-info,
+        .sidebar.collapsed .brand-text {
+            display: none; /* ocultamos el texto, dejamos solo íconos */
+        }
+
+        .sidebar.collapsed .nav-link {
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 0 8px;
+        }
+
+        .sidebar.collapsed .sidebar-brand {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 0 16px 0;
+        }
+
+        .sidebar.collapsed .sidebar-footer {
+            justify-content: center;
+            padding: 16px 8px;
+        }
+
+        .sidebar.collapsed .avatar {
+            width: 32px;
+            height: 32px;
+            font-size: 12px;
+        }
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 0 20px 20px 20px;
+    border-bottom: 1px solid #e5e8ee;
+    margin-bottom: 10px;
+}
+
+.sidebar.collapsed .oi-grid-two-up {
+    display: none; /* ocultamos el ícono del logo, dejamos solo el botón */
+}
+
+/* Botón para minimizar/expandir el sidebar */
+.collapse-btn {
+    margin-left: auto;
+    background: #f0f2f6;
+    border: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555b6a;
+    flex-shrink: 0;
+}
+
+    .collapse-btn:hover {
+        background: #e5e8ee;
+    }
+
+.sidebar.collapsed .collapse-btn {
+    margin-left: 0;
+}
+
+.nav-item {
+    padding: 0 12px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin: 2px 0;
+    border-radius: 8px;
+    color: #555b6a;
+    text-decoration: none;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+    .nav-link:hover {
+        background: #f0f2f6;
+    }
+
+    .nav-link.active {
+        background: #eef1f6;
+        color: #111;
+        font-weight: 600;
+    }
+
+.icon {
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e8ee;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #4c6ef5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+
+/* ==========================================================================
+   CONTENIDO PRINCIPAL (contenedor genérico)
+   General: el área donde se renderiza cada pantalla (@Body en MainLayout).
+   ========================================================================== */
+.main-content {
+    flex: 1;
+    padding: 28px 36px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+    .page-header h1 {
+        font-size: 28px;
+        margin: 0;
+    }
+
+.header-icons {
+    display: flex;
+    gap: 18px;
+    font-size: 18px;
+    color: #555;
+}
+
+
+/* ==========================================================================
+   CARD BASE (componente genérico reutilizable)
+   General: usado por Dashboard y se va a reutilizar en otras pantallas
+   (Clientes, Campañas, Reportes, etc.) como contenedor de bloques.
+   ========================================================================== */
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid #eef0f4;
+}
+
+
+/* ==========================================================================
+   PANTALLA: DASHBOARD (Pages/Dashboard.razor)
+   Todo lo de acá para abajo hasta la próxima pantalla es específico
+   del Panel de Retención. Si se borra Dashboard.razor, se puede borrar
+   también todo este bloque.
+   ========================================================================== */
+
+/* --- KPIs superiores (Tasa de churn / Clientes en riesgo / Recuperados) --- */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.kpi-label {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 600;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    font-size: 30px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.kpi-sub {
+    font-size: 13px;
+    color: #8a90a2;
+    margin-top: 6px;
+}
+
+.badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.badge-red {
+    color: #d63939;
+    background: #fdeaea;
+}
+
+.badge-blue {
+    color: #2f6fed;
+    background: #eaf1fd;
+}
+
+.badge-critical {
+    color: #d63939;
+    background: #fdeaea;
+}
+
+/* --- Fila con gráfico de tendencia + distribución de riesgo --- */
+.main-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.toggle-group {
+    display: flex;
+    background: #f0f2f6;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.toggle {
+    border: none;
+    background: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+    .toggle.active {
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0,0,0,.1);
+        font-weight: 600;
+    }
+
+.chart-placeholder {
+    background: #f6f7fa;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.trend-svg {
+    width: 100%;
+    height: 180px;
+}
+
+.chart-months {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #8a90a2;
+    margin-top: 8px;
+}
+
+    .chart-months .current {
+        font-weight: 700;
+        color: #1e2432;
+    }
+
+.risk-card h3,
+.chart-card h3 {
+    margin: 0 0 4px 0;
+    font-size: 17px;
+}
+
+/* Donut de distribución de riesgo (Alto/Medio/Bajo) */
+.risk-donut {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    margin: 20px auto;
+    background: conic-gradient(#d63939 0% 15%, #f2c079 15% 47%, #dfe3ea 47% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.risk-donut-center {
+    width: 120px;
+    height: 120px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.risk-total {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.risk-total-label {
+    font-size: 11px;
+    color: #8a90a2;
+    letter-spacing: 1px;
+}
+
+.risk-legend {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+}
+
+    .risk-legend li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 14px;
+    }
+
+.legend-value {
+    margin-left: auto;
+    font-weight: 600;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-alto {
+    background: #d63939;
+}
+
+.dot-medio {
+    background: #f2c079;
+}
+
+.dot-bajo {
+    background: #dfe3ea;
+}
+
+/* --- Tabla de clientes en riesgo crítico --- */
+.table-card h3 {
+    margin: 0 0 4px 0;
+}
+
+.table-subtitle {
+    color: #8a90a2;
+    font-size: 13px;
+    margin: 0 0 16px 0;
+}
+
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .risk-table th {
+        text-align: left;
+        font-size: 12px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        border-bottom: 1px solid #eef0f4;
+        padding: 10px 8px;
+    }
+
+    .risk-table td {
+        padding: 14px 8px;
+        border-bottom: 1px solid #f4f5f8;
+        font-size: 14px;
+    }
+
+.client-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.client-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #2b3a4a;
+}
+
+.client-name {
+    font-weight: 600;
+}
+
+.client-plan {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.prob-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.prob-bar {
+    width: 60px;
+    height: 6px;
+    background: #f0e5e5;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.prob-fill {
+    height: 100%;
+    background: #d63939;
+}
+
+.uso-badge {
+    background: #fdeaea;
+    color: #d63939;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.btn-contactar {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+    .btn-contactar:hover {
+        background: #333;
+    }
+
+/* ==========================================================================
+   FIN PANTALLA: DASHBOARD
+   ========================================================================== */

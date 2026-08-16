@@ -1,0 +1,74 @@
+﻿<div class="sidebar @(isCollapsed ? "collapsed" : "")">
+    <div class="sidebar-brand">
+        <span class="oi oi-grid-two-up" aria-hidden="true"></span>
+        <span class="brand-text">Dashboard</span>
+        <button class="collapse-btn" @onclick="ToggleSidebar" title="Minimizar menú">
+            @(isCollapsed ? "»" : "«")
+        </button>
+    </div>
+
+    <nav class="flex-column">
+        <div class="nav-item">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" title="Dashboard">
+                <span class="icon">🏠</span> <span class="nav-text">Dashboard</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="clientes" title="Clientes">
+                <span class="icon">👥</span> <span class="nav-text">Clientes</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="campanas" title="Campañas">
+                <span class="icon">📣</span> <span class="nav-text">Campañas</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="predicciones" title="Predicciones">
+                <span class="icon">🎯</span> <span class="nav-text">Predicciones</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="automatizacion" title="Automatización">
+                <span class="icon">⚙️</span> <span class="nav-text">Automatización</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="reportes" title="Reportes">
+                <span class="icon">📊</span> <span class="nav-text">Reportes</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="integraciones" title="Integraciones">
+                <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="administracion" title="Administración">
+                <span class="icon">👥</span> <span class="nav-text">Administración</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="login" title="Log In">
+                <span class="icon">🔑</span> <span class="nav-text">Log In</span>
+            </NavLink>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="avatar">JD</div>
+        <div class="user-info">
+            <div class="user-name">Javier Domínguez</div>
+            <div class="user-role">Admin Account</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isCollapsed = false;
+
+    private void ToggleSidebar()
+    {
+        isCollapsed = !isCollapsed;
+    }
+}

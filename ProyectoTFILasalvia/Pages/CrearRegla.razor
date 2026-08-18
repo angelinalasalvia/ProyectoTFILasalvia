@@ -1,0 +1,389 @@
+﻿@page "/automatizacion/nueva-regla"
+@page "/automatizacion/editar-regla/{ReglaId}"
+@inject NavigationManager Navigation
+
+<PageTitle>@(EsEdicion ? "Editar Regla" : "Nueva Regla")</PageTitle>
+
+<div class="breadcrumb">
+    AUTOMATIZACIÓN <span class="breadcrumb-sep">›</span> @(EsEdicion ? "EDITAR REGLA" : "NUEVA REGLA")
+</div>
+
+<div class="retencion-header-row">
+    <div>
+        <h1 class="detalle-title">@(EsEdicion ? "Editar Regla de Automatización" : "Configurar Regla de Automatización")</h1>
+        <p class="camp-subtitle">Crea flujos inteligentes para retener a tus clientes antes de que se den de baja.</p>
+    </div>
+    <div class="retencion-actions">
+        <button class="btn-cancelar" @onclick="Cancelar">Cancelar</button>
+        <button class="btn-confirmar" @onclick="GuardarRegla">💾 Guardar Regla</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(mensajeConfirmacion))
+{
+    <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeConfirmacion</div>
+}
+
+<!-- Nombre de la regla -->
+<div class="card regla-card">
+    <label class="form-label">NOMBRE DE LA REGLA</label>
+    <input class="campana-select @(errores.Contains("nombre") ? "input-error" : "")"
+           @bind="nombreRegla" @bind:event="oninput"
+           disabled="@EsEdicion"
+           placeholder="Ej: Rescate de Socios de Alto Riesgo" />
+    @if (errores.Contains("nombre"))
+    {
+        <span class="camp-form-error">El nombre de la regla es obligatorio.</span>
+    }
+</div>
+
+<!-- 1. Definir condición -->
+<div class="card regla-card">
+    <div class="regla-section-header">
+        <div class="regla-section-titulo">
+            <span class="regla-step-num">1</span>
+            <h3>Definir Condición (Trigger)</h3>
+        </div>
+        <span class="regla-badge-logica">LÓGICA BOOLEANA</span>
+    </div>
+
+    @for (int i = 0; i < condiciones.Count; i++)
+    {
+        var idx = i;
+        var c = condiciones[idx];
+        var atrDef = AtributoDef(c.Atributo);
+
+        @if (idx > 0)
+        {
+            <div class="regla-conector-pill-wrap">
+                <button type="button" class="regla-conector-pill" @onclick="() => AlternarLogica(c)">
+                    @c.LogicaConSiguiente
+                </button>
+            </div>
+        }
+
+        <div class="regla-cond-box @(errores.Contains($"condicion-{idx}") ? "input-error" : "")">
+            <span class="regla-cond-label">@(idx == 0 ? "SI EL SOCIO TIENE..." : $"{c.LogicaConSiguiente} ADEMÁS...")</span>
+            <div class="regla-cond-fields">
+                <select class="regla-cond-select-atributo" @bind="c.Atributo">
+                    @foreach (var a in atributosDisponibles)
+                    {
+                        <option value="@a.Nombre">@a.Nombre</option>
+                    }
+                </select>
+
+                @if (atrDef.EsNumerico)
+                {
+                    <span class="regla-cond-texto">es mayor a</span>
+                    <input type="number" min="0" class="regla-cond-input-num" @bind="c.ValorNumero" />
+                    <span class="regla-cond-texto">@atrDef.Unidad</span>
+                }
+                else
+                {
+                    <span class="regla-cond-texto">es igual a</span>
+                    <select class="regla-cond-select-valor" @bind="c.ValorTexto">
+                        @foreach (var op in atrDef.Opciones!)
+                        {
+                            <option value="@op">@op</option>
+                        }
+                    </select>
+                }
+            </div>
+            <button type="button" class="auto-icon-btn" title="Eliminar condición" @onclick="() => EliminarCondicion(c)">🗑️</button>
+        </div>
+    }
+
+    <button type="button" class="regla-btn-agregar-filtro" @onclick="AgregarCondicion">
+        ⊕ Añadir Filtro de Comportamiento
+    </button>
+
+    <div class="regla-estimacion-box">
+        📊 <strong>≈ @EstimacionClientes().ToString("N0") clientes</strong> cumplen esta configuración
+    </div>
+</div>
+
+<!-- 2. Definir acción -->
+<div class="card regla-card">
+    <div class="regla-section-header">
+        <div class="regla-section-titulo">
+            <span class="regla-step-num">2</span>
+            <h3>Definir Acción</h3>
+        </div>
+    </div>
+
+    <label class="form-label">CAMPAÑA ASOCIADA</label>
+    @if (campañasDisponibles.Count == 0)
+    {
+        <div class="regla-sin-campanias">
+            Todavía no hay campañas creadas. Necesitás al menos una campaña para poder configurar una regla.
+            <a href="campanas">Ir a Campañas →</a>
+        </div>
+    }
+    else
+    {
+        <select class="campana-select @(errores.Contains("campana") ? "input-error" : "")" @bind="campañaSeleccionadaId">
+            <option value="">Seleccionar campaña...</option>
+            @foreach (var camp in campañasDisponibles)
+            {
+                <option value="@camp.Id">@camp.Nombre</option>
+            }
+        </select>
+        @if (errores.Contains("campana"))
+        {
+            <span class="camp-form-error">Elegí una campaña asociada.</span>
+        }
+
+        <div class="regla-accion-resumen">
+            <div>
+                <label class="camp-form-sublabel">CANAL DE COMUNICACIÓN</label>
+                <div class="camp-form-canal-row">
+                    <div class="camp-form-canal-btn regla-canal-readonly @(CampañaSeleccionada?.Canal == "Email" ? "camp-form-canal-btn-active" : "")">
+                        ✉️ Email
+                    </div>
+                    <div class="camp-form-canal-btn regla-canal-readonly @(CampañaSeleccionada?.Canal == "WhatsApp" ? "camp-form-canal-btn-active" : "")">
+                        💬 WhatsApp
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="camp-form-sublabel">RECOMPENSA / INCENTIVO</label>
+                <input class="campana-select" disabled value="@(CampañaSeleccionada?.Incentivo ?? "—")" />
+            </div>
+        </div>
+
+        @if (CampañaSeleccionada is not null)
+        {
+            <div class="regla-vista-previa">
+                <strong>Vista Previa:</strong> "@CampañaSeleccionada.MensajePreview"
+            </div>
+        }
+    }
+</div>
+
+<!-- 3. Segmentación adicional -->
+<div class="card regla-card">
+    <div class="regla-section-header">
+        <div class="regla-section-titulo">
+            <span class="regla-step-num">3</span>
+            <h3>Segmentación Adicional (Opcional)</h3>
+        </div>
+    </div>
+
+    <div class="regla-segmentacion-row">
+        <div>
+            <label class="camp-form-sublabel">TIPO DE PLAN</label>
+            <div class="regla-chips">
+                @foreach (var plan in tiposPlanDisponibles)
+                {
+                    var seleccionado = tiposPlanSeleccionados.Contains(plan);
+                    <button type="button"
+                            class="regla-chip @(seleccionado ? "regla-chip-seleccionado" : "")"
+                            @onclick="() => AlternarPlan(plan)">
+                        @plan @(seleccionado ? "✕" : "")
+                    </button>
+                }
+            </div>
+        </div>
+        <div>
+            <label class="camp-form-sublabel">SEDE / UBICACIÓN</label>
+            <select class="campana-select" @bind="sedeSeleccionada">
+                <option>Todas las sedes</option>
+                <option>Sede Central</option>
+                <option>Sede Norte</option>
+                <option>Sede Sur</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? ReglaId { get; set; }
+
+    private bool EsEdicion => !string.IsNullOrWhiteSpace(ReglaId);
+
+    private string nombreRegla = "";
+    private string sedeSeleccionada = "Todas las sedes";
+    private string campañaSeleccionadaId = "";
+    private string mensajeConfirmacion = "";
+    private HashSet<string> errores = new();
+
+    // --- Definición de atributos disponibles para las condiciones ---
+    private record AtributoDefinicion(string Nombre, bool EsNumerico, string Unidad, List<string>? Opciones);
+
+    private List<AtributoDefinicion> atributosDisponibles = new()
+    {
+        new("Nivel de Riesgo", false, "", new() { "Bajo", "Medio", "Alto", "Muy Alto" }),
+        new("Inactividad", true, "días", null),
+        new("Historial de Pagos", false, "", new() { "Al día", "Pendiente", "Vencido" }),
+        new("Actividad", true, "%", null),
+    };
+
+    private AtributoDefinicion AtributoDef(string nombre) =>
+        atributosDisponibles.FirstOrDefault(a => a.Nombre == nombre) ?? atributosDisponibles[0];
+
+    private class Condicion
+    {
+        public string Atributo { get; set; } = "Nivel de Riesgo";
+        public string ValorTexto { get; set; } = "Alto";
+        public int? ValorNumero { get; set; } = 15;
+        public string LogicaConSiguiente { get; set; } = "Y"; // conecta esta condición con la anterior
+    }
+
+    private List<Condicion> condiciones = new()
+    {
+        new Condicion { Atributo = "Nivel de Riesgo", ValorTexto = "Alto" },
+    };
+
+    // --- Campañas existentes disponibles para asociar (CU11, paso 5) ---
+    private record CampañaResumen(string Id, string Nombre, string Canal, string Incentivo, string MensajePreview);
+
+    private List<CampañaResumen> campañasDisponibles = new()
+    {
+        new("camp-001", "25% Descuento", "Email", "25% Descuento",
+            "Hola [Nombre], te echamos de menos en el gym. Vuelve esta semana y obtén un 25% de dto..."),
+        new("camp-002", "50% Descuento", "WhatsApp", "50% Descuento",
+            "Hola [Nombre], como socio valorado tenés un 50% de descuento esperándote esta semana."),
+    };
+
+    private CampañaResumen? CampañaSeleccionada =>
+        campañasDisponibles.FirstOrDefault(c => c.Id == campañaSeleccionadaId);
+
+    // --- Segmentación adicional ---
+    private List<string> tiposPlanDisponibles = new() { "Mensual", "Premium", "Anual" };
+    private HashSet<string> tiposPlanSeleccionados = new() { "Mensual" };
+
+    protected override void OnInitialized()
+    {
+        if (EsEdicion)
+        {
+            CargarReglaExistente(ReglaId!);
+        }
+    }
+
+    /// <summary>
+    /// Simula la carga de una regla ya existente. En un escenario real esto
+    /// vendría de un servicio / repositorio, buscando por ReglaId.
+    /// </summary>
+    private void CargarReglaExistente(string id)
+    {
+        // TODO: reemplazar por la consulta real a la regla por id.
+        nombreRegla = "Rescate de Socios de Alto Riesgo";
+        condiciones = new()
+        {
+            new Condicion { Atributo = "Nivel de Riesgo", ValorTexto = "Alto" },
+            new Condicion { Atributo = "Inactividad", ValorNumero = 15, LogicaConSiguiente = "Y" },
+        };
+        campañaSeleccionadaId = "camp-001";
+        tiposPlanSeleccionados = new() { "Mensual" };
+        sedeSeleccionada = "Todas las sedes";
+    }
+
+    private void AgregarCondicion()
+    {
+        condiciones.Add(new Condicion { Atributo = "Inactividad", LogicaConSiguiente = "Y" });
+    }
+
+    private void EliminarCondicion(Condicion c)
+    {
+        // Siempre debe quedar al menos una condición.
+        if (condiciones.Count > 1)
+        {
+            condiciones.Remove(c);
+        }
+    }
+
+    private void AlternarLogica(Condicion c)
+    {
+        c.LogicaConSiguiente = c.LogicaConSiguiente == "Y" ? "O" : "Y";
+    }
+
+    private void AlternarPlan(string plan)
+    {
+        if (!tiposPlanSeleccionados.Remove(plan))
+        {
+            tiposPlanSeleccionados.Add(plan);
+        }
+    }
+
+    /// <summary>
+    /// Estimación en tiempo real de clientes impactados (CU11, pasos 4, 7 y 9).
+    /// Cálculo simulado: en un escenario real vendría del backend / modelo de IA.
+    /// </summary>
+    private int EstimacionClientes()
+    {
+        int baseClientes = 3421;
+        double factor = 1.0;
+
+        foreach (var c in condiciones)
+        {
+            factor *= AtributoDef(c.Atributo).EsNumerico ? 0.35 : 0.25;
+        }
+
+        if (CampañaSeleccionada is not null) factor *= 0.9;
+        if (tiposPlanSeleccionados.Count > 0 && tiposPlanSeleccionados.Count < tiposPlanDisponibles.Count)
+        {
+            factor *= (double)tiposPlanSeleccionados.Count / tiposPlanDisponibles.Count;
+        }
+        if (sedeSeleccionada != "Todas las sedes") factor *= 0.4;
+
+        return Math.Max(1, (int)(baseClientes * factor));
+    }
+
+    private bool Validar()
+    {
+        errores.Clear();
+
+        if (string.IsNullOrWhiteSpace(nombreRegla)) errores.Add("nombre");
+
+        for (int i = 0; i < condiciones.Count; i++)
+        {
+            var c = condiciones[i];
+            var def = AtributoDef(c.Atributo);
+            var incompleta = def.EsNumerico ? c.ValorNumero is null or <= 0 : string.IsNullOrWhiteSpace(c.ValorTexto);
+            if (incompleta) errores.Add($"condicion-{i}");
+        }
+
+        if (campañasDisponibles.Count > 0 && string.IsNullOrWhiteSpace(campañaSeleccionadaId))
+        {
+            errores.Add("campana");
+        }
+
+        return errores.Count == 0;
+    }
+
+    private void GuardarRegla()
+    {
+        // Alterno 5.1: no hay campañas creadas en el sistema.
+        if (campañasDisponibles.Count == 0)
+        {
+            return;
+        }
+
+        if (!Validar())
+        {
+            mensajeConfirmacion = "";
+            return;
+        }
+
+        // TODO: reemplazar por la persistencia real (crear o actualizar según EsEdicion).
+        mensajeConfirmacion = EsEdicion
+            ? "Regla actualizada exitosamente."
+            : "Regla creada exitosamente con estado Activa.";
+
+        StateHasChanged();
+        _ = RedirigirConDelay();
+    }
+
+    private async Task RedirigirConDelay()
+    {
+        await Task.Delay(1200);
+        Navigation.NavigateTo("/automatizacion");
+    }
+
+    private void Cancelar()
+    {
+        // Alterno 10.1: descarta los cambios y vuelve al listado de reglas (CU10).
+        Navigation.NavigateTo("/automatizacion");
+    }
+}

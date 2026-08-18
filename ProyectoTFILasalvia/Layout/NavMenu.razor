@@ -1,4 +1,6 @@
-﻿<div class="sidebar @(isCollapsed ? "collapsed" : "")">
+﻿@inject NavigationManager Navigation
+
+<div class="sidebar @(isCollapsed ? "collapsed" : "")">
     <div class="sidebar-brand">
         <span class="oi oi-grid-two-up" aria-hidden="true"></span>
         <span class="brand-text">Dashboard</span>
@@ -33,11 +35,27 @@
                 <span class="icon">⚙️</span> <span class="nav-text">Automatización</span>
             </NavLink>
         </div>
+
+        <!-- Reportes: ítem padre con submenú desplegable -->
         <div class="nav-item">
-            <NavLink class="nav-link" href="reportes" title="Reportes">
+            <button class="nav-link nav-link-parent @(reportesAbierto ? "active" : "")"
+                    @onclick="ToggleReportes" title="Reportes">
                 <span class="icon">📊</span> <span class="nav-text">Reportes</span>
-            </NavLink>
+                <span class="nav-chevron">@(reportesAbierto ? "▾" : "▸")</span>
+            </button>
+            @if (reportesAbierto)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="reportes/efectividad" title="Reporte de Efectividad">
+                        Reporte de Efectividad
+                    </NavLink>
+                    <NavLink class="nav-sublink" href="reportes/retencion" title="Reporte de Retención">
+                        Reporte de Retención
+                    </NavLink>
+                </div>
+            }
         </div>
+
         <div class="nav-item">
             <NavLink class="nav-link" href="integraciones" title="Integraciones">
                 <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
@@ -67,8 +85,22 @@
 @code {
     private bool isCollapsed = false;
 
+    // Se abre solo si ya estamos en alguna de las pantallas de Reportes
+    // (ej: al entrar directo por URL a /reportes/efectividad).
+    private bool reportesAbierto = false;
+
+    protected override void OnInitialized()
+    {
+        reportesAbierto = Navigation.Uri.Contains("/reportes/");
+    }
+
     private void ToggleSidebar()
     {
         isCollapsed = !isCollapsed;
+    }
+
+    private void ToggleReportes()
+    {
+        reportesAbierto = !reportesAbierto;
     }
 }

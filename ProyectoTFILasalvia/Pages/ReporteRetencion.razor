@@ -1,0 +1,191 @@
+﻿@page "/reportes/retencion"
+
+<PageTitle>Reporte de Retención</PageTitle>
+
+<div class="rep-icons-row">
+    <span>🔔</span>
+    <span>❓</span>
+    <span>⚙️</span>
+</div>
+
+<div class="retencion-header-row">
+    <div>
+        <h1 class="detalle-title">Reporte de Retención</h1>
+        <p class="camp-subtitle ret-subtitulo">Análisis detallado de salud de cartera y tendencias de abandono.</p>
+    </div>
+    <div class="retencion-actions">
+        <div class="toggle-group">
+            <button class="toggle @(periodoSeleccionado == "30 días" ? "active" : "")" @onclick='() => periodoSeleccionado = "30 días"'>
+                Últimos 30 días
+            </button>
+            <button class="toggle @(periodoSeleccionado == "90 días" ? "active" : "")" @onclick='() => periodoSeleccionado = "90 días"'>
+                90 días
+            </button>
+            <button class="toggle @(periodoSeleccionado == "Año" ? "active" : "")" @onclick='() => periodoSeleccionado = "Año"'>
+                Año
+            </button>
+        </div>
+        <button class="btn-cancelar">▽ Filtrar Segmento</button>
+        <button class="btn-confirmar" @onclick="Exportar">⬇ Exportar</button>
+    </div>
+</div>
+
+<!-- KPIs principales -->
+<div class="ret-kpi-row">
+    <div class="card ret-kpi-card">
+        <div class="ret-kpi-top">
+            <span class="ret-kpi-titulo">CHURN HISTÓRICO</span>
+            <span class="ret-kpi-badge ret-badge-negativo">↘0.8%</span>
+        </div>
+        <div class="ret-kpi-valor-row">
+            <span class="ret-kpi-valor">2.4%</span>
+            <span class="ret-kpi-sub">promedio mensual</span>
+        </div>
+    </div>
+    <div class="card ret-kpi-card">
+        <div class="ret-kpi-top">
+            <span class="ret-kpi-titulo">CLIENTES RECUPERADOS</span>
+            <span class="ret-kpi-badge ret-badge-positivo">↗12%</span>
+        </div>
+        <div class="ret-kpi-valor-row">
+            <span class="ret-kpi-valor">142</span>
+            <span class="ret-kpi-sub">este trimestre</span>
+        </div>
+        <div class="ret-kpi-extra">+24 recuperados hoy</div>
+    </div>
+    <div class="card ret-kpi-card">
+        <div class="ret-kpi-top">
+            <span class="ret-kpi-titulo">INGRESOS SALVADOS (MRR)</span>
+        </div>
+        <div class="ret-kpi-valor-row">
+            <span class="ret-kpi-valor">$42,500</span>
+            <span class="ret-kpi-sub">USD / mes</span>
+        </div>
+    </div>
+</div>
+
+<!-- Tendencias de churn -->
+<div class="card ret-tendencia-card">
+    <div class="ret-tendencia-header">
+        <h3 class="card-subtitle-dark">Tendencias de Churn</h3>
+        <div class="ret-tendencia-legend">
+            <span><i class="rep-dot rep-dot-azul"></i> Periodo Actual</span>
+            <span><i class="rep-dot rep-dot-gris"></i> Periodo Anterior</span>
+        </div>
+    </div>
+
+    <div class="ret-chart-wrap">
+        <div class="ret-chart-eje-y">
+            <span>4%</span><span>3%</span><span>2%</span><span>1%</span><span>0%</span>
+        </div>
+        <svg viewBox="0 0 700 240" preserveAspectRatio="none" class="ret-trend-svg">
+            <!-- Líneas de grilla -->
+            <line x1="0" y1="20" x2="700" y2="20" class="ret-grid-line" />
+            <line x1="0" y1="70" x2="700" y2="70" class="ret-grid-line" />
+            <line x1="0" y1="120" x2="700" y2="120" class="ret-grid-line" />
+            <line x1="0" y1="170" x2="700" y2="170" class="ret-grid-line" />
+            <line x1="0" y1="220" x2="700" y2="220" class="ret-grid-line" />
+
+            <!-- Período anterior (punteada, gris) -->
+            <polyline fill="none" class="ret-linea-anterior"
+                      points="40,115 166,115 292,120 418,90 544,95 670,85" />
+
+            <!-- Período actual (sólida, azul) -->
+            <polyline fill="none" class="ret-linea-actual"
+                      points="40,170 166,155 292,130 418,95 544,110 670,90" />
+            @foreach (var p in puntosActual)
+            {
+                <circle cx="@p.X" cy="@p.Y" r="4" class="ret-punto-actual" />
+            }
+        </svg>
+        <div class="chart-months ret-chart-meses">
+            <span>ENE</span><span>FEB</span><span>MAR</span><span>ABR</span><span>MAY</span><span>JUN</span>
+        </div>
+    </div>
+</div>
+
+<!-- Análisis de cohortes -->
+<div class="card ret-cohortes-card">
+    <div class="ret-cohortes-header">
+        <h3 class="card-subtitle-dark">Análisis de Cohortes (Retención %)</h3>
+        <span class="ret-cohortes-nota">Visualización por meses desde el registro</span>
+    </div>
+
+    <table class="ret-cohortes-table">
+        <thead>
+            <tr>
+                <th>COHORTE</th>
+                <th>MES 0</th>
+                <th>MES 1</th>
+                <th>MES 2</th>
+                <th>MES 3</th>
+                <th>MES 4</th>
+                <th>MES 5</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var fila in cohortes)
+            {
+                <tr>
+                    <td class="ret-cohorte-nombre">@fila.Nombre</td>
+                    @foreach (var valor in fila.Valores)
+                    {
+                        <td>
+                            @if (valor.HasValue)
+                            {
+                                <span class="ret-cohorte-celda @ColorClase(valor.Value)">@valor.Value%</span>
+                            }
+                            else
+                            {
+                                <span class="ret-cohorte-celda ret-cohorte-vacia">-</span>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<p class="ret-footer-nota">Reporte generado el: 24 May 2024, 09:45 AM</p>
+
+@code {
+    private string periodoSeleccionado = "30 días";
+
+    private record Punto(int X, int Y);
+
+    // Coordenadas de los puntos de la línea "Periodo Actual" (deben coincidir
+    // con el atributo points del polyline de arriba).
+    private List<Punto> puntosActual = new()
+    {
+        new(40, 170), new(166, 155), new(292, 130),
+        new(418, 95), new(544, 110), new(670, 90),
+    };
+
+    private record FilaCohorte(string Nombre, List<int?> Valores);
+
+    private List<FilaCohorte> cohortes = new()
+    {
+        new("Enero 2024", new List<int?> { 100, 92, 88, 84, 81, 78 }),
+        new("Febrero 2024", new List<int?> { 100, 94, 91, 88, 85, null }),
+        new("Marzo 2024", new List<int?> { 100, 90, 85, 82, null, null }),
+        new("Abril 2024", new List<int?> { 100, 95, 93, null, null, null }),
+    };
+
+    // Escala de color tipo "heatmap" según el % de retención de la celda.
+    private string ColorClase(int pct) => pct switch
+    {
+        >= 100 => "ret-cohorte-100",
+        >= 90 => "ret-cohorte-90",
+        >= 85 => "ret-cohorte-85",
+        >= 80 => "ret-cohorte-80",
+        >= 75 => "ret-cohorte-75",
+        _ => "ret-cohorte-baja",
+    };
+
+    private void Exportar()
+    {
+        // TODO: generar y descargar el reporte real.
+    }
+}
+

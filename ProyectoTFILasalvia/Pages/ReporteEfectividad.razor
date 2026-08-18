@@ -1,0 +1,174 @@
+﻿@page "/reportes/efectividad"
+
+<PageTitle>Reporte de Efectividad</PageTitle>
+
+<div class="rep-icons-row">
+    <span>🔔</span>
+    <span>❓</span>
+    <span>⚙️</span>
+</div>
+
+<div class="breadcrumb">Reportes <span class="breadcrumb-sep">›</span> Reporte de efectividad</div>
+
+<div class="retencion-header-row">
+    <div>
+        <h1 class="detalle-title">Reporte de efectividad</h1>
+        <p class="camp-subtitle">Análisis detallado de rendimiento de acciones de retención automatizadas.</p>
+    </div>
+    <div class="retencion-actions">
+        <button class="btn-cancelar">📅 Últimos 30 días</button>
+        <button class="btn-confirmar" @onclick="ExportarPdf">⬇ Exportar PDF</button>
+    </div>
+</div>
+
+<!-- KPIs principales -->
+<div class="rep-kpi-row">
+    @foreach (var k in kpis)
+    {
+        <div class="card rep-kpi-card">
+            <div class="rep-kpi-top">
+                <div class="rep-kpi-icon">@k.Icono</div>
+                <span class="rep-kpi-badge @k.BadgeClase">@k.Badge</span>
+            </div>
+            <div class="rep-kpi-label">@k.Label</div>
+            <div class="rep-kpi-valor">@k.Valor</div>
+            <div class="rep-kpi-sub">@k.Sub</div>
+        </div>
+    }
+</div>
+
+<div class="rep-main-row">
+    <!-- Rendimiento por canal -->
+    <div class="card rep-canal-card">
+        <h3 class="card-subtitle-dark">Rendimiento por canal</h3>
+        <div class="rep-canal-cols">
+            @foreach (var c in canales)
+            {
+                <div class="rep-canal-col">
+                    <div class="rep-canal-nombre"><span class="rep-canal-icono">@c.Icono</span> @c.Nombre</div>
+                    @foreach (var m in c.Metricas)
+                    {
+                        <div class="rep-canal-metrica">
+                            <div class="rep-canal-metrica-top">
+                                <span>@m.Label</span>
+                                <span class="rep-canal-metrica-valor">@m.Valor</span>
+                            </div>
+                            <div class="rep-canal-barra-fondo">
+                                <div class="rep-canal-barra-fill @m.ColorClase" style="width:@(m.Pct)%"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Mejores incentivos -->
+    <div class="card rep-incentivos-card">
+        <h3 class="card-subtitle-dark">Mejores incentivos</h3>
+        <ul class="rep-incentivos-list">
+            @foreach (var inc in incentivos)
+            {
+                <li class="rep-incentivo-item">
+                    <div class="rep-incentivo-top">
+                        <span class="rep-incentivo-nombre">@inc.Nombre</span>
+                        <span class="rep-incentivo-clientes">@inc.Clientes Clientes</span>
+                    </div>
+                    <div class="rep-incentivo-barra-fondo">
+                        <div class="rep-incentivo-barra-fill" style="width:@(inc.PctBarra)%"></div>
+                    </div>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<!-- ROI de retención -->
+<div class="card rep-roi-card">
+    <div class="rep-roi-texto">
+        <h3 class="card-subtitle-dark">ROI de retención</h3>
+        <p>
+            Comparando el costo total de todos los descuentos e incentivos otorgados frente al Valor de Vida
+            del Cliente (LTV) proyectado de las cuentas recuperadas exitosamente.
+        </p>
+        <div class="rep-roi-legend">
+            <span><i class="rep-dot rep-dot-azul"></i> Costo</span>
+            <span><i class="rep-dot rep-dot-negro"></i> Valor Recuperado</span>
+        </div>
+    </div>
+
+    <div class="rep-roi-proyeccion">
+        <div class="rep-roi-label">Proyección Mensual</div>
+        <div class="rep-roi-bar">
+            <div class="rep-roi-bar-costo" style="width:@(pctCosto)%">$12K</div>
+            <div class="rep-roi-bar-valor">$52.5K</div>
+        </div>
+        <div class="rep-roi-stats">
+            <div>
+                <div class="rep-roi-stats-label">COSTO DE INCENTIVOS</div>
+                <div class="rep-roi-stats-value">$12,450</div>
+            </div>
+            <div>
+                <div class="rep-roi-stats-label">VALOR RECUPERADO (LTV)</div>
+                <div class="rep-roi-stats-value">$52,480</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rep-roi-margen">
+        <div class="rep-roi-margen-badge">+321%</div>
+        <div class="rep-roi-margen-label">MARGEN NETO</div>
+    </div>
+</div>
+
+@code {
+    private record Kpi(string Icono, string Label, string Valor, string Sub, string Badge, string BadgeClase);
+
+    private List<Kpi> kpis = new()
+    {
+        new("📈", "TASA GLOBAL DE RECUPERACIÓN", "24.8%", "vs. 22.1% mes anterior", "+12.4%", "rep-badge-positivo"),
+        new("💲", "MRR RECUPERADO", "$42,500", "Acumulado en el periodo", "+8.2%", "rep-badge-positivo"),
+        new("🗂️", "ROI DE RETENCIÓN", "4.2x", "Inversión vs LTV Recuperado", "Normal", "rep-badge-neutro"),
+        new("✉️", "ACCIONES EJECUTADAS", "1,842", "Envíos totales por canal", "-2.1%", "rep-badge-negativo"),
+    };
+
+    private record Metrica(string Label, string Valor, int Pct, string ColorClase);
+    private record Canal(string Nombre, string Icono, List<Metrica> Metricas);
+
+    private List<Canal> canales = new()
+    {
+        new("Email Marketing", "@", new()
+        {
+            new("Tasa de apertura", "32.4%", 32, "rep-barra-azul"),
+            new("Tasa de clicks", "12.1%", 12, "rep-barra-azul-claro"),
+            new("Tasa de recuperación", "8.5%", 9, "rep-barra-azul-claro"),
+        }),
+        new("WhatsApp Business", "💬", new()
+        {
+            new("Tasa de apertura", "94.8%", 95, "rep-barra-verde"),
+            new("Tasa de clicks", "42.3%", 42, "rep-barra-verde-claro"),
+            new("Tasa de recuperación", "22.7%", 23, "rep-barra-verde-claro"),
+        }),
+    };
+
+    private record Incentivo(string Nombre, int Clientes, int PctBarra);
+
+    private List<Incentivo> incentivos = new()
+    {
+        new("50% Descuento", 84, 100),
+        new("Consultoría Gratuita", 52, 62),
+        new("25% Descuento", 38, 45),
+        new("Extensión de Servicio", 12, 14),
+    };
+
+    // Proporción de la barra de proyección (costo vs. valor recuperado).
+    private const int costoIncentivos = 12450;
+    private const int valorRecuperado = 52480;
+    private int pctCosto => (int)(100.0 * costoIncentivos / (costoIncentivos + valorRecuperado));
+
+    private void ExportarPdf()
+    {
+        // TODO: generar y descargar el PDF real del reporte.
+    }
+}
+

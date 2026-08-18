@@ -1,4 +1,5 @@
 ﻿@page "/clientes"
+@inject NavigationManager Navigation
 
 <PageTitle>Gestión de Clientes</PageTitle>
 
@@ -60,7 +61,7 @@
         <tbody>
             @foreach (var c in ClientesFiltrados)
             {
-                <tr>
+                <tr class="cli-row-clickeable" @onclick="() => IrADetalleCliente(c.Id)">
                     <td>
                         <div class="client-cell">
                             <div class="cli-avatar @c.AvatarClase">@c.Iniciales</div>
@@ -71,7 +72,7 @@
                     <td>@c.UltimaInteraccion</td>
                     <td>@c.UltimaVisita</td>
                     <td><span class="cli-pago-badge @EstadoClase(c.EstadoPago)">@c.EstadoPago</span></td>
-                    <td><a href="#" class="cli-plan-link">@c.Plan</a></td>
+                    <td><a href="#" class="cli-plan-link" @onclick:stopPropagation="true">@c.Plan</a></td>
                 </tr>
             }
         </tbody>
@@ -97,6 +98,7 @@
     private string textoBusqueda = "";
 
     private record Cliente(
+        string Id,
         string Iniciales,
         string AvatarClase,
         string Nombre,
@@ -108,10 +110,10 @@
 
     private List<Cliente> clientes = new()
     {
-        new("CR", "cli-avatar-azul",   "Carlos Ruiz",     "carlos.ruiz@email.com",    "Hace 2 horas", "Hace 2 días",  "Al día",    "Premium Gold"),
-        new("SL", "cli-avatar-ambar",  "Sofia Larrea",    "sofia.larrea@gmail.com",   "Hace 3 días",  "Hace 5 días",  "Pendiente", "Básico Mensual"),
-        new("MF", "cli-avatar-rojo",   "Mateo Fernández", "mateo.fdez@outlook.com",   "Hace 14 días", "Hace 20 días", "Vencido",   "Premium Gold"),
-        new("LM", "cli-avatar-azul",   "Lucía Méndez",    "lucia.mendez@icloud.com",  "Ayer",         "Hace 2 horas", "Al día",    "Básico Mensual"),
+        new("cli-001", "CR", "cli-avatar-azul",   "Carlos Ruiz",     "carlos.ruiz@email.com",    "Hace 2 horas", "Hace 2 días",  "Al día",    "Premium Gold"),
+        new("cli-002", "SL", "cli-avatar-ambar",  "Sofia Larrea",    "sofia.larrea@gmail.com",   "Hace 3 días",  "Hace 5 días",  "Pendiente", "Básico Mensual"),
+        new("cli-003", "MF", "cli-avatar-rojo",   "Mateo Fernández", "mateo.fdez@outlook.com",   "Hace 14 días", "Hace 20 días", "Vencido",   "Premium Gold"),
+        new("cli-004", "LM", "cli-avatar-azul",   "Lucía Méndez",    "lucia.mendez@icloud.com",  "Ayer",         "Hace 2 horas", "Al día",    "Básico Mensual"),
     };
 
     // Filtrado en memoria por plan, estado y texto de búsqueda.
@@ -135,5 +137,10 @@
     {
         // El filtrado ya es reactivo vía ClientesFiltrados; acá iría, en un
         // escenario real, la llamada al backend con los filtros seleccionados.
+    }
+
+    private void IrADetalleCliente(string id)
+    {
+        Navigation.NavigateTo($"/cliente-detalle/{id}");
     }
 }

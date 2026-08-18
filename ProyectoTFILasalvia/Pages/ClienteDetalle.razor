@@ -1,0 +1,138 @@
+﻿@page "/cliente-detalle/{ClienteId}"
+
+<PageTitle>Detalle de Cliente: @nombre</PageTitle>
+
+<div class="page-header">
+    <a href="clientes" class="back-link">‹ Volver a Clientes</a>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<!-- Card de perfil -->
+<div class="card detcli-perfil-card">
+    <div class="detcli-avatar-wrap">
+        <div class="detcli-avatar">🧑</div>
+        <span class="detcli-status-dot" title="Socio activo"></span>
+    </div>
+    <div>
+        <div class="detcli-nombre">@nombre</div>
+        <div class="detcli-subtitulo">@estado &nbsp;•&nbsp; @sede</div>
+        <div class="detcli-meta-row">
+            <span>📅 Socio desde: @socioDesde</span>
+            <span>✉️ @email</span>
+            <span>🏷️ Plan @plan</span>
+        </div>
+    </div>
+</div>
+
+<div class="detcli-main-row">
+    <!-- Asistencia al gimnasio -->
+    <div class="card detcli-asistencia-card">
+        <div class="detcli-asistencia-header">
+            <div>
+                <h3 class="card-subtitle-dark">Asistencia al Gimnasio (Sesiones)</h3>
+                <p class="detcli-asistencia-sub">Actividad de los últimos 30 días</p>
+            </div>
+            <select class="periodo-select">
+                <option>Últimos 30 días</option>
+                <option>Últimos 90 días</option>
+            </select>
+        </div>
+        <div class="detcli-chart">
+            @foreach (var s in sesiones)
+            {
+                <div class="detcli-bar-col">
+                    <div class="detcli-bar @(s.EsReciente ? "detcli-bar-alerta" : "")"
+                         style="height:@(s.AlturaPct)%"></div>
+                </div>
+            }
+        </div>
+        <div class="detcli-chart-labels">
+            <span>HACE 30 DÍAS</span>
+            <span>HACE 15 DÍAS</span>
+            <span>HOY</span>
+        </div>
+    </div>
+
+    <!-- Línea de tiempo -->
+    <div class="card detcli-timeline-card">
+        <h3 class="card-subtitle-dark">Línea de Tiempo</h3>
+        <ul class="detcli-timeline">
+            @foreach (var e in eventos)
+            {
+                <li class="detcli-timeline-item">
+                    <span class="detcli-timeline-dot @e.DotClase"></span>
+                    <div class="detcli-timeline-content">
+                        <div class="detcli-timeline-top">
+                            <span class="detcli-timeline-titulo">@e.Titulo</span>
+                            <span class="detcli-timeline-fecha">@e.Fecha</span>
+                        </div>
+                        <div class="detcli-timeline-desc">@e.Descripcion</div>
+                        @if (!string.IsNullOrEmpty(e.Monto))
+                        {
+                            <div class="detcli-timeline-monto">@e.Monto</div>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<!-- KPIs inferiores -->
+<div class="detcli-kpi-row">
+    <div class="detcli-kpi-card">
+        <div class="detcli-kpi-label">TASA DE ADOPCIÓN</div>
+        <div class="detcli-kpi-value">42% <span class="detcli-kpi-delta-neg">(-12% mes)</span></div>
+    </div>
+    <div class="detcli-kpi-card">
+        <div class="detcli-kpi-label">INTERACCIONES</div>
+        <div class="detcli-kpi-value">3 <span class="detcli-kpi-sub-inline">últimos 30d</span></div>
+    </div>
+    <div class="detcli-kpi-card">
+        <div class="detcli-kpi-label">SESIONES PROMEDIO</div>
+        <div class="detcli-kpi-value">0.8/día</div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Id del cliente cuyo detalle se muestra. Viene de la fila clickeada
+    /// en Clientes.razor (ej: /cliente-detalle/cli-001).
+    /// </summary>
+    [Parameter]
+    public string ClienteId { get; set; } = "";
+
+    // TODO: reemplazar estos campos por la consulta real al cliente por ClienteId.
+    private string nombre = "Carlos Ruiz";
+    private string estado = "Socio Activo";
+    private string sede = "Sede Central";
+    private string socioDesde = "12 Ene 2023";
+    private string email = "c.ruiz@email.com";
+    private string plan = "Premium Gold";
+
+    private record SesionDia(int AlturaPct, bool EsReciente);
+
+    // Asistencia de los últimos 30 días: cae fuerte en la segunda quincena,
+    // por eso las últimas barras se marcan como "recientes" (alerta de baja actividad).
+    private List<SesionDia> sesiones = new()
+    {
+        new(55, false), new(65, false), new(75, false), new(90, false),
+        new(80, false), new(70, false), new(60, false), new(45, false),
+        new(35, false), new(35, false),
+        new(25, true), new(22, true), new(22, true), new(15, true), new(20, true), new(12, true),
+    };
+
+    private record EventoTimeline(string Titulo, string Fecha, string Descripcion, string? Monto, string DotClase);
+
+    private List<EventoTimeline> eventos = new()
+    {
+        new("Pago Realizado", "22 Abr, 2024", "Renovación mensual plan Enterprise", "$1,200.00", "detcli-dot-azul"),
+        new("Último Login", "20 Abr, 15:20", "Acceso desde Buenos Aires, ES (Chrome/macOS)", null, "detcli-dot-gris"),
+        new("Cambio de Plan", "01 Mar, 2024", "Upgrade de Básico Mensual a Premium Gold", null, "detcli-dot-ambar"),
+        new("Pago Realizado", "22 Mar, 2024", "Renovación mensual plan Premium Gold", null, "detcli-dot-azul"),
+    };
+}

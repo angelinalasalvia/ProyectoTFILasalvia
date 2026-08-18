@@ -1,4 +1,5 @@
-﻿@page "/login"
+﻿@page "/"
+@page "/login"
 @layout AuthLayout
 @inject NavigationManager Navigation
 @using System.Text.RegularExpressions
@@ -173,7 +174,7 @@
         // TODO: persistir la sesión real (cookie / token) y aplicar la duración
         // correspondiente según "recordarSesion" (30 días vs. sesión normal),
         // además de cargar los permisos asociados al rol (usuario.Rol).
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("/predicciones");
     }
 
     private bool EsEmailValido(string valor) =>

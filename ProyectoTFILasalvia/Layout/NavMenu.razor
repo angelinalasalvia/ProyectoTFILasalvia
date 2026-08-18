@@ -10,11 +10,7 @@
     </div>
 
     <nav class="flex-column">
-        <div class="nav-item">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" title="Dashboard">
-                <span class="icon">🏠</span> <span class="nav-text">Dashboard</span>
-            </NavLink>
-        </div>
+        
         <div class="nav-item">
             <NavLink class="nav-link" href="clientes" title="Clientes">
                 <span class="icon">👥</span> <span class="nav-text">Clientes</span>
@@ -101,12 +97,8 @@
 @code {
     private bool isCollapsed = false;
 
-    // Se abre solo si ya estamos en alguna de las pantallas de Reportes
-    // (ej: al entrar directo por URL a /reportes/efectividad).
     private bool reportesAbierto = false;
 
-    // Se abre solo si ya estamos en alguna de las pantallas de Administración
-    // (ej: al entrar directo por URL a /administracion/usuarios).
     private bool administracionAbierto = false;
 
     protected override void OnInitialized()

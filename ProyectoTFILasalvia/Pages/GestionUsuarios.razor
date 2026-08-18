@@ -1,4 +1,5 @@
 ﻿@page "/administracion/usuarios"
+@inject NavigationManager Navigation
 
 <PageTitle>Gestión de Usuarios</PageTitle>
 
@@ -124,20 +125,52 @@
     private int usuariosActivos = 1102;
 
     private List<UsuarioItem> usuarios = new()
+{
+    new UsuarioItem
     {
-        new UsuarioItem { NombreCompleto = "Alejandro Mendoza", Email = "a.mendoza@tecnocorp.com", Iniciales = "AM", AvatarClase = "cli-avatar-azul", Rol = "Administrador", Activo = true, FechaCreacion = new DateTime(2024, 1, 12) },
-        new UsuarioItem { NombreCompleto = "Sofía Larrea", Email = "s.larrea@tecnocorp.com", Iniciales = "SL", AvatarClase = "cli-avatar-ambar", Rol = "Gerente", Activo = true, FechaCreacion = new DateTime(2024, 1, 15) },
-        new UsuarioItem { NombreCompleto = "Ricardo Pineda", Email = "r.pineda@tecnocorp.com", Iniciales = "RP", AvatarClase = "cli-avatar-rojo", Rol = "Ejecutivo Comercial", Activo = false, FechaCreacion = new DateTime(2024, 1, 20) },
-    };
+        Id = 1,
+        NombreCompleto = "Alejandro Mendoza",
+        Email = "a.mendoza@tecnocorp.com",
+        Iniciales = "AM",
+        AvatarClase = "cli-avatar-azul",
+        Rol = "Administrador",
+        Activo = true,
+        FechaCreacion = new DateTime(2024, 1, 12)
+    },
+
+    new UsuarioItem
+    {
+        Id = 2,
+        NombreCompleto = "Sofía Larrea",
+        Email = "s.larrea@tecnocorp.com",
+        Iniciales = "SL",
+        AvatarClase = "cli-avatar-ambar",
+        Rol = "Gerente",
+        Activo = true,
+        FechaCreacion = new DateTime(2024, 1, 15)
+    },
+
+    new UsuarioItem
+    {
+        Id = 3,
+        NombreCompleto = "Ricardo Pineda",
+        Email = "r.pineda@tecnocorp.com",
+        Iniciales = "RP",
+        AvatarClase = "cli-avatar-rojo",
+        Rol = "Ejecutivo Comercial",
+        Activo = false,
+        FechaCreacion = new DateTime(2024, 1, 20)
+    }
+};
 
     private void AbrirFormularioUsuario()
     {
-        // TODO: navegar al formulario de alta de usuario (CU de Administración)
+        Navigation.NavigateTo("/administracion/usuarios/nuevo");
     }
 
     private void EditarUsuario(UsuarioItem usuario)
     {
-        // TODO: navegar al formulario de edición con el usuario seleccionado
+        Navigation.NavigateTo($"/administracion/usuarios/editar/{usuario.Id}");
     }
 
     private void EliminarUsuario(UsuarioItem usuario)
@@ -167,6 +200,7 @@
 
     private class UsuarioItem
     {
+        public int Id { get; set; }
         public string NombreCompleto { get; set; } = "";
         public string Email { get; set; } = "";
         public string Iniciales { get; set; } = "";

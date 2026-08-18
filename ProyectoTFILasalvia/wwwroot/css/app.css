@@ -277,309 +277,7 @@ body {
 }
 
 
-/* ==========================================================================
-   PANTALLA: DASHBOARD (Pages/Dashboard.razor)
-   Todo lo de acá para abajo hasta la próxima pantalla es específico
-   del Panel de Retención. Si se borra Dashboard.razor, se puede borrar
-   también todo este bloque.
-   ========================================================================== */
 
-/* --- KPIs superiores (Tasa de churn / Clientes en riesgo / Recuperados) --- */
-.kpi-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    margin-bottom: 18px;
-}
-
-.kpi-label {
-    font-size: 12px;
-    color: #8a90a2;
-    font-weight: 600;
-    letter-spacing: .5px;
-    margin-bottom: 8px;
-}
-
-.kpi-value {
-    font-size: 30px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.kpi-sub {
-    font-size: 13px;
-    color: #8a90a2;
-    margin-top: 6px;
-}
-
-.badge {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 6px;
-}
-
-.badge-red {
-    color: #d63939;
-    background: #fdeaea;
-}
-
-.badge-blue {
-    color: #2f6fed;
-    background: #eaf1fd;
-}
-
-.badge-critical {
-    color: #d63939;
-    background: #fdeaea;
-}
-
-/* --- Fila con gráfico de tendencia + distribución de riesgo --- */
-.main-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 18px;
-    margin-bottom: 18px;
-}
-
-.chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.toggle-group {
-    display: flex;
-    background: #f0f2f6;
-    border-radius: 8px;
-    padding: 3px;
-}
-
-.toggle {
-    border: none;
-    background: none;
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-    .toggle.active {
-        background: #fff;
-        box-shadow: 0 1px 2px rgba(0,0,0,.1);
-        font-weight: 600;
-    }
-
-.chart-placeholder {
-    background: #f6f7fa;
-    border-radius: 8px;
-    padding: 16px;
-}
-
-.trend-svg {
-    width: 100%;
-    height: 180px;
-}
-
-.chart-months {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #8a90a2;
-    margin-top: 8px;
-}
-
-    .chart-months .current {
-        font-weight: 700;
-        color: #1e2432;
-    }
-
-.risk-card h3,
-.chart-card h3 {
-    margin: 0 0 4px 0;
-    font-size: 17px;
-}
-
-/* Donut de distribución de riesgo (Alto/Medio/Bajo) */
-.risk-donut {
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    margin: 20px auto;
-    background: conic-gradient(#d63939 0% 15%, #f2c079 15% 47%, #dfe3ea 47% 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.risk-donut-center {
-    width: 120px;
-    height: 120px;
-    background: #fff;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.risk-total {
-    font-size: 26px;
-    font-weight: 700;
-}
-
-.risk-total-label {
-    font-size: 11px;
-    color: #8a90a2;
-    letter-spacing: 1px;
-}
-
-.risk-legend {
-    list-style: none;
-    padding: 0;
-    margin: 10px 0 0 0;
-}
-
-    .risk-legend li {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 0;
-        font-size: 14px;
-    }
-
-.legend-value {
-    margin-left: auto;
-    font-weight: 600;
-}
-
-.dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.dot-alto {
-    background: #d63939;
-}
-
-.dot-medio {
-    background: #f2c079;
-}
-
-.dot-bajo {
-    background: #dfe3ea;
-}
-
-/* --- Tabla de clientes en riesgo crítico --- */
-.table-card h3 {
-    margin: 0 0 4px 0;
-}
-
-.table-subtitle {
-    color: #8a90a2;
-    font-size: 13px;
-    margin: 0 0 16px 0;
-}
-
-.risk-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-    .risk-table th {
-        text-align: left;
-        font-size: 12px;
-        color: #8a90a2;
-        letter-spacing: .5px;
-        border-bottom: 1px solid #eef0f4;
-        padding: 10px 8px;
-    }
-
-    .risk-table td {
-        padding: 14px 8px;
-        border-bottom: 1px solid #f4f5f8;
-        font-size: 14px;
-    }
-
-.client-cell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.client-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: #2b3a4a;
-}
-
-.client-name {
-    font-weight: 600;
-}
-
-.client-plan {
-    font-size: 12px;
-    color: #8a90a2;
-}
-
-.prob-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.prob-bar {
-    width: 60px;
-    height: 6px;
-    background: #f0e5e5;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.prob-fill {
-    height: 100%;
-    background: #d63939;
-}
-
-.uso-badge {
-    background: #fdeaea;
-    color: #d63939;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-}
-
-.btn-contactar {
-    background: #111;
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-}
-
-    .btn-contactar:hover {
-        background: #333;
-    }
-
-/* ==========================================================================
-   FIN PANTALLA: DASHBOARD
-   ========================================================================== */
-/* ==========================================================================
-   PANTALLA: PREDICCIONES (Pages/Predicciones.razor)
-   Todo lo de acá para abajo hasta la próxima pantalla es específico
-   del Motor de Predicciones ML. Si se borra Predicciones.razor, se puede
-   borrar también todo este bloque.
-   ========================================================================== */
 
 /* --- Header con buscador (reemplaza al header simple en esta pantalla) --- */
 .pred-header {
@@ -4881,3 +4579,445 @@ div.prob-fill-pred.nivel-bajo {
 /* ==========================================================================
    FIN PANTALLA: GESTIÓN DE USUARIOS
    ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CREAR / EDITAR USUARIO
+   ========================================================================== */
+
+.usr-form-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.usr-form-search {
+    flex: 1;
+    max-width: 520px;
+}
+
+.usr-form-header {
+    margin-bottom: 22px;
+}
+
+    .usr-form-header h1 {
+        margin: 0 0 6px 0;
+        font-size: 28px;
+        color: #1e2432;
+    }
+
+.usr-form-card {
+    max-width: 100%;
+    padding: 24px;
+}
+
+/* --- Campos principales --- */
+
+.usr-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 28px;
+}
+
+.usr-form-field {
+    min-width: 0;
+}
+
+    .usr-form-field .campana-select {
+        box-sizing: border-box;
+    }
+
+    .usr-form-field input:disabled {
+        background: #f6f7fa;
+        color: #8a90a2;
+        cursor: not-allowed;
+    }
+
+.usr-form-help {
+    display: block;
+    margin-top: 7px;
+    font-size: 12px;
+    color: #9aa1b2;
+}
+
+/* --- Estado --- */
+
+.usr-status-box {
+    height: 43px;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: #f6f7fa;
+    color: #555b6a;
+    font-size: 14px;
+}
+
+.usr-status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.usr-status-active {
+    background: #2f9e5c;
+}
+
+.usr-status-inactive {
+    background: #c7ccd6;
+}
+
+.usr-status-locked {
+    margin-left: auto;
+    font-size: 12px;
+    opacity: .65;
+}
+
+/* --- Resumen de permisos --- */
+
+.usr-permissions-card {
+    border: 1px solid #cfd8ea;
+    background: #eef3ff;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 24px;
+}
+
+.usr-permissions-header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 12px;
+}
+
+.usr-permissions-icon {
+    color: #2f6fed;
+    font-size: 18px;
+}
+
+.usr-permissions-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #16213a;
+}
+
+.usr-permissions-content {
+    background: #fff;
+    border: 1px solid #e1e6ef;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: #555b6a;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.usr-permissions-info {
+    color: #2f6fed;
+    font-size: 13px;
+}
+
+/* --- Aviso de correo --- */
+
+.usr-email-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #e6efff;
+    color: #555b6a;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 12px;
+    margin-bottom: 24px;
+}
+
+.usr-email-icon {
+    font-size: 16px;
+    color: #1e2432;
+}
+
+/* --- Errores --- */
+
+.usr-form-error {
+    background: #fdeaea;
+    color: #d63939;
+    border: 1px solid #f5caca;
+    border-radius: 7px;
+    padding: 11px 14px;
+    font-size: 13px;
+    margin-bottom: 18px;
+}
+
+/* --- Línea inferior y botones --- */
+
+.usr-form-separator {
+    height: 1px;
+    background: #e5e8ee;
+    margin: 0 0 18px 0;
+}
+
+.usr-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Responsive */
+
+@media (max-width: 800px) {
+
+    .usr-form-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .usr-form-card {
+        padding: 18px;
+    }
+
+    .usr-form-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .usr-form-search {
+        max-width: none;
+    }
+}
+
+/* ==========================================================================
+   PANTALLA: GESTIÓN DE ROLES Y PERMISOS
+   ========================================================================== */
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.rol-card {
+    padding: 18px;
+    min-height: 82px;
+}
+
+.rol-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.rol-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.rol-icon-admin {
+    background: #111827;
+    color: #fff;
+}
+
+.rol-icon-gerente {
+    background: #e5efff;
+    color: #1769d1;
+}
+
+.rol-icon-ejecutivo {
+    background: #fff0d8;
+    color: #8a5a00;
+}
+
+.rol-nombre {
+    font-size: 14px;
+    font-weight: 700;
+    color: #16213a;
+}
+
+.rol-lock {
+    margin-left: auto;
+    color: #dbe4f0;
+    font-size: 20px;
+}
+
+.rol-descripcion {
+    margin: 12px 0 0 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #7c8495;
+    max-width: 220px;
+}
+
+
+/* --- Matriz --- */
+
+.roles-matriz-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.roles-matriz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 16px;
+    border-bottom: 1px solid #e5e8ee;
+}
+
+    .roles-matriz-header h2 {
+        margin: 0 0 4px 0;
+        font-size: 15px;
+        color: #16213a;
+    }
+
+    .roles-matriz-header p {
+        margin: 0;
+        font-size: 11px;
+        color: #8a90a2;
+    }
+
+.roles-matriz-actions {
+    display: flex;
+    gap: 8px;
+}
+
+
+/* --- Tabla --- */
+
+.roles-table-container {
+    overflow-x: auto;
+}
+
+.roles-permisos-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+    .roles-permisos-table th {
+        height: 42px;
+        border-bottom: 1px solid #dfe4eb;
+        color: #718096;
+        font-size: 9px;
+        font-weight: 700;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+        .roles-permisos-table th:first-child {
+            width: 32%;
+            text-align: left;
+            padding-left: 60px;
+        }
+
+    .roles-permisos-table td {
+        height: 45px;
+        border-bottom: 1px solid #edf0f4;
+        text-align: center;
+    }
+
+        .roles-permisos-table td:first-child {
+            text-align: left;
+            padding-left: 60px;
+        }
+
+.permiso-nombre {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #273246;
+}
+
+.permiso-icon {
+    width: 16px;
+    text-align: center;
+    color: #8ca0bb;
+    font-size: 13px;
+}
+
+
+/* --- Checkboxes --- */
+
+.permiso-checkbox {
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+    accent-color: #1769d1;
+}
+
+    .permiso-checkbox:disabled {
+        cursor: not-allowed;
+        opacity: .6;
+    }
+
+
+/* --- Mensaje --- */
+
+.roles-mensaje {
+    margin-top: 12px;
+    padding: 11px 14px;
+    border-radius: 7px;
+    background: #e3f7ea;
+    border: 1px solid #c3ecd2;
+    color: #1f7a44;
+    font-size: 13px;
+}
+
+
+/* --- Paginación --- */
+
+.roles-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding: 0 4px;
+}
+
+.roles-pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+
+/* Responsive */
+
+@media (max-width: 850px) {
+
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .roles-matriz-header {
+        align-items: flex-start;
+        gap: 15px;
+        flex-direction: column;
+    }
+
+    .roles-matriz-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .roles-permisos-table th:first-child,
+    .roles-permisos-table td:first-child {
+        padding-left: 20px;
+    }
+}

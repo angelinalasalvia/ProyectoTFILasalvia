@@ -78,28 +78,30 @@
         <div class="ret-chart-eje-y">
             <span>4%</span><span>3%</span><span>2%</span><span>1%</span><span>0%</span>
         </div>
-        <svg viewBox="0 0 700 240" preserveAspectRatio="none" class="ret-trend-svg">
-            <!-- Líneas de grilla -->
-            <line x1="0" y1="20" x2="700" y2="20" class="ret-grid-line" />
-            <line x1="0" y1="70" x2="700" y2="70" class="ret-grid-line" />
-            <line x1="0" y1="120" x2="700" y2="120" class="ret-grid-line" />
-            <line x1="0" y1="170" x2="700" y2="170" class="ret-grid-line" />
-            <line x1="0" y1="220" x2="700" y2="220" class="ret-grid-line" />
+        <div class="ret-chart-main">
+            <svg viewBox="0 0 700 240" preserveAspectRatio="none" class="ret-trend-svg">
+                <!-- Líneas de grilla -->
+                <line x1="0" y1="20" x2="700" y2="20" class="ret-grid-line" />
+                <line x1="0" y1="70" x2="700" y2="70" class="ret-grid-line" />
+                <line x1="0" y1="120" x2="700" y2="120" class="ret-grid-line" />
+                <line x1="0" y1="170" x2="700" y2="170" class="ret-grid-line" />
+                <line x1="0" y1="220" x2="700" y2="220" class="ret-grid-line" />
 
-            <!-- Período anterior (punteada, gris) -->
-            <polyline fill="none" class="ret-linea-anterior"
-                      points="40,115 166,115 292,120 418,90 544,95 670,85" />
+                <!-- Período anterior (punteada, gris) -->
+                <polyline fill="none" class="ret-linea-anterior"
+                          points="40,115 166,115 292,120 418,90 544,95 670,85" />
 
-            <!-- Período actual (sólida, azul) -->
-            <polyline fill="none" class="ret-linea-actual"
-                      points="40,170 166,155 292,130 418,95 544,110 670,90" />
-            @foreach (var p in puntosActual)
-            {
-                <circle cx="@p.X" cy="@p.Y" r="4" class="ret-punto-actual" />
-            }
-        </svg>
-        <div class="chart-months ret-chart-meses">
-            <span>ENE</span><span>FEB</span><span>MAR</span><span>ABR</span><span>MAY</span><span>JUN</span>
+                <!-- Período actual (sólida, azul) -->
+                <polyline fill="none" class="ret-linea-actual"
+                          points="40,170 166,155 292,130 418,95 544,110 670,90" />
+                @foreach (var p in puntosActual)
+                {
+                    <circle cx="@p.X" cy="@p.Y" r="4" class="ret-punto-actual" />
+                }
+            </svg>
+            <div class="chart-months ret-chart-meses">
+                <span>ENE</span><span>FEB</span><span>MAR</span><span>ABR</span><span>MAY</span><span>JUN</span>
+            </div>
         </div>
     </div>
 </div>
@@ -188,4 +190,5 @@
         // TODO: generar y descargar el reporte real.
     }
 }
+
 

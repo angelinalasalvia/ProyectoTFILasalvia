@@ -3624,11 +3624,9 @@ div.prob-fill-pred.nivel-bajo {
 /* ==========================================================================
    FIN PANTALLA: REPORTE DE EFECTIVIDAD
    ========================================================================== */
+
 /* ==========================================================================
-   PANTALLA: REPORTE DE RETENCIÓN (Pages/ReporteRetencion.razor)
-   Reutiliza: .rep-icons-row, .retencion-header-row, .retencion-actions,
-   .toggle-group, .toggle, .btn-cancelar, .btn-confirmar, .card-subtitle-dark,
-   .chart-months, .rep-dot, .rep-dot-azul (del Reporte de Efectividad).
+   PANTALLA: REPORTE DE RETENCIÓN 
    ========================================================================== */
 .ret-subtitulo {
     max-width: 420px;
@@ -3734,8 +3732,14 @@ div.prob-fill-pred.nivel-bajo {
     height: 240px;
 }
 
-.ret-trend-svg {
+.ret-chart-main {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ret-trend-svg {
     width: 100%;
     height: 240px;
 }
@@ -3761,7 +3765,7 @@ div.prob-fill-pred.nivel-bajo {
 }
 
 .ret-chart-meses {
-    margin-left: 10px;
+    margin-top: 4px;
 }
 /* --- Análisis de cohortes --- */
 .ret-cohortes-card {
@@ -3856,4 +3860,794 @@ div.prob-fill-pred.nivel-bajo {
 }
 /* ==========================================================================
    FIN PANTALLA: REPORTE DE RETENCIÓN
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: GESTIÓN DE INTEGRACIONES (Pages/Integraciones.razor)
+   Reutiliza: .search-box, .breadcrumb, .detalle-title, .camp-subtitle.
+   ========================================================================== */
+.integ-search-box {
+    width: 320px;
+}
+/* --- KPIs --- */
+.integ-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 22px 0;
+}
+
+.integ-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.integ-kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.integ-kpi-icon-ok {
+    background: #e3f7ea;
+}
+
+.integ-kpi-icon-error {
+    background: #fdeaea;
+}
+
+.integ-kpi-icon-sync {
+    background: #fdf3e3;
+}
+
+.integ-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: #8a90a2;
+    margin-bottom: 4px;
+}
+
+.integ-kpi-valor-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.integ-kpi-valor {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.integ-kpi-valor-error {
+    color: #d63939;
+}
+
+.integ-kpi-sub {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.integ-kpi-sub-error {
+    color: #d63939;
+}
+/* --- Grilla de fuentes --- */
+.integ-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.integ-fuente-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+}
+
+.integ-fuente-error {
+    border: 1px solid #f6c6c6;
+}
+
+.integ-error-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #d63939;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+}
+
+.integ-fuente-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.integ-fuente-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.integ-icon-azul {
+    background: #eaf1fd;
+}
+
+.integ-icon-naranja {
+    background: #fdf1e3;
+}
+
+.integ-icon-gris {
+    background: #eef0f4;
+}
+
+.integ-icon-morado {
+    background: #f1eafd;
+}
+
+.integ-icon-celeste {
+    background: #e3f6fd;
+}
+
+.integ-fuente-nombre-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.integ-fuente-nombre {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.integ-fuente-estado {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #8a90a2;
+    margin-top: 2px;
+}
+
+.integ-estado-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+}
+
+.integ-dot-verde {
+    background: #2f9e5c;
+}
+
+.integ-dot-rojo {
+    background: #d63939;
+}
+
+.integ-menu-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #8a90a2;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+/* --- Datos (última sync / registros / fallo) --- */
+.integ-fuente-datos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.integ-dato-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+    .integ-dato-row span:last-child {
+        font-weight: 700;
+        color: #1e2432;
+    }
+
+.integ-link-error {
+    color: #d63939 !important;
+    font-weight: 700 !important;
+    text-decoration: none;
+}
+
+    .integ-link-error:hover {
+        text-decoration: underline;
+    }
+/* --- Barra de progreso --- */
+.integ-barra-fondo {
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.integ-barra-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.integ-barra-verde {
+    background: #2f9e5c;
+}
+
+.integ-barra-roja {
+    background: #d63939;
+}
+/* --- Acciones --- */
+.integ-fuente-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.integ-btn-editar {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    cursor: pointer;
+}
+
+    .integ-btn-editar:hover {
+        background: #f6f7fa;
+    }
+
+.integ-btn-editar-alerta {
+    border-color: #d63939;
+    color: #d63939;
+}
+
+    .integ-btn-editar-alerta:hover {
+        background: #fdeaea;
+    }
+
+.integ-btn-sync {
+    flex: 1;
+    background: #f6f7fa;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    cursor: pointer;
+}
+
+    .integ-btn-sync:hover:not(:disabled) {
+        background: #eef0f4;
+    }
+
+    .integ-btn-sync:disabled {
+        color: #c7ccd6;
+        cursor: not-allowed;
+    }
+/* --- Card "Añadir nueva fuente" --- */
+.integ-add-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 8px;
+    border: 1.5px dashed #d7dbe3;
+    box-shadow: none;
+    cursor: pointer;
+    min-height: 180px;
+}
+
+    .integ-add-card:hover {
+        background: #fafbfc;
+        border-color: #b7bdc9;
+    }
+
+.integ-add-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #eaf1fd;
+    color: #2f6fed;
+    font-size: 20px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.integ-add-titulo {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.integ-add-sub {
+    font-size: 12px;
+    color: #8a90a2;
+    max-width: 220px;
+}
+/* ==========================================================================
+   FIN PANTALLA: GESTIÓN DE INTEGRACIONES
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CONFIGURAR / EDITAR INTEGRACIÓN (Pages/IntegracionForm.razor)
+   Reutiliza: .page-header, .header-icons, .breadcrumb, .retencion-header-row,
+   .retencion-actions, .btn-cancelar, .btn-confirmar, .regla-card,
+   .campana-select, .form-label, .input-error, .camp-form-error,
+   .camp-form-confirmacion.
+   ========================================================================== */
+.integ-error-conexion {
+    background: #fdeaea;
+    color: #d63939;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+/* --- Stepper --- */
+.integ-stepper {
+    display: flex;
+    align-items: center;
+    margin-bottom: 22px;
+    padding: 0 4px;
+}
+
+.integ-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.integ-step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #eef0f4;
+    color: #8a90a2;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.integ-step-done {
+    background: #111;
+    color: #fff;
+}
+
+.integ-step-actual {
+    background: #fff;
+    border: 2px solid #2f6fed;
+    color: #2f6fed;
+}
+
+.integ-step-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    white-space: nowrap;
+}
+
+.integ-step-line {
+    flex: 1;
+    height: 1px;
+    background: #e5e8ee;
+    margin: 0 14px;
+}
+/* --- Paso 1: tipo de fuente --- */
+.integ-paso-titulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e2432;
+    margin: 0 0 16px 0;
+}
+
+.integ-tipo-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.integ-tipo-card {
+    position: relative;
+    border: 1px solid #e5e8ee;
+    border-radius: 10px;
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+}
+
+    .integ-tipo-card:hover {
+        background: #fafbfc;
+    }
+
+.integ-tipo-card-activa {
+    border-color: #2f6fed;
+    background: #f5f8fe;
+}
+
+.integ-tipo-card-readonly {
+    cursor: default;
+}
+
+    .integ-tipo-card-readonly:hover {
+        background: none;
+    }
+
+.integ-tipo-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2f6fed;
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.integ-tipo-icon {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.integ-tipo-nombre {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+    margin-bottom: 4px;
+}
+
+.integ-tipo-sub {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.integ-tipo-nota {
+    font-size: 12px;
+    color: #8a90a2;
+    font-style: italic;
+    margin: 14px 0 0 0;
+}
+/* --- Fila principal: credenciales + mapeo --- */
+.integ-main-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.integ-cred-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.integ-btn-probar {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    cursor: pointer;
+    margin-top: 6px;
+}
+
+    .integ-btn-probar:hover:not(:disabled) {
+        background: #f6f7fa;
+    }
+
+    .integ-btn-probar:disabled {
+        color: #c7ccd6;
+        cursor: not-allowed;
+    }
+/* --- Mapeo de campos --- */
+.integ-mapeo-vacio {
+    background: #f6f7fa;
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.integ-mapeo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+.integ-mapeo-externo {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+}
+
+.integ-mapeo-icono {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: #eaf1fd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+
+.integ-mapeo-flecha {
+    color: #c7ccd6;
+    font-size: 13px;
+}
+
+.integ-mapeo-select {
+    border: none;
+    background: #eaf1fd;
+    color: #2f6fed;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.integ-mapeo-info {
+    background: #fdf3e3;
+    color: #8a6420;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+/* ==========================================================================
+   FIN PANTALLA: CONFIGURAR / EDITAR INTEGRACIÓN
+   ========================================================================== */
+
+/* ==========================================================================
+   LAYOUT SIN SIDEBAR (AuthLayout.razor) + PANTALLA: LOGIN (Login.razor)
+   Reutiliza: .form-label, .input-error.
+   ========================================================================== */
+.auth-page-bg {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef1f6;
+    padding: 24px;
+}
+
+.login-card {
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    max-width: 800px;
+    width: 100%;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+}
+/* --- Panel izquierdo (oscuro) --- */
+.login-panel-izq {
+    position: relative;
+    background: #0b0b0d;
+    color: #fff;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 480px;
+}
+
+.login-panel-contenido {
+    position: relative;
+    z-index: 1;
+}
+
+.login-panel-izq h2 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+}
+
+.login-panel-izq p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    margin: 0 0 20px 0;
+}
+
+.login-divisor-izq {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    margin: 0 0 20px 0;
+}
+
+.login-stat-valor {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.login-stat-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+}
+
+.login-ondas {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 60%;
+}
+/* --- Panel derecho (formulario) --- */
+.login-panel-der {
+    padding: 40px 36px;
+    display: flex;
+    flex-direction: column;
+}
+
+    .login-panel-der h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e2432;
+        margin: 0 0 6px 0;
+    }
+
+.login-subtitulo {
+    font-size: 13px;
+    color: #8a90a2;
+    margin: 0 0 24px 0;
+}
+
+.login-alerta {
+    background: #fdeaea;
+    color: #d63939;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.login-alerta-bloqueo a {
+    display: block;
+    margin-top: 4px;
+    color: #d63939;
+    text-decoration: underline;
+    font-weight: 700;
+}
+
+.login-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+}
+
+    .login-label-row .form-label {
+        margin: 0;
+    }
+
+.login-forgot-link {
+    font-size: 12px;
+    color: #2f6fed;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+    .login-forgot-link:hover {
+        text-decoration: underline;
+    }
+
+.login-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #dfe3ea;
+    background: #f7f9fd;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 6px;
+}
+
+    .login-input-wrap input {
+        border: none;
+        background: none;
+        outline: none;
+        font-size: 14px;
+        color: #1e2432;
+        width: 100%;
+    }
+
+.login-input-icon {
+    font-size: 13px;
+    color: #8a90a2;
+    flex-shrink: 0;
+}
+
+.login-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555b6a;
+    margin: 18px 0 22px 0;
+    cursor: pointer;
+}
+
+.login-btn-submit {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+    .login-btn-submit:hover:not(:disabled) {
+        background: #333;
+    }
+
+    .login-btn-submit:disabled {
+        background: #c7ccd6;
+        cursor: not-allowed;
+    }
+
+.login-divisor-der {
+    border: none;
+    border-top: 1px solid #eef0f4;
+    margin-top: 28px;
+}
+/* ==========================================================================
+   FIN LAYOUT SIN SIDEBAR + PANTALLA: LOGIN
    ========================================================================== */

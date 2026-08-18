@@ -1,0 +1,188 @@
+﻿@page "/login"
+@layout AuthLayout
+@inject NavigationManager Navigation
+@using System.Text.RegularExpressions
+
+<PageTitle>Iniciar Sesión</PageTitle>
+
+<div class="login-card">
+    <!-- Panel izquierdo -->
+    <div class="login-panel-izq">
+        <div class="login-panel-contenido">
+            <h2>Maximiza tu Retención</h2>
+            <p>Utiliza algoritmos de aprendizaje profundo para identificar cuentas en riesgo antes de que sea demasiado tarde.</p>
+            <hr class="login-divisor-izq" />
+            <div class="login-stat-valor">98%</div>
+            <div class="login-stat-label">Precisión</div>
+        </div>
+
+        <svg class="login-ondas" viewBox="0 0 400 260" preserveAspectRatio="none">
+            <path d="M0,120 C60,90 100,150 160,120 C220,90 260,150 320,120 C350,105 380,115 400,110"
+                  fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1.5" />
+            <path d="M0,150 C60,120 100,180 160,150 C220,120 260,180 320,150 C350,135 380,145 400,140"
+                  fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1.5" />
+            <path d="M0,180 C60,150 100,210 160,180 C220,150 260,210 320,180 C350,165 380,175 400,170"
+                  fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
+            <path d="M0,200 C60,175 100,225 160,200 C220,175 260,225 320,200 C350,190 380,196 400,193"
+                  fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.5" />
+        </svg>
+    </div>
+
+    <!-- Panel derecho: formulario -->
+    <div class="login-panel-der">
+        <h2>Bienvenido de nuevo</h2>
+        <p class="login-subtitulo">Accede a tu panel estratégico de retención.</p>
+
+        @if (!string.IsNullOrEmpty(mensajeError))
+        {
+            <div class="login-alerta">⚠️ @mensajeError</div>
+        }
+        @if (cuentaBloqueada)
+        {
+            <div class="login-alerta login-alerta-bloqueo">
+                🔒 Tu cuenta fue bloqueada por exceso de intentos fallidos.
+                <a href="#" @onclick:preventDefault @onclick="IrARecuperarContrasena">Recuperar contraseña</a>
+            </div>
+        }
+
+        <label class="form-label">DIRECCIÓN DE EMAIL</label>
+        <div class="login-input-wrap @(errores.Contains("email") ? "input-error" : "")">
+            <span class="login-input-icon">✉️</span>
+            <input type="text" @bind="email" @bind:event="oninput"
+                   placeholder="nombre@gmail.com" disabled="@cuentaBloqueada" />
+        </div>
+
+        <div class="login-label-row">
+            <label class="form-label">CONTRASEÑA</label>
+            <a href="#" class="login-forgot-link" @onclick:preventDefault @onclick="IrARecuperarContrasena">
+                ¿Olvidaste tu contraseña?
+            </a>
+        </div>
+        <div class="login-input-wrap @(errores.Contains("password") ? "input-error" : "")">
+            <span class="login-input-icon">🔒</span>
+            <input type="password" @bind="password" @bind:event="oninput"
+                   placeholder="••••••••" disabled="@cuentaBloqueada" />
+        </div>
+
+        <label class="login-checkbox-row">
+            <input type="checkbox" @bind="recordarSesion" disabled="@cuentaBloqueada" />
+            Recordar mi sesión durante 30 días
+        </label>
+
+        <button class="login-btn-submit" disabled="@cuentaBloqueada" @onclick="IniciarSesion">
+            Iniciar Sesión
+        </button>
+
+        <hr class="login-divisor-der" />
+    </div>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private bool recordarSesion = false;
+    private string mensajeError = "";
+    private bool cuentaBloqueada = false;
+    private int intentosFallidos = 0;
+    private HashSet<string> errores = new();
+
+    /// <summary>
+    /// Usuarios de ejemplo para poder probar los distintos caminos del CU17
+    /// (cuenta inexistente, inactiva, credenciales incorrectas, bloqueo).
+    /// En un escenario real esto se resuelve contra el backend de autenticación.
+    /// </summary>
+    private class UsuarioDemo
+    {
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public bool Activo { get; set; } = true;
+        public string Rol { get; set; } = "";
+    }
+
+    private List<UsuarioDemo> usuariosDemo = new()
+    {
+        new() { Email = "admin@gmail.com", Password = "123", Activo = true, Rol = "Administrador" },
+    };
+
+    private void IniciarSesion()
+    {
+        errores.Clear();
+        mensajeError = "";
+
+        // Alterno 6.2: campos obligatorios vacíos.
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            if (string.IsNullOrWhiteSpace(email)) errores.Add("email");
+            if (string.IsNullOrWhiteSpace(password)) errores.Add("password");
+            mensajeError = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        // Alterno 6.1: formato de email inválido.
+        if (!EsEmailValido(email))
+        {
+            errores.Add("email");
+            mensajeError = "El formato del email ingresado no es válido.";
+            return;
+        }
+
+        // Paso 7 / alterno 7.1: ¿existe una cuenta con ese email?
+        var usuario = usuariosDemo.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+        if (usuario is null)
+        {
+            errores.Add("email");
+            mensajeError = "No existe una cuenta registrada con ese email.";
+            return;
+        }
+
+        // Paso 8 / alterno 8.1: ¿la cuenta está activa?
+        if (!usuario.Activo)
+        {
+            mensajeError = "Tu cuenta se encuentra inactiva. Contactá al administrador para reactivarla.";
+            return;
+        }
+
+        // Paso 9 / alterno 9.1: si ya está bloqueada, no se reintenta la validación.
+        if (cuentaBloqueada)
+        {
+            return;
+        }
+
+        // Paso 10 / alterno 10.1 y 10.2: credenciales incorrectas y contador de intentos.
+        if (usuario.Password != password)
+        {
+            errores.Add("password");
+            intentosFallidos++;
+
+            if (intentosFallidos >= 3)
+            {
+                cuentaBloqueada = true;
+                mensajeError = "";
+                // TODO: bloquear la cuenta también del lado del servidor.
+            }
+            else
+            {
+                mensajeError = $"Email o contraseña incorrectos. Intento {intentosFallidos} de 3.";
+            }
+            return;
+        }
+
+        // Éxito (pasos 11-15): reinicia intentos, guarda sesión y redirige al panel principal.
+        intentosFallidos = 0;
+
+        // TODO: persistir la sesión real (cookie / token) y aplicar la duración
+        // correspondiente según "recordarSesion" (30 días vs. sesión normal),
+        // además de cargar los permisos asociados al rol (usuario.Rol).
+        Navigation.NavigateTo("/");
+    }
+
+    private bool EsEmailValido(string valor) =>
+        Regex.IsMatch(valor, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+
+    private void IrARecuperarContrasena()
+    {
+        // TODO: navegar a la pantalla de CU18 – Recuperar contraseña cuando esté armada.
+        Navigation.NavigateTo("/recuperar-contrasena");
+    }
+}
+

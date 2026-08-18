@@ -1,4 +1,10 @@
-﻿/* ==========================================================================
+﻿/* Oculta el spinner de carga por defecto de Blazor (el círculo negro). */
+.loading-progress,
+.loading-progress-text {
+    display: none !important;
+}
+
+/* ==========================================================================
    RESET Y BASE GENERAL
    Estilos base que aplican a toda la aplicación, sin importar la pantalla.
    ========================================================================== */

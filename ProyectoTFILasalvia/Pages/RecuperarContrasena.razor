@@ -1,0 +1,81 @@
+﻿@page "/recuperar-contrasena"
+@layout AuthLayout
+@inject NavigationManager Navigation
+@using System.Text.RegularExpressions
+
+<PageTitle>Recuperar acceso</PageTitle>
+
+<div class="auth-screen">
+    <div class="auth-card-simple">
+        <h2 class="auth-card-title">Recuperar acceso</h2>
+        <p class="auth-card-subtitle">Introduce tu correo electrónico para recibir las instrucciones de restablecimiento.</p>
+
+        @if (!string.IsNullOrEmpty(mensajeExito))
+        {
+            <div class="login-alerta login-alerta-exito">✅ @mensajeExito</div>
+            <a href="restablecer-contrasena" class="auth-demo-link">
+                (Demo) Ir a la pantalla de Restablecer contraseña →
+            </a>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(mensajeError))
+            {
+                <div class="login-alerta">⚠️ @mensajeError</div>
+            }
+
+            <label class="form-label">CORREO ELECTRÓNICO</label>
+            <div class="login-input-wrap @(error ? "input-error" : "")">
+                <span class="login-input-icon">✉️</span>
+                <input type="text" @bind="email" @bind:event="oninput" placeholder="nombre@gmail.com" />
+            </div>
+
+            <button class="login-btn-submit" @onclick="EnviarInstrucciones">
+                Enviar instrucciones de recuperación
+            </button>
+        }
+    </div>
+
+    <div class="auth-below-card">
+        <a href="login" class="auth-back-link">← Volver al inicio de sesión</a>
+        <hr class="auth-footer-divisor" />
+        <div class="auth-footer">
+            <span>¿Necesitas ayuda?</span>
+            <a href="#" class="auth-footer-link">Soporte Técnico</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string email = "";
+    private bool error = false;
+    private string mensajeError = "";
+    private string mensajeExito = "";
+
+    private void EnviarInstrucciones()
+    {
+        error = false;
+        mensajeError = "";
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            error = true;
+            mensajeError = "El campo de correo electrónico es obligatorio.";
+            return;
+        }
+
+        if (!EsEmailValido(email))
+        {
+            error = true;
+            mensajeError = "El formato del email ingresado no es válido.";
+            return;
+        }
+
+        // TODO: llamar al backend real para disparar el envío del email
+        // con el link de restablecimiento (con su token único).
+        mensajeExito = $"Si existe una cuenta asociada a {email}, vas a recibir un email con las instrucciones en unos minutos.";
+    }
+
+    private bool EsEmailValido(string valor) =>
+        Regex.IsMatch(valor, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+}

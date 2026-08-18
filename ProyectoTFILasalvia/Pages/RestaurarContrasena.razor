@@ -1,0 +1,99 @@
+﻿@page "/restablecer-contrasena"
+@layout AuthLayout
+@inject NavigationManager Navigation
+
+<PageTitle>Restablecer contraseña</PageTitle>
+
+<div class="auth-screen">
+    <div class="auth-card-simple">
+        <h2 class="auth-card-title">Restablecer contraseña</h2>
+        <p class="auth-card-subtitle">Ingresa tu nueva contraseña para acceder a tu cuenta.</p>
+
+        @if (!string.IsNullOrEmpty(mensajeExito))
+        {
+            <div class="login-alerta login-alerta-exito">✅ @mensajeExito</div>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(mensajeError))
+            {
+                <div class="login-alerta">⚠️ @mensajeError</div>
+            }
+
+            <label class="form-label">NUEVA CONTRASEÑA</label>
+            <div class="login-input-wrap password-input-wrap @(errores.Contains("nueva") ? "input-error" : "")">
+                <input type="@(mostrarNueva ? "text" : "password")"
+                       @bind="nuevaPassword" @bind:event="oninput" placeholder="••••••••" />
+                <button type="button" class="password-toggle-btn" @onclick="() => mostrarNueva = !mostrarNueva">
+                    @(mostrarNueva ? "🙈" : "👁")
+                </button>
+            </div>
+
+            <label class="form-label">CONFIRMAR NUEVA CONTRASEÑA</label>
+            <div class="login-input-wrap password-input-wrap @(errores.Contains("confirmar") ? "input-error" : "")">
+                <input type="@(mostrarConfirmar ? "text" : "password")"
+                       @bind="confirmarPassword" @bind:event="oninput" placeholder="••••••••" />
+                <button type="button" class="password-toggle-btn" @onclick="() => mostrarConfirmar = !mostrarConfirmar">
+                    @(mostrarConfirmar ? "🙈" : "👁")
+                </button>
+            </div>
+
+            <button class="login-btn-submit" @onclick="ActualizarContrasena">
+                Actualizar contraseña
+            </button>
+        }
+    </div>
+
+    <div class="auth-below-card">
+        <a href="login" class="auth-back-link">← Volver al inicio de sesión</a>
+    </div>
+</div>
+
+@code {
+    private string nuevaPassword = "";
+    private string confirmarPassword = "";
+    private bool mostrarNueva = false;
+    private bool mostrarConfirmar = false;
+    private string mensajeError = "";
+    private string mensajeExito = "";
+    private HashSet<string> errores = new();
+
+    private void ActualizarContrasena()
+    {
+        errores.Clear();
+        mensajeError = "";
+
+        if (string.IsNullOrWhiteSpace(nuevaPassword))
+        {
+            errores.Add("nueva");
+        }
+        if (string.IsNullOrWhiteSpace(confirmarPassword))
+        {
+            errores.Add("confirmar");
+        }
+        if (errores.Count > 0)
+        {
+            mensajeError = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        if (nuevaPassword.Length < 8)
+        {
+            errores.Add("nueva");
+            mensajeError = "La contraseña debe tener al menos 8 caracteres.";
+            return;
+        }
+
+        if (nuevaPassword != confirmarPassword)
+        {
+            errores.Add("nueva");
+            errores.Add("confirmar");
+            mensajeError = "Las contraseñas ingresadas no coinciden.";
+            return;
+        }
+
+        // TODO: enviar la nueva contraseña al backend junto con el token
+        // de restablecimiento recibido por email, y luego invalidar ese token.
+        mensajeExito = "Tu contraseña fue actualizada correctamente. Ya podés iniciar sesión.";
+    }
+}

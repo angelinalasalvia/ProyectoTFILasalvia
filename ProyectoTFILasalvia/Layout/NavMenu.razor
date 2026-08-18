@@ -61,11 +61,27 @@
                 <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
             </NavLink>
         </div>
+
+        <!-- Administración: ítem padre con submenú desplegable (Usuarios / Roles) -->
         <div class="nav-item">
-            <NavLink class="nav-link" href="administracion" title="Administración">
+            <button class="nav-link nav-link-parent @(administracionAbierto ? "active" : "")"
+                    @onclick="ToggleAdministracion" title="Administración">
                 <span class="icon">👥</span> <span class="nav-text">Administración</span>
-            </NavLink>
+                <span class="nav-chevron">@(administracionAbierto ? "▾" : "▸")</span>
+            </button>
+            @if (administracionAbierto)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="administracion/usuarios" title="Usuarios">
+                        Usuarios
+                    </NavLink>
+                    <NavLink class="nav-sublink" href="administracion/roles" title="Roles">
+                        Roles
+                    </NavLink>
+                </div>
+            }
         </div>
+
         <div class="nav-item">
             <NavLink class="nav-link" href="login" title="Log In">
                 <span class="icon">🔑</span> <span class="nav-text">Log In</span>
@@ -89,9 +105,14 @@
     // (ej: al entrar directo por URL a /reportes/efectividad).
     private bool reportesAbierto = false;
 
+    // Se abre solo si ya estamos en alguna de las pantallas de Administración
+    // (ej: al entrar directo por URL a /administracion/usuarios).
+    private bool administracionAbierto = false;
+
     protected override void OnInitialized()
     {
         reportesAbierto = Navigation.Uri.Contains("/reportes/");
+        administracionAbierto = Navigation.Uri.Contains("/administracion/");
     }
 
     private void ToggleSidebar()
@@ -102,5 +123,10 @@
     private void ToggleReportes()
     {
         reportesAbierto = !reportesAbierto;
+    }
+
+    private void ToggleAdministracion()
+    {
+        administracionAbierto = !administracionAbierto;
     }
 }

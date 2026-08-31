@@ -1,0 +1,175 @@
+﻿@page "/predicciones"
+@inject DAL.IChurnRepository Repositorio
+@rendermode InteractiveServer
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BE;
+
+<PageTitle>Motor de Predicciones ML</PageTitle>
+
+<div class="page-header">
+    <div></div>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<div class="pred-title-row">
+    <div>
+        <h1>Motor de Predicciones ML</h1>
+        <p class="pred-subtitle">Visualización en tiempo real del modelo de propensión al abandono. Los datos se actualizan cada 24 horas basados en el comportamiento de uso y facturación.</p>
+    </div>
+    <button class="btn-exportar">⬇ Exportar Informe</button>
+</div>
+
+<div class="pred-kpi-row">
+    <div class="card pred-kpi-card">
+        <div class="pred-kpi-top">
+            <span class="pred-kpi-label label-alto">RIESGO ALTO</span>
+            <span class="pred-kpi-icon icon-alto">⚠️</span>
+        </div>
+        <div class="pred-kpi-value">128</div>
+        <div class="pred-kpi-sub">Clientes con probabilidad > 75%</div>
+        <div class="pred-bar"><div class="pred-bar-fill fill-alto" style="width:15%"></div></div>
+    </div>
+
+    <div class="card pred-kpi-card">
+        <div class="pred-kpi-top">
+            <span class="pred-kpi-label label-medio">RIESGO MEDIO</span>
+            <span class="pred-kpi-icon icon-medio">📉</span>
+        </div>
+        <div class="pred-kpi-value">452</div>
+        <div class="pred-kpi-sub">Clientes con probabilidad 40-75%</div>
+        <div class="pred-bar"><div class="pred-bar-fill fill-medio" style="width:45%"></div></div>
+    </div>
+
+    <div class="card pred-kpi-card">
+        <div class="pred-kpi-top">
+            <span class="pred-kpi-label label-bajo">RIESGO BAJO</span>
+            <span class="pred-kpi-icon icon-bajo">✅</span>
+        </div>
+        <div class="pred-kpi-value">2,841</div>
+        <div class="pred-kpi-sub">Clientes con probabilidad &lt; 40%</div>
+        <div class="pred-bar"><div class="pred-bar-fill fill-bajo" style="width:85%"></div></div>
+    </div>
+</div>
+
+<div class="card pred-table-card">
+    <div class="pred-filter-row">
+        <div class="filter-left">
+            <span class="filter-label">FILTRAR POR RIESGO:</span>
+            <button class="filter-pill @(filtroActivo == "Alto" ? "active-alto" : "")" @onclick='() => filtroActivo = "Alto"'>Alto</button>
+            <button class="filter-pill @(filtroActivo == "Medio" ? "active-medio" : "")" @onclick='() => filtroActivo = "Medio"'>Medio</button>
+            <button class="filter-pill @(filtroActivo == "Bajo" ? "active-bajo" : "")" @onclick='() => filtroActivo = "Bajo"'>Bajo</button>
+            <button class="filter-pill @(filtroActivo == "Todos" ? "active-todos" : "")" @onclick='() => filtroActivo = "Todos"'>Ver todos</button>
+        </div>
+        <select class="sort-select">
+            <option>Ordenar por Probabilidad</option>
+            <option>Ordenar por Nombre</option>
+            <option>Ordenar por Nivel de Riesgo</option>
+        </select>
+    </div>
+
+    <table class="pred-table">
+        <thead>
+            <tr>
+                <th>CLIENTE</th>
+                <th>PROBABILIDAD DE ABANDONO</th>
+                <th>NIVEL DE RIESGO</th>
+                <th>FACTOR PRINCIPAL DE RIESGO</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in PrediccionesPaginaActual)
+            {
+                <tr>
+                    <td>
+                        <div class="client-cell">
+                            <div class="client-avatar-initials">@Iniciales(p)</div>
+                            <a href="prediccion-detalle/@p.IdCliente" class="client-name client-name-link">@p.Cliente!.Nombre @p.Cliente.Apellido</a>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="prob-cell">
+                            <span class="prob-percent @NivelClase(p.NivelRiesgo)">@p.ProbabilidadAbandono%</span>
+                            <div class="prob-bar-pred"><div class="prob-fill-pred @NivelClase(p.NivelRiesgo)" style="width:@(p.ProbabilidadAbandono)%"></div></div>
+                        </div>
+                    </td>
+                    <td><span class="nivel-badge @NivelClase(p.NivelRiesgo)">@p.NivelRiesgo</span></td>
+                    <td class="factor-cell">@p.FactorRiesgo!.Nombre</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+
+    <div class="pred-pagination">
+        <span class="pagination-info">
+            Mostrando @(Math.Min((paginaActual - 1) * tamanioPagina + 1, predicciones.Count))-@(Math.Min(paginaActual * tamanioPagina, predicciones.Count)) de @predicciones.Count clientes analizados
+        </span>
+        <div class="pagination-controls">
+            <button class="page-btn" @onclick="() => IrAPagina(paginaActual - 1)" disabled="@(paginaActual == 1)">‹</button>
+
+            @{
+                var anterior = 0;
+            }
+            @foreach (var num in NumerosDePagina())
+            {
+                @if (anterior != 0 && num - anterior > 1)
+                {
+                    <span>...</span>
+                }
+                <button class="page-btn @(num == paginaActual ? "active" : "")" @onclick="() => IrAPagina(num)">@num</button>
+                anterior = num;
+            }
+
+            <button class="page-btn" @onclick="() => IrAPagina(paginaActual + 1)" disabled="@(paginaActual == TotalPaginas)">›</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string filtroActivo = "Alto";
+    private List<Prediccion> predicciones = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        predicciones = await Repositorio.ObtenerPrediccionesAsync();
+    }
+
+    private string Iniciales(Prediccion p) =>
+        $"{p.Cliente!.Nombre.FirstOrDefault()}{p.Cliente.Apellido.FirstOrDefault()}".ToUpper();
+
+    private string NivelClase(string nivel) => nivel switch
+    {
+        "Alto" => "nivel-alto",
+        "Medio" => "nivel-medio",
+        "Bajo" => "nivel-bajo",
+        _ => ""
+    };
+
+    private int paginaActual = 1;
+    private const int tamanioPagina = 5;
+
+    private List<Prediccion> PrediccionesPaginaActual =>
+        predicciones.Skip((paginaActual - 1) * tamanioPagina).Take(tamanioPagina).ToList();
+
+    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(predicciones.Count / (double)tamanioPagina));
+
+    private void IrAPagina(int pagina)
+    {
+        if (pagina < 1 || pagina > TotalPaginas) return;
+        paginaActual = pagina;
+    }
+
+    private List<int> NumerosDePagina()
+    {
+        var numeros = new List<int> { 1 };
+        int desde = Math.Max(2, paginaActual - 1);
+        int hasta = Math.Min(TotalPaginas - 1, paginaActual + 1);
+        for (int i = desde; i <= hasta; i++) numeros.Add(i);
+        if (TotalPaginas > 1) numeros.Add(TotalPaginas);
+        return numeros.Distinct().ToList();
+    }
+}

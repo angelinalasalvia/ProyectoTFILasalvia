@@ -1,0 +1,124 @@
+﻿@inject NavigationManager Navigation
+
+<div class="sidebar @(isCollapsed ? "collapsed" : "")">
+    <div class="sidebar-brand">
+        <span class="oi oi-grid-two-up" aria-hidden="true"></span>
+        <span class="brand-text">Dashboard</span>
+        <button class="collapse-btn" @onclick="ToggleSidebar" title="Minimizar menú">
+            @(isCollapsed ? "»" : "«")
+        </button>
+    </div>
+
+    <nav class="flex-column">
+        
+        <div class="nav-item">
+            <NavLink class="nav-link" href="clientes" title="Clientes">
+                <span class="icon">👥</span> <span class="nav-text">Clientes</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="campanas" title="Campañas">
+                <span class="icon">📣</span> <span class="nav-text">Campañas</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="predicciones" title="Predicciones">
+                <span class="icon">🎯</span> <span class="nav-text">Predicciones</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="automatizacion" title="Automatización">
+                <span class="icon">⚙️</span> <span class="nav-text">Automatización</span>
+            </NavLink>
+        </div>
+
+        <!-- Reportes: ítem padre con submenú desplegable -->
+        <div class="nav-item">
+            <button class="nav-link nav-link-parent @(reportesAbierto ? "active" : "")"
+                    @onclick="ToggleReportes" title="Reportes">
+                <span class="icon">📊</span> <span class="nav-text">Reportes</span>
+                <span class="nav-chevron">@(reportesAbierto ? "▾" : "▸")</span>
+            </button>
+            @if (reportesAbierto)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="reportes/efectividad" title="Reporte de Efectividad">
+                        Reporte de Efectividad
+                    </NavLink>
+                    <NavLink class="nav-sublink" href="reportes/retencion" title="Reporte de Retención">
+                        Reporte de Retención
+                    </NavLink>
+                </div>
+            }
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="integraciones" title="Integraciones">
+                <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
+            </NavLink>
+        </div>
+
+        <!-- Administración: ítem padre con submenú desplegable (Usuarios / Roles) -->
+        <div class="nav-item">
+            <button class="nav-link nav-link-parent @(administracionAbierto ? "active" : "")"
+                    @onclick="ToggleAdministracion" title="Administración">
+                <span class="icon">👥</span> <span class="nav-text">Administración</span>
+                <span class="nav-chevron">@(administracionAbierto ? "▾" : "▸")</span>
+            </button>
+            @if (administracionAbierto)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="administracion/usuarios" title="Usuarios">
+                        Usuarios
+                    </NavLink>
+                    <NavLink class="nav-sublink" href="administracion/roles" title="Roles">
+                        Roles
+                    </NavLink>
+                </div>
+            }
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="login" title="Log In">
+                <span class="icon">🔑</span> <span class="nav-text">Log In</span>
+            </NavLink>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="avatar">JD</div>
+        <div class="user-info">
+            <div class="user-name">Javier Domínguez</div>
+            <div class="user-role">Admin Account</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isCollapsed = false;
+
+    private bool reportesAbierto = false;
+
+    private bool administracionAbierto = false;
+
+    protected override void OnInitialized()
+    {
+        reportesAbierto = Navigation.Uri.Contains("/reportes/");
+        administracionAbierto = Navigation.Uri.Contains("/administracion/");
+    }
+
+    private void ToggleSidebar()
+    {
+        isCollapsed = !isCollapsed;
+    }
+
+    private void ToggleReportes()
+    {
+        reportesAbierto = !reportesAbierto;
+    }
+
+    private void ToggleAdministracion()
+    {
+        administracionAbierto = !administracionAbierto;
+    }
+}

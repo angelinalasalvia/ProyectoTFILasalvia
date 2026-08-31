@@ -1,0 +1,182 @@
+﻿@page "/automatizacion"
+@inject NavigationManager Navigation
+
+<PageTitle>Reglas de Automatización</PageTitle>
+
+<!-- Barra superior con buscador (esta pantalla sí la tiene, a diferencia de otras) -->
+<div class="page-header">
+    <div class="search-box auto-search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar reglas..." @bind="textoBusqueda" @bind:event="oninput" />
+    </div>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<!-- Título de la sección + acción principal -->
+<div class="auto-titulo-row">
+    <div>
+        <h2 class="auto-titulo">Reglas de Automatización</h2>
+        <p class="auto-subtitulo">Configura disparadores inteligentes que ejecutan acciones de marketing y soporte cuando los modelos de IA detectan riesgos críticos en tus clientes.</p>
+    </div>
+    <button class="btn-crear-campana" @onclick="NuevaRegla">+ Nueva Regla</button>
+</div>
+
+<!-- Listado de reglas -->
+<div class="auto-listado-header">
+    <h3>Listado de Reglas</h3>
+    <div class="auto-filtro-orden">
+        <span>▽</span>
+        <span>Filtrar por: @ordenSeleccionado</span>
+    </div>
+</div>
+
+<div class="auto-reglas-lista">
+    @foreach (var r in ReglasFiltradas)
+    {
+        <div class="card auto-regla-card">
+            <div class="auto-regla-top">
+                <div class="auto-regla-meta">
+                    <span class="auto-regla-badge @(r.Pausada ? "auto-badge-pausada" : "auto-badge-activa")">@r.Tipo</span>
+                    <span class="auto-regla-fecha">• @r.CreadoTexto</span>
+                </div>
+                <div class="auto-regla-estado">
+                    <span class="auto-regla-estado-label @(r.Pausada ? "auto-estado-pausada" : "")">
+                        @(r.Pausada ? "Pausada" : "Activa")
+                    </span>
+                    <button class="auto-switch @(r.Activa ? "auto-switch-on" : "")"
+                            @onclick="() => ToggleActiva(r)">
+                        <span class="auto-switch-knob"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="auto-regla-flow">
+                <div class="auto-regla-condicion">
+                    <span class="auto-regla-conector">SI</span>
+                    <div class="auto-cond-box @(r.Pausada ? "auto-box-muted" : "auto-box-alerta")">
+                        @r.CondicionIcono @r.CondicionTexto
+                    </div>
+                </div>
+                <span class="auto-regla-flecha">→</span>
+                <div class="auto-regla-accion">
+                    <span class="auto-regla-conector">ENTONCES</span>
+                    <div class="auto-accion-box @(r.Pausada ? "auto-box-muted" : "")">
+                        @r.AccionIcono @r.AccionTexto
+                    </div>
+                </div>
+                <div class="auto-regla-stats">
+                    <div class="auto-regla-stats-label">EJECUCIONES</div>
+                    <div class="auto-regla-stats-value">@r.Ejecuciones.ToString("N0")</div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(r.NotaExtra))
+            {
+                <div class="auto-regla-nota">ℹ️ @r.NotaExtra</div>
+            }
+
+            <div class="auto-regla-actions">
+                <button class="auto-icon-btn" title="Editar regla" @onclick="() => EditarRegla(r)">✏️</button>
+                <button class="auto-icon-btn" title="Eliminar regla" @onclick="() => EliminarRegla(r)">🗑️</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string textoBusqueda = "";
+    private string ordenSeleccionado = "Más Recientes";
+
+    private class ReglaAutomatizacion
+    {
+        public string Id { get; set; } = "";
+        public string Tipo { get; set; } = "";
+        public string CreadoTexto { get; set; } = "";
+        public bool Activa { get; set; }
+        public bool Pausada { get; set; }
+        public string CondicionIcono { get; set; } = "";
+        public string CondicionTexto { get; set; } = "";
+        public string AccionIcono { get; set; } = "";
+        public string AccionTexto { get; set; } = "";
+        public int Ejecuciones { get; set; }
+        public string? NotaExtra { get; set; }
+    }
+
+    private List<ReglaAutomatizacion> reglas = new()
+    {
+        new()
+        {
+            Id = "regla-001",
+            Tipo = "WHATSAPP FLOW",
+            CreadoTexto = "Creado hace 3 días",
+            Activa = true,
+            Pausada = false,
+            CondicionIcono = "⚠️",
+            CondicionTexto = "Riesgo de Abandono: Muy Alto",
+            AccionIcono = "💬",
+            AccionTexto = "Enviar WhatsApp de descuento fidelidad",
+            Ejecuciones = 1245,
+        },
+        new()
+        {
+            Id = "regla-002",
+            Tipo = "EMAIL FOLLOW-UP",
+            CreadoTexto = "Creado hace 12 días",
+            Activa = true,
+            Pausada = false,
+            CondicionIcono = "📊",
+            CondicionTexto = "Actividad < 20% en 15 días",
+            AccionIcono = "🎫",
+            AccionTexto = "Asignar ticket a Soporte VIP",
+            Ejecuciones = 892,
+        },
+        new()
+        {
+            Id = "regla-003",
+            Tipo = "RE-ENGAGEMENT",
+            CreadoTexto = "Pausada hace 2 días",
+            Activa = false,
+            Pausada = true,
+            CondicionIcono = "🔕",
+            CondicionTexto = "Sin login > 30 días",
+            AccionIcono = "📞",
+            AccionTexto = "Programar llamada de Éxito",
+            Ejecuciones = 420,
+            NotaExtra = "Esta regla requiere integración con el CRM actualizado.",
+        },
+    };
+
+    // Filtrado en memoria por texto de búsqueda (tipo de regla o condición/acción).
+    private IEnumerable<ReglaAutomatizacion> ReglasFiltradas =>
+        reglas.Where(r =>
+            string.IsNullOrWhiteSpace(textoBusqueda) ||
+            r.Tipo.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+            r.CondicionTexto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+            r.AccionTexto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+
+    private void ToggleActiva(ReglaAutomatizacion r)
+    {
+        r.Activa = !r.Activa;
+        r.Pausada = !r.Activa;
+        // TODO: persistir el cambio de estado de la regla.
+    }
+
+    private void NuevaRegla()
+    {
+        Navigation.NavigateTo("/automatizacion/nueva-regla");
+    }
+
+    private void EditarRegla(ReglaAutomatizacion r)
+    {
+        Navigation.NavigateTo($"/automatizacion/editar-regla/{r.Id}");
+    }
+
+    private void EliminarRegla(ReglaAutomatizacion r)
+    {
+        // TODO: confirmar y eliminar la regla r.Id.
+    }
+}

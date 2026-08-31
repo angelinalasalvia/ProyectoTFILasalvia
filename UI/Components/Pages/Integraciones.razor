@@ -1,0 +1,204 @@
+﻿@page "/integraciones"
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de Integraciones</PageTitle>
+
+<div class="page-header">
+    <div class="search-box integ-search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar fuentes o datos..." @bind="textoBusqueda" @bind:event="oninput" />
+    </div>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<div class="breadcrumb">CONFIGURACIÓN <span class="breadcrumb-sep">›</span> FUENTES DE DATOS</div>
+<h1 class="detalle-title">Gestión de Integraciones</h1>
+<p class="camp-subtitle">Conecta tus herramientas de CRM y bases de datos para potenciar el análisis predictivo.</p>
+
+<!-- KPIs -->
+<div class="integ-kpi-row">
+    <div class="card integ-kpi-card">
+        <div class="integ-kpi-icon integ-kpi-icon-ok">✅</div>
+        <div>
+            <div class="integ-kpi-label">ACTIVAS</div>
+            <div class="integ-kpi-valor-row">
+                <span class="integ-kpi-valor">@fuentes.Count(f => f.Estado != "Error")</span>
+                <span class="integ-kpi-sub">Fuentes</span>
+            </div>
+        </div>
+    </div>
+    <div class="card integ-kpi-card">
+        <div class="integ-kpi-icon integ-kpi-icon-error">⚠️</div>
+        <div>
+            <div class="integ-kpi-label">CON ERRORES</div>
+            <div class="integ-kpi-valor-row">
+                <span class="integ-kpi-valor integ-kpi-valor-error">@fuentes.Count(f => f.Estado == "Error").ToString("D2")</span>
+                <span class="integ-kpi-sub integ-kpi-sub-error">Falla crítica</span>
+            </div>
+        </div>
+    </div>
+    <div class="card integ-kpi-card">
+        <div class="integ-kpi-icon integ-kpi-icon-sync">🕐</div>
+        <div>
+            <div class="integ-kpi-label">PRÓX. SYNC</div>
+            <div class="integ-kpi-valor-row">
+                <span class="integ-kpi-valor">15m</span>
+                <span class="integ-kpi-sub">en promedio</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Listado de fuentes -->
+<div class="integ-grid">
+    @foreach (var f in FuentesFiltradas)
+    {
+        <div class="card integ-fuente-card @(f.Estado == "Error" ? "integ-fuente-error" : "")">
+            @if (f.Estado == "Error")
+            {
+                <div class="integ-error-badge" title="Falla crítica">!</div>
+            }
+
+            <div class="integ-fuente-header">
+                <div class="integ-fuente-icon @f.IconoBgClase">@f.IconoEmoji</div>
+                <div class="integ-fuente-nombre-wrap">
+                    <div class="integ-fuente-nombre">@f.Nombre</div>
+                    <div class="integ-fuente-estado">
+                        <span class="integ-estado-dot @(f.Estado == "Error" ? "integ-dot-rojo" : "integ-dot-verde")"></span>
+                        @f.EstadoTexto
+                    </div>
+                </div>
+                @if (f.Estado != "Error")
+                {
+                    <button class="integ-menu-btn" title="Más opciones">⋮</button>
+                }
+            </div>
+
+            <div class="integ-fuente-datos">
+                @if (f.Estado == "Error")
+                {
+                    <div class="integ-dato-row">
+                        <span>Fallo hace @f.FalloHace</span>
+                        <a href="#" class="integ-link-error" @onclick:preventDefault
+                           @onclick="() => EditarCredenciales(f.Id)">Revisar credenciales</a>
+                    </div>
+                    <div class="integ-dato-row">
+                        <span>Último éxito</span>
+                        <span>@f.UltimoExito</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="integ-dato-row">
+                        <span>Última sincronización</span>
+                        <span>@f.UltimaSync</span>
+                    </div>
+                    <div class="integ-dato-row">
+                        <span>Registros mapeados</span>
+                        <span>@f.Registros?.ToString("N0")</span>
+                    </div>
+                }
+            </div>
+
+            <div class="integ-barra-fondo">
+                <div class="integ-barra-fill @(f.Estado == "Error" ? "integ-barra-roja" : "integ-barra-verde")"
+                     style="width:@(f.PctBarra)%"></div>
+            </div>
+
+            <div class="integ-fuente-actions">
+                <button class="integ-btn-editar @(f.Estado == "Error" ? "integ-btn-editar-alerta" : "")"
+                        @onclick="() => EditarCredenciales(f.Id)">
+                    Editar credenciales
+                </button>
+                <button class="integ-btn-sync" disabled="@(f.Estado == "Error")" @onclick="() => Sincronizar(f.Id)">
+                    ↻ Sincronizar
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- Card para añadir nueva fuente -->
+    <div class="card integ-add-card" @onclick="AñadirNuevaFuente">
+        <div class="integ-add-icon">+</div>
+        <div class="integ-add-titulo">Añadir nueva fuente</div>
+        <div class="integ-add-sub">Conecta Slack, Zendesk, Intercom o tu API personalizada.</div>
+    </div>
+</div>
+
+@code {
+    private string textoBusqueda = "";
+
+    private class FuenteIntegracion
+    {
+        public string Id { get; set; } = "";
+        public string Nombre { get; set; } = "";
+        public string IconoEmoji { get; set; } = "";
+        public string IconoBgClase { get; set; } = "";
+        public string Estado { get; set; } = "Activa"; // "Activa" | "Error"
+        public string EstadoTexto { get; set; } = "";
+        public string UltimaSync { get; set; } = "";
+        public int? Registros { get; set; }
+        public string FalloHace { get; set; } = "";
+        public string UltimoExito { get; set; } = "";
+        public int PctBarra { get; set; }
+    }
+
+    private List<FuenteIntegracion> fuentes = new()
+    {
+        new()
+        {
+            Id = "int-001", Nombre = "Salesforce CRM", IconoEmoji = "🔗", IconoBgClase = "integ-icon-azul",
+            Estado = "Activa", EstadoTexto = "Conexión Activa",
+            UltimaSync = "Hoy, 09:45 AM", Registros = 45202, PctBarra = 100,
+        },
+        new()
+        {
+            Id = "int-002", Nombre = "HubSpot", IconoEmoji = "🧡", IconoBgClase = "integ-icon-naranja",
+            Estado = "Activa", EstadoTexto = "Conexión Activa",
+            UltimaSync = "Ayer, 11:20 PM", Registros = 12890, PctBarra = 70,
+        },
+        new()
+        {
+            Id = "int-003", Nombre = "PostgreSQL Prod", IconoEmoji = "🗄️", IconoBgClase = "integ-icon-gris",
+            Estado = "Error", EstadoTexto = "Error de Autenticación",
+            FalloHace = "4 horas", UltimoExito = "02 Nov, 04:00 AM", PctBarra = 35,
+        },
+        new()
+        {
+            Id = "int-004", Nombre = "Stripe Billing", IconoEmoji = "💳", IconoBgClase = "integ-icon-morado",
+            Estado = "Activa", EstadoTexto = "Conexión Activa",
+            UltimaSync = "Hoy, 10:15 AM", Registros = 2451, PctBarra = 55,
+        },
+        new()
+        {
+            Id = "int-005", Nombre = "Snowflake DW", IconoEmoji = "❄️", IconoBgClase = "integ-icon-celeste",
+            Estado = "Activa", EstadoTexto = "Conexión Activa",
+            UltimaSync = "Hoy, 00:00 AM", Registros = 1024883, PctBarra = 100,
+        },
+    };
+
+    private IEnumerable<FuenteIntegracion> FuentesFiltradas =>
+        fuentes.Where(f =>
+            string.IsNullOrWhiteSpace(textoBusqueda) ||
+            f.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+
+    private void EditarCredenciales(string id)
+    {
+        Navigation.NavigateTo($"/integraciones/editar/{id}");
+    }
+
+    private void Sincronizar(string id)
+    {
+        // TODO: disparar sincronización real contra la fuente de datos.
+    }
+
+    private void AñadirNuevaFuente()
+    {
+        Navigation.NavigateTo("/integraciones/nueva");
+    }
+}
+

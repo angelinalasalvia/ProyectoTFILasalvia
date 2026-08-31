@@ -1,0 +1,141 @@
+﻿@page "/prediccion-detalle"
+
+<PageTitle>Análisis de Predicción: Carlos Ruiz</PageTitle>
+
+<div class="page-header">
+    <a href="predicciones" class="back-link">‹ Volver a Predicciones</a>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<h1 class="detalle-title">Análisis de Predicción: Carlos Ruiz</h1>
+<span class="riesgo-tag">● RIESGO ALTO - 88%</span>
+
+<div class="detalle-row">
+    <!-- Columna izquierda -->
+    <div class="detalle-col-izq">
+        <div class="card perfil-card">
+            <h4 class="card-subtitle">PERFIL DEL SOCIO</h4>
+            <div class="perfil-header">
+                <div class="perfil-avatar">👤</div>
+                <div>
+                    <div class="perfil-nombre">Carlos Ruiz</div>
+                    <div class="perfil-email">carlos.ruiz@email.com</div>
+                </div>
+            </div>
+
+            <div class="perfil-datos">
+                <div class="perfil-dato">
+                    <span class="dato-label">Plan Actual</span>
+                    <span class="dato-value">Premium Gold</span>
+                </div>
+                <div class="perfil-dato">
+                    <span class="dato-label">Última Actividad</span>
+                    <span class="dato-value">30 Oct, 2025</span>
+                </div>
+                <div class="perfil-dato">
+                    <span class="dato-label">Último Pago</span>
+                    <span class="dato-value">02 Oct, 2025</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card segmento-card">
+            <h4 class="card-subtitle">VS. MEDIA DEL SEGMENTO</h4>
+            <div class="segmento-item">
+                <div class="segmento-label">Uso de instalaciones</div>
+                <div class="segmento-value negativo">78% por debajo de la media</div>
+            </div>
+            <div class="segmento-item">
+                <div class="segmento-label">Interacciones con la App</div>
+                <div class="segmento-value negativo">80% por debajo de la media</div>
+            </div>
+        </div>
+
+        <a href="retencion-cliente" class="btn-accion-retencion">
+            <span class="btn-icon">🔄</span>
+            <span>Acción de Retención Manual</span>
+        </a>
+    </div>
+
+    <!-- Columna derecha -->
+    <div class="detalle-col-der">
+        <div class="card factores-card">
+            <div class="factores-header">
+                <h4 class="card-subtitle-dark">Factores que influyen en el riesgo</h4>
+                <select class="periodo-select">
+                    <option>Últimos 30 días</option>
+                    <option>Últimos 90 días</option>
+                </select>
+            </div>
+
+            <div class="factores-content">
+                <div class="factores-lista">
+                    @foreach (var f in factores)
+                    {
+                        <div class="factor-item">
+                            <div class="factor-top">
+                                <span class="factor-nombre">@f.Nombre</span>
+                                <span class="factor-valor @(f.Valor.StartsWith("+") ? "factor-positivo" : "factor-negativo")">@f.Valor</span>
+                            </div>
+                            <div class="factor-bar">
+                                <div class="factor-fill @(f.Valor.StartsWith("+") ? "fill-positivo" : "fill-negativo")" style="width:@(f.Intensidad)%"></div>
+                            </div>
+                            <div class="factor-desc">@f.Descripcion</div>
+                        </div>
+                    }
+                </div>
+
+                <div class="radar-container">
+                    <svg viewBox="0 0 260 260" class="radar-svg">
+                        <!-- Rombo exterior punteado -->
+                        <polygon points="130,10 250,130 130,250 10,130"
+                                 fill="none" stroke="#f2b8c6" stroke-width="2" stroke-dasharray="6,5" />
+                        <!-- Pentágono interior -->
+                        <polygon points="130,50 195,95 170,175 90,175 65,95"
+                                 fill="none" stroke="#c7ccd6" stroke-width="1.5" />
+                        <!-- Centro -->
+                        <circle cx="130" cy="130" r="26" fill="#fff" stroke="#e5e8ee" stroke-width="1" />
+                        <text x="130" y="127" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">Modelo:</text>
+                        <text x="130" y="137" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">Random Forest</text>
+                        <text x="130" y="112" text-anchor="middle" font-size="14">🎯</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="card engagement-card">
+            <h4 class="card-subtitle-dark">Evolución del Compromiso (Engagement Score)</h4>
+            <svg viewBox="0 0 600 220" class="engagement-svg" preserveAspectRatio="none">
+                <!-- líneas de grilla -->
+                <line x1="0" y1="20" x2="600" y2="20" stroke="#f0f2f6" stroke-width="1" />
+                <line x1="0" y1="70" x2="600" y2="70" stroke="#f0f2f6" stroke-width="1" />
+                <line x1="0" y1="120" x2="600" y2="120" stroke="#f0f2f6" stroke-width="1" />
+                <line x1="0" y1="170" x2="600" y2="170" stroke="#f0f2f6" stroke-width="1" />
+                <polyline fill="none" stroke="#d63939" stroke-width="3"
+                          points="0,40 150,55 300,65 450,110 550,175 600,195" />
+            </svg>
+            <div class="engagement-labels">
+                <span>Hace 6 meses</span>
+                <span>Hace 3 meses</span>
+                <span>Hace 1 mes</span>
+                <span>Actual</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private record Factor(string Nombre, string Valor, int Intensidad, string Descripcion);
+
+    private List<Factor> factores = new()
+    {
+        new("Frecuencia de Asistencia", "-45%", 45, "Ha pasado de 4 visitas/semana a 0 en el último mes."),
+        new("Interacción con la App", "-20%", 20, ""),
+        new("Antigüedad", "-15%", 15, ""),
+        new("Historial de Pagos", "+5%", 20, "Socio puntual, reduce ligeramente la probabilidad de fuga inmediata."),
+    };
+}

@@ -1,0 +1,313 @@
+﻿@page "/integraciones/nueva"
+@page "/integraciones/editar/{IntegracionId}"
+@inject NavigationManager Navigation
+
+<PageTitle>@(EsEdicion ? "Editar Integración" : "Nueva Integración")</PageTitle>
+
+<div class="page-header">
+    <div></div>
+    <div class="header-icons">
+        <span>🔔</span>
+        <span>❓</span>
+        <span>⚙️</span>
+    </div>
+</div>
+
+<div class="breadcrumb">CONFIGURACIÓN <span class="breadcrumb-sep">›</span> @(EsEdicion ? "EDITAR FUENTE" : "NUEVA FUENTE")</div>
+
+<div class="retencion-header-row">
+    <div>
+        <h1 class="detalle-title">@(EsEdicion ? $"Editar Integración: {nombreFuente}" : "Configurar Nueva Integración")</h1>
+        <p class="camp-subtitle">@(EsEdicion ? "Actualizá las credenciales y el mapeo de datos de esta fuente." : "Conectá una nueva fuente de datos siguiendo estos tres pasos.")</p>
+    </div>
+    <div class="retencion-actions">
+        <button class="btn-cancelar" @onclick="Cancelar">Cancelar</button>
+        <button class="btn-confirmar" disabled="@(!conexionProbada)" @onclick="Guardar">
+            💾 @(EsEdicion ? "Guardar Cambios" : "Guardar e integrar")
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(mensajeConfirmacion))
+{
+    <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeConfirmacion</div>
+}
+@if (!string.IsNullOrEmpty(errorConexion))
+{
+    <div class="integ-error-conexion">⚠️ @errorConexion</div>
+}
+
+<!-- Stepper -->
+<div class="integ-stepper">
+    <div class="integ-step">
+        <span class="integ-step-num integ-step-done">✓</span>
+        <span class="integ-step-label">Tipo de Fuente</span>
+    </div>
+    <div class="integ-step-line"></div>
+    <div class="integ-step">
+        <span class="integ-step-num @(camposCredencialesCompletos ? "integ-step-done" : "integ-step-actual")">
+            @(camposCredencialesCompletos ? "✓" : "2")
+        </span>
+        <span class="integ-step-label">Credenciales</span>
+    </div>
+    <div class="integ-step-line"></div>
+    <div class="integ-step">
+        <span class="integ-step-num @(conexionProbada ? "integ-step-actual" : "")">3</span>
+        <span class="integ-step-label">Mapeo de Datos</span>
+    </div>
+</div>
+
+<!-- Paso 1: Tipo de fuente -->
+<div class="card regla-card">
+    <p class="integ-paso-titulo">Paso 1: Seleccione el tipo de integración</p>
+    <div class="integ-tipo-row">
+        @foreach (var t in tiposDisponibles)
+        {
+            <div class="integ-tipo-card @(tipoSeleccionado == t.Nombre ? "integ-tipo-card-activa" : "") @(EsEdicion ? "integ-tipo-card-readonly" : "")"
+                 @onclick="() => SeleccionarTipo(t.Nombre)">
+                @if (tipoSeleccionado == t.Nombre)
+                {
+                    <span class="integ-tipo-check">✓</span>
+                }
+                <div class="integ-tipo-icon">@t.Icono</div>
+                <div class="integ-tipo-nombre">@t.Nombre</div>
+                <div class="integ-tipo-sub">@t.Descripcion</div>
+            </div>
+        }
+    </div>
+    @if (EsEdicion)
+    {
+        <p class="integ-tipo-nota">El tipo de fuente no puede modificarse una vez creada la integración.</p>
+    }
+</div>
+
+<div class="integ-main-row">
+    <!-- Paso 2: Credenciales -->
+    <div class="card regla-card">
+        <p class="integ-paso-titulo">Paso 2: Credenciales de conexión</p>
+
+        <label class="form-label">URL DEL SERVIDOR</label>
+        <input class="campana-select @(errores.Contains("url") ? "input-error" : "")"
+               @bind="urlServidor" @bind:event="oninput"
+               placeholder="https://db.instance.com:5432" />
+
+        <div class="integ-cred-row-2">
+            <div>
+                <label class="form-label">USUARIO / CLIENT ID</label>
+                <input class="campana-select @(errores.Contains("usuario") ? "input-error" : "")"
+                       @bind="usuario" @bind:event="oninput"
+                       placeholder="postgres_admin" />
+            </div>
+            <div>
+                <label class="form-label">CONTRASEÑA / API KEY</label>
+                <input type="password"
+                       class="campana-select @(errores.Contains("apiKey") ? "input-error" : "")"
+                       @bind="apiKey" @bind:event="oninput"
+                       placeholder="••••••••••" />
+            </div>
+        </div>
+
+        @if (tipoSeleccionado == "Base de Datos")
+        {
+            <label class="form-label">NOMBRE DE LA BASE DE DATOS</label>
+            <input class="campana-select @(errores.Contains("dbName") ? "input-error" : "")"
+                   @bind="nombreBaseDatos" @bind:event="oninput"
+                   placeholder="production_users_db" />
+        }
+
+        <button class="integ-btn-probar" disabled="@(!camposCredencialesCompletos)" @onclick="ProbarConexion">
+            🔌 Probar conexión
+        </button>
+        @if (!camposCredencialesCompletos)
+        {
+            <span class="camp-form-error">Completá los campos obligatorios para habilitar "Probar conexión".</span>
+        }
+    </div>
+
+    <!-- Paso 3: Mapeo de campos -->
+    <div class="card regla-card">
+        <p class="integ-paso-titulo">Paso 3: Mapeo de campos</p>
+
+        @if (!conexionProbada)
+        {
+            <div class="integ-mapeo-vacio">
+                🔌 Probá la conexión para ver los campos disponibles en la fuente de datos.
+            </div>
+        }
+        else
+        {
+            @foreach (var m in mapeoCampos)
+            {
+                <div class="integ-mapeo-row">
+                    <div class="integ-mapeo-externo">
+                        <span class="integ-mapeo-icono">@m.Icono</span> @m.CampoExterno
+                    </div>
+                    <span class="integ-mapeo-flecha">→</span>
+                    <select class="integ-mapeo-select" @bind="m.CampoPlataforma">
+                        @foreach (var op in camposPlataformaDisponibles)
+                        {
+                            <option value="@op">@op</option>
+                        }
+                    </select>
+                </div>
+            }
+
+            <div class="integ-mapeo-info">
+                ℹ️ Los campos mapeados se utilizarán para alimentar los algoritmos de predicción de Churn.
+                Asegúrese de que los tipos de datos (Fecha, Texto, Número) sean consistentes.
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? IntegracionId { get; set; }
+
+    private bool EsEdicion => !string.IsNullOrWhiteSpace(IntegracionId);
+
+    private string nombreFuente = "";
+    private string tipoSeleccionado = "Base de Datos";
+    private string urlServidor = "";
+    private string usuario = "";
+    private string apiKey = "";
+    private string nombreBaseDatos = "";
+    private bool conexionProbada = false;
+    private string mensajeConfirmacion = "";
+    private string errorConexion = "";
+    private HashSet<string> errores = new();
+
+    private record TipoFuente(string Nombre, string Icono, string Descripcion);
+
+    private List<TipoFuente> tiposDisponibles = new()
+    {
+        new("CRM", "🔗", "Salesforce, HubSpot, Zoho o Microsoft Dynamics."),
+        new("Base de Datos", "🗄️", "PostgreSQL, MySQL, SQL Server o Snowflake."),
+        new("API Personalizada", "🧩", "Endpoints REST/GraphQL para flujos propios."),
+    };
+
+    private class MapeoCampo
+    {
+        public string Icono { get; set; } = "";
+        public string CampoExterno { get; set; } = "";
+        public string CampoPlataforma { get; set; } = "";
+    }
+
+    private List<MapeoCampo> mapeoCampos = new();
+
+    private List<string> camposPlataformaDisponibles = new()
+    {
+        "external_id", "last_login_at", "plan_type", "email", "nombre", "sede_id", "fecha_alta"
+    };
+
+    // Habilita "Probar conexión" (CU15 paso 5 / CU16 paso 6).
+    private bool camposCredencialesCompletos =>
+        !string.IsNullOrWhiteSpace(urlServidor) &&
+        !string.IsNullOrWhiteSpace(usuario) &&
+        !string.IsNullOrWhiteSpace(apiKey) &&
+        (tipoSeleccionado != "Base de Datos" || !string.IsNullOrWhiteSpace(nombreBaseDatos));
+
+    protected override void OnInitialized()
+    {
+        if (EsEdicion)
+        {
+            CargarIntegracionExistente(IntegracionId!);
+        }
+    }
+
+    /// <summary>
+    /// Simula la carga de una integración ya configurada (CU16, pasos 2-4).
+    /// En un escenario real vendría de un servicio / repositorio por IntegracionId.
+    /// La contraseña / API key se muestra enmascarada, sin exponer el valor real.
+    /// </summary>
+    private void CargarIntegracionExistente(string id)
+    {
+        // TODO: reemplazar por la consulta real a la integración por id.
+        nombreFuente = "PostgreSQL Prod";
+        tipoSeleccionado = "Base de Datos";
+        urlServidor = "https://db.instance.com:5432";
+        usuario = "postgres_admin";
+        apiKey = "••••••••••"; // enmascarada; solo se sobreescribe si el admin la modifica
+        nombreBaseDatos = "production_users_db";
+
+        // El mapeo actual ya se conoce, se muestra precargado (CU16 paso 10).
+        mapeoCampos = new()
+        {
+            new() { Icono = "🆔", CampoExterno = "User ID", CampoPlataforma = "external_id" },
+            new() { Icono = "🕐", CampoExterno = "Last Login", CampoPlataforma = "last_login_at" },
+            new() { Icono = "💳", CampoExterno = "Subscription", CampoPlataforma = "plan_type" },
+        };
+
+        // La integración ya estaba conectada antes, por eso el mapeo se ve de entrada;
+        // igual queda disponible "Probar conexión" para revalidar tras cualquier cambio.
+        conexionProbada = true;
+    }
+
+    private void SeleccionarTipo(string tipo)
+    {
+        // CU16: el tipo de fuente no puede modificarse en edición.
+        if (EsEdicion) return;
+
+        tipoSeleccionado = tipo;
+        conexionProbada = false;
+        mapeoCampos.Clear();
+    }
+
+    private void ProbarConexion()
+    {
+        if (!camposCredencialesCompletos) return;
+
+        errorConexion = "";
+
+        // TODO: reemplazar por el intento de conexión real contra la fuente de datos.
+        // Simulación: se considera exitosa siempre que los campos estén completos
+        // (camino alterno 8.1 quedaría acá si la conexión real fallara).
+        conexionProbada = true;
+
+        if (mapeoCampos.Count == 0)
+        {
+            mapeoCampos = new()
+            {
+                new() { Icono = "🆔", CampoExterno = "User ID", CampoPlataforma = "external_id" },
+                new() { Icono = "🕐", CampoExterno = "Last Login", CampoPlataforma = "last_login_at" },
+                new() { Icono = "💳", CampoExterno = "Subscription", CampoPlataforma = "plan_type" },
+            };
+        }
+    }
+
+    private void Guardar()
+    {
+        errores.Clear();
+
+        if (string.IsNullOrWhiteSpace(urlServidor)) errores.Add("url");
+        if (string.IsNullOrWhiteSpace(usuario)) errores.Add("usuario");
+        if (string.IsNullOrWhiteSpace(apiKey)) errores.Add("apiKey");
+        if (tipoSeleccionado == "Base de Datos" && string.IsNullOrWhiteSpace(nombreBaseDatos)) errores.Add("dbName");
+
+        if (errores.Count > 0 || !conexionProbada)
+        {
+            mensajeConfirmacion = "";
+            return;
+        }
+
+        // TODO: reemplazar por la persistencia real (crear o actualizar según EsEdicion).
+        mensajeConfirmacion = EsEdicion
+            ? "Integración actualizada exitosamente."
+            : "Integración creada exitosamente con estado Conexión Activa.";
+
+        StateHasChanged();
+        _ = RedirigirConDelay();
+    }
+
+    private async Task RedirigirConDelay()
+    {
+        await Task.Delay(1200);
+        Navigation.NavigateTo("/integraciones");
+    }
+
+    private void Cancelar()
+    {
+        // Alterno 13.1: descarta los cambios y vuelve al listado (CU14).
+        Navigation.NavigateTo("/integraciones");
+    }
+}

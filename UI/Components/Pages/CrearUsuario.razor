@@ -1,0 +1,374 @@
+﻿@page "/administracion/usuarios/nuevo"
+@page "/administracion/usuarios/editar/{UsuarioId:int}"
+
+@inject NavigationManager Navigation
+
+<PageTitle>@(EsEdicion ? "Editar Usuario" : "Crear Usuario")</PageTitle>
+
+<div class="usr-form-topbar">
+    <div class="search-box usr-form-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar..." />
+    </div>
+
+    <div class="usr-topbar-icons">
+        <button class="usr-icon-btn" title="Notificaciones">
+            🔔
+        </button>
+
+        <button class="usr-icon-btn" title="Ayuda">
+            ❓
+        </button>
+
+        <button class="usr-icon-btn" title="Configuración">
+            ⚙️
+        </button>
+    </div>
+</div>
+
+<div class="breadcrumb">
+    Gestión de Usuarios
+    <span class="breadcrumb-sep">›</span>
+    @(EsEdicion ? "Editar Usuario" : "Crear Usuario")
+</div>
+
+<div class="usr-form-header">
+    <div>
+        <h1>
+            @(EsEdicion ? "Editar Usuario" : "Crear Nuevo Usuario")
+        </h1>
+
+        <p class="camp-subtitle">
+            @(EsEdicion
+                        ? "Modifique los datos y permisos de acceso del usuario."
+                        : "Configure los datos básicos y los permisos de acceso para el nuevo integrante del equipo.")
+        </p>
+    </div>
+</div>
+
+<div class="card usr-form-card">
+
+    <!-- Nombre y correo -->
+    <div class="usr-form-grid">
+
+        <div class="usr-form-field">
+            <label class="form-label">NOMBRE COMPLETO</label>
+
+            <input type="text"
+                   class="campana-select @(errores.Contains("nombre") ? "input-error" : "")"
+                   @bind="nombreCompleto"
+                   @bind:event="oninput"
+                   placeholder="Ej. Carlos Méndez" />
+        </div>
+
+        <div class="usr-form-field">
+            <label class="form-label">CORREO ELECTRÓNICO</label>
+
+            <input type="email"
+                   class="campana-select @(errores.Contains("email") ? "input-error" : "")"
+                   @bind="email"
+                   @bind:event="oninput"
+                   disabled="@EsEdicion"
+                   placeholder="carlos.mendez@empresa.com" />
+
+            @if (EsEdicion)
+            {
+                <span class="usr-form-help">
+                    El correo electrónico no puede modificarse.
+                </span>
+            }
+            else
+            {
+                <span class="usr-form-help">
+                    Este será el identificador de acceso del usuario.
+                </span>
+            }
+        </div>
+
+    </div>
+
+    <!-- Rol y estado -->
+    <div class="usr-form-grid">
+
+        <div class="usr-form-field">
+            <label class="form-label">ROL</label>
+
+            <select class="campana-select"
+                    @bind="rol">
+
+                <option value="Administrador">
+                    Administrador
+                </option>
+
+                <option value="Gerente">
+                    Gerente
+                </option>
+
+                <option value="Ejecutivo Comercial">
+                    Ejecutivo Comercial
+                </option>
+
+            </select>
+        </div>
+
+        <div class="usr-form-field">
+            <label class="form-label">ESTADO</label>
+
+            <div class="usr-status-box">
+                <span class="usr-status-dot @(activo ? "usr-status-active" : "usr-status-inactive")"></span>
+
+                <span>
+                    @(activo ? "Activo" : "Inactivo")
+                </span>
+
+                <span class="usr-status-locked">
+                    🔒
+                </span>
+            </div>
+
+            <span class="usr-form-help">
+                El estado no puede modificarse desde este formulario.
+            </span>
+        </div>
+
+    </div>
+
+    <!-- Resumen de permisos -->
+    <div class="usr-permissions-card">
+
+        <div class="usr-permissions-header">
+            <div class="usr-permissions-icon">
+                🛡
+            </div>
+
+            <div>
+                <h3>Resumen de Permisos</h3>
+            </div>
+        </div>
+
+        <div class="usr-permissions-content">
+            <span class="usr-permissions-info">ⓘ</span>
+
+            <span>
+                @ObtenerDescripcionRol()
+            </span>
+        </div>
+
+    </div>
+
+    @if (!EsEdicion)
+    {
+        <div class="usr-email-info">
+            <span class="usr-email-icon">✉</span>
+
+            <span>
+                Se enviará un correo electrónico al usuario con un enlace
+                para establecer su contraseña de forma segura.
+            </span>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeError))
+    {
+        <div class="usr-form-error">
+            ⚠ @mensajeError
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeConfirmacion))
+    {
+        <div class="camp-form-confirmacion">
+            ✔ @mensajeConfirmacion
+        </div>
+    }
+
+    <div class="usr-form-separator"></div>
+
+    <div class="usr-form-actions">
+
+        <button class="btn-cancelar"
+                @onclick="Cancelar">
+            Cancelar
+        </button>
+
+        <button class="btn-confirmar"
+                @onclick="GuardarUsuario">
+            @(EsEdicion ? "💾 Guardar Cambios" : "👤 Guardar Usuario")
+        </button>
+
+    </div>
+
+</div>
+
+@code {
+
+    [Parameter]
+    public int? UsuarioId { get; set; }
+
+    private bool EsEdicion => UsuarioId.HasValue;
+
+    private string nombreCompleto = "";
+    private string email = "";
+    private string rol = "Gerente";
+
+    private bool activo = false;
+
+    private string mensajeError = "";
+    private string mensajeConfirmacion = "";
+
+    private HashSet<string> errores = new();
+
+    protected override void OnInitialized()
+    {
+        if (EsEdicion)
+        {
+            CargarUsuarioExistente(UsuarioId!.Value);
+        }
+    }
+
+    private void CargarUsuarioExistente(int id)
+    {
+        // TODO: reemplazar por la consulta real al usuario.
+
+        if (id == 1)
+        {
+            nombreCompleto = "Alejandro Mendoza";
+            email = "a.mendoza@tecnocorp.com";
+            rol = "Administrador";
+            activo = true;
+        }
+        else if (id == 2)
+        {
+            nombreCompleto = "Sofía Larrea";
+            email = "s.larrea@tecnocorp.com";
+            rol = "Gerente";
+            activo = true;
+        }
+        else if (id == 3)
+        {
+            nombreCompleto = "Ricardo Pineda";
+            email = "r.pineda@tecnocorp.com";
+            rol = "Ejecutivo Comercial";
+            activo = false;
+        }
+    }
+
+    private string ObtenerDescripcionRol()
+    {
+        return rol switch
+        {
+            "Administrador" =>
+                "Acceso completo a la plataforma, incluyendo gestión de usuarios, configuración y todas las funcionalidades.",
+
+            "Gerente" =>
+                "Acceso a la gestión y supervisión de campañas, reportes y métricas de efectividad y retención.",
+
+            "Ejecutivo Comercial" =>
+                "Acceso limitado a la gestión comercial y visualización de reportes de efectividad y retención.",
+
+            _ =>
+                "Seleccione un rol para visualizar sus permisos."
+        };
+    }
+
+    private void GuardarUsuario()
+    {
+        errores.Clear();
+        mensajeError = "";
+        mensajeConfirmacion = "";
+
+        // CU20 / CU21 - campos obligatorios
+        if (string.IsNullOrWhiteSpace(nombreCompleto))
+        {
+            errores.Add("nombre");
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            errores.Add("email");
+        }
+
+        if (errores.Count > 0)
+        {
+            mensajeError = "Complete todos los campos obligatorios.";
+            return;
+        }
+
+        // CU20 - validar formato del email
+        if (!EsEmailValido(email))
+        {
+            errores.Add("email");
+            mensajeError = "El formato del correo electrónico no es válido.";
+            return;
+        }
+
+        if (!EsEdicion)
+        {
+            // CU20 - verificar que no exista
+            if (CorreoYaRegistrado(email))
+            {
+                mensajeError = "Existe un usuario asociado al correo ingresado.";
+                return;
+            }
+
+            // CU20 paso 11:
+            // el nuevo usuario se crea INACTIVO.
+            activo = false;
+
+            // TODO:
+            // Crear usuario en BLL/DAL.
+            // Generar enlace de contraseña.
+            // Enviar correo de invitación.
+
+            mensajeConfirmacion = "Usuario creado correctamente.";
+        }
+        else
+        {
+            // CU21:
+            // Email y estado no se modifican.
+            // Solo se actualizan nombre, apellido/Nombre completo y rol.
+
+            // TODO:
+            // Actualizar usuario mediante BLL/DAL.
+
+            mensajeConfirmacion = "La modificación fue realizada correctamente.";
+        }
+
+        StateHasChanged();
+
+        _ = RedirigirAGestionUsuarios();
+    }
+
+    private bool EsEmailValido(string valor)
+    {
+        try
+        {
+            var mail = new System.Net.Mail.MailAddress(valor);
+            return mail.Address == valor;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool CorreoYaRegistrado(string correo)
+    {
+        // TODO: reemplazar por UsuarioBLL.ExisteCorreo(...)
+        return false;
+    }
+
+    private async Task RedirigirAGestionUsuarios()
+    {
+        await Task.Delay(1000);
+
+        Navigation.NavigateTo("/administracion/usuarios");
+    }
+
+    private void Cancelar()
+    {
+        // CU20 / CU21:
+        // descartar los cambios y regresar al listado.
+        Navigation.NavigateTo("/administracion/usuarios");
+    }
+}

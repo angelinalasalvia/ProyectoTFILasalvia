@@ -15,14 +15,19 @@ public static class FeatureEngineering
     /// normalmente DateTime.Now, pero lo recibimos como parámetro para que el
     /// cálculo sea determinístico y testeable.
     /// </summary>
-    public static ChurnInputData Construir(Cliente cliente, List<EventoCliente> eventos, DateTime fechaReferencia)
+    public static ChurnInputData Construir(Cliente cliente, List<EventoCliente> eventos, DateTime fechaReferencia, int? diasVentana = null)
     {
-        var ultimos30 = fechaReferencia.AddDays(-30);
-        var ultimos60 = fechaReferencia.AddDays(-60);
-        var ultimos90 = fechaReferencia.AddDays(-90);
+        // Cuando el entrenamiento del modelo llama a este método (diasVentana
+        // = null), se mantienen las ventanas fijas originales (30/60/90 días)
+        // que ya venían funcionando. Cuando CU02 llama a este método con un
+        // período elegido por el usuario (semana/mes/trimestre/año), todas
+        // las ventanas usan esa misma cantidad de días.
+        var ultimos30 = fechaReferencia.AddDays(-(diasVentana ?? 30));
+        var ultimos60 = fechaReferencia.AddDays(-(diasVentana ?? 60));
+        var ultimos90 = fechaReferencia.AddDays(-(diasVentana ?? 90));
 
         float diasDesdeUltimaActividad = eventos.Count == 0
-            ? 999f // cliente sin ningún evento registrado: lo tratamos como máxima inactividad
+            ? 999f
             : (float)(fechaReferencia - eventos.Max(e => e.Fecha)).TotalDays;
 
         float antiguedadDias = eventos.Count == 0

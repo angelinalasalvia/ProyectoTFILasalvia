@@ -1,28 +1,37 @@
 using BLL;
 using DAL;
-using Microsoft.EntityFrameworkCore;
 using Servicios;
 using UI.Components;
+using UI.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
-// DAL
 builder.Services.AddDbContext<ChurnDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
-builder.Services.AddScoped<IChurnRepository, ChurnRepository>();
+
+// DAL - una interfaz/implementación por entidad
+builder.Services.AddScoped<IDALCliente, DALCliente>();
+builder.Services.AddScoped<IDALFactorRiesgo, DALFactorRiesgo>();
+builder.Services.AddScoped<IDALModelo, DALModelo>();
+builder.Services.AddScoped<IDALPrediccion, DALPrediccion>();
 
 // BLL
-builder.Services.AddScoped<ChurnModelService>();
+builder.Services.AddScoped<BLLPrediccion>();
+builder.Services.AddScoped<BLLModelo>();
+builder.Services.AddScoped<BLLCliente>();
+builder.Services.AddScoped<BLLFactorRiesgo>();
 
-// El calculo automatico arranca junto con la UI, en el mismo proceso
+// UI
+builder.Services.AddScoped<GeneradorPdf>();
+
 builder.Services.AddHostedService<PrediccionBackgroundService>();
 
 var app = builder.Build();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
-
 app.Run();

@@ -20,8 +20,6 @@ public class ChurnDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Le decimos a EF que la columna ProbabilidadAbandono es decimal(18,2)
-        // para que coincida exactamente con la definición SQL de tu tabla.
         modelBuilder.Entity<Prediccion>()
             .Property(p => p.ProbabilidadAbandono)
             .HasColumnType("decimal(18,2)");

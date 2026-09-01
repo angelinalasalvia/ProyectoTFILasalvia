@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BE;
 
-// Mapea 1 a 1 con tu tabla [dbo].[Cliente]
 [Table("Cliente")]
 public class Cliente
 {
@@ -19,9 +18,6 @@ public class Cliente
     [Required, MaxLength(150)]
     public string Email { get; set; } = string.Empty;
 
-    // Valores esperados: "Socio Activo" / "Inactivo"
-    // Esta es la columna que usamos como "etiqueta" (label) para entrenar el modelo:
-    // le decimos "este cliente ya abandonó" o "este sigue activo".
     [Required, MaxLength(50)]
     public string EstadoRegistro { get; set; } = string.Empty;
 
@@ -33,8 +29,6 @@ public class Cliente
 
     [Required, MaxLength(50)]
     public string Sede { get; set; } = string.Empty;
-
-    // Navegación: todos los eventos (visitas, pagos, etc.) de este cliente
     public ICollection<EventoCliente> Eventos { get; set; } = new List<EventoCliente>();
 }
 

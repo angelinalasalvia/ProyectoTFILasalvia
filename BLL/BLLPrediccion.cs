@@ -8,7 +8,6 @@ public class BLLPrediccion
     private readonly IDALPrediccion _dalPrediccion;
     public BLLPrediccion(IDALPrediccion dalPrediccion) => _dalPrediccion = dalPrediccion;
 
-    // Paso 2
     public async Task<(int Alto, int Medio, int Bajo)> ObtenerResumenNivelesRiesgo(CancellationToken ct = default)
     {
         var todas = await _dalPrediccion.ObtenerPrediccionesAsync(ct);
@@ -19,21 +18,18 @@ public class BLLPrediccion
         );
     }
 
-    // Pasos 3-4: carga inicial, orden por defecto = mayor a menor probabilidad.
     public async Task<List<Prediccion>> ObtenerPredicciones(CancellationToken ct = default)
     {
         var lista = await _dalPrediccion.ObtenerPrediccionesAsync(ct);
         return lista.OrderByDescending(p => p.ProbabilidadAbandono).ToList();
     }
 
-    // Pasos 6-7: filtro por nivel de riesgo.
     public async Task<List<Prediccion>> ObtenerPrediccionesSegunFiltro(string nivelRiesgo, CancellationToken ct = default)
     {
         var lista = await ObtenerPredicciones(ct);
         return nivelRiesgo == "Todos" ? lista : lista.Where(p => p.NivelRiesgo == nivelRiesgo).ToList();
     }
 
-    // Pasos 8-9: orden elegido por el usuario.
     public async Task<List<Prediccion>> ObtenerPrediccionesOrdenadas(string columna, CancellationToken ct = default)
     {
         var lista = await _dalPrediccion.ObtenerPrediccionesAsync(ct);
@@ -47,7 +43,6 @@ public class BLLPrediccion
 
     private static int OrdenNivel(string nivel) => nivel switch { "Alto" => 0, "Medio" => 1, "Bajo" => 2, _ => 3 };
 
-    // Para CU02 (detalle de un cliente puntual)
     public async Task<Prediccion?> ObtenerPrediccionPorCliente(int idCliente, CancellationToken ct = default)
         => await _dalPrediccion.ObtenerPrediccionPorClienteAsync(idCliente, ct);
 }

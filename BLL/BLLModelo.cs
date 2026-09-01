@@ -27,12 +27,6 @@ public class BLLModelo
         _mlContext = new MLContext(seed: 42);
     }
 
-    // Corresponde a ObtenerFechaUltimaEjecucion(int id) del diagrama.
-    // Simplificación: como hoy hay un único modelo activo, lo busco por
-    // nombre en vez de por id (evita tener que conocer el id de antemano
-    // desde la UI). Si más adelante manejás varios modelos, se puede
-    // agregar una sobrecarga que reciba el id.
-
     public async Task<string> ObtenerNombreModelo(int idModelo, CancellationToken ct = default)
         => await _dalModelo.ObtenerNombrePorIdAsync(idModelo, ct) ?? "Modelo desconocido";
     public async Task<DateTime?> ObtenerFechaUltimaEjecucion(CancellationToken ct = default)

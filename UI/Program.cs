@@ -13,7 +13,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddDbContext<ChurnDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
-// DAL - una interfaz/implementación por entidad
+// DAL 
 builder.Services.AddScoped<IDALCliente, DALCliente>();
 builder.Services.AddScoped<IDALFactorRiesgo, DALFactorRiesgo>();
 builder.Services.AddScoped<IDALModelo, DALModelo>();

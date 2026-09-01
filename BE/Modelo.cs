@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BE;
 
-// Mapea 1 a 1 con tu tabla [dbo].[Modelo]
-// Representa "una versión/instancia del modelo predictivo" (por eso tu CU01
-// pide mostrar "fecha y hora de la última ejecución del modelo").
 [Table("Modelo")]
 public class Modelo
 {

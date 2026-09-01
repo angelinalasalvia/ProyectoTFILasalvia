@@ -25,9 +25,6 @@ public class DALPrediccion : IDALPrediccion
         await _db.SaveChangesAsync(ct);
     }
 
-    // Nota: esta clase NO ordena ni filtra - eso es una decisión de negocio
-    // (qué orden por defecto, qué filtros existen) y le corresponde a la BLL,
-    // no a la DAL. La DAL solo trae los datos con sus relaciones cargadas.
     public async Task<List<Prediccion>> ObtenerPrediccionesAsync(CancellationToken ct = default)
         => await _db.Predicciones.Include(p => p.Cliente).Include(p => p.FactorRiesgo).ToListAsync(ct);
 

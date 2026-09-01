@@ -11,8 +11,6 @@ public class BLLCliente
     public async Task<Cliente?> ObtenerCliente(int idCliente, CancellationToken ct = default)
         => await _dalCliente.ObtenerClientePorIdAsync(idCliente, ct);
 
-    // Paso 3 del CU02: comparación contra la media del segmento (mismo PlanSocio).
-    // Devuelve (uso de instalaciones relativo, interacciones con la app relativo).
     public async Task<(double UsoInstalaciones, double InteraccionesApp)> ObtenerMetricasRelativasMedia(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
         var todos = await _dalCliente.ObtenerClientesConEventosAsync(ct);
@@ -45,6 +43,6 @@ public class BLLCliente
         "semana" => 7,
         "trimestre" => 90,
         "año" => 365,
-        _ => 30 // "mes", valor por defecto (paso 9 del CU02)
+        _ => 30 
     };
 }

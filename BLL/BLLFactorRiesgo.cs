@@ -8,9 +8,6 @@ public class BLLFactorRiesgo
     private readonly IDALCliente _dalCliente;
     public BLLFactorRiesgo(IDALCliente dalCliente) => _dalCliente = dalCliente;
 
-    // Paso 5 del CU02. Reutiliza la misma heurística de z-scores que usa el
-    // entrenamiento (FeatureEngineering), recalculada sobre la ventana de
-    // tiempo elegida por el usuario en vez de las ventanas fijas del entrenamiento.
     public async Task<List<FactorRiesgo>> ObtenerFactorRiesgo(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
         var todos = await _dalCliente.ObtenerClientesConEventosAsync(ct);

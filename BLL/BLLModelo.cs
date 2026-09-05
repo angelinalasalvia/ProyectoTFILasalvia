@@ -88,11 +88,24 @@ public class BLLModelo
                 new InputOutputColumnPair("SexoEncoded", nameof(ChurnInputData.Sexo)),
             })
             .Append(_mlContext.Transforms.Concatenate("Features",
-                nameof(ChurnInputData.VisitasUltimos30Dias), nameof(ChurnInputData.UsoAppUltimos30Dias),
-                nameof(ChurnInputData.ReservasUltimos30Dias), nameof(ChurnInputData.CancelacionesUltimos30Dias),
-                nameof(ChurnInputData.DiasDesdeUltimaActividad), nameof(ChurnInputData.PagosVencidosUltimos60Dias),
-                nameof(ChurnInputData.ConsultasSoporteUltimos90Dias), nameof(ChurnInputData.AntiguedadDias),
-                "PlanSocioEncoded", "SedeEncoded", "SexoEncoded"))
+            nameof(ChurnInputData.VisitasUltimos30Dias),
+            nameof(ChurnInputData.UsoAppUltimos30Dias),
+            nameof(ChurnInputData.ReservasUltimos30Dias),
+            nameof(ChurnInputData.CancelacionesUltimos30Dias),
+            nameof(ChurnInputData.DiasDesdeUltimaActividad),
+
+            nameof(ChurnInputData.PagosVencidosUltimos60Dias),
+            nameof(ChurnInputData.PagosRegistradosUltimos60Dias),
+            nameof(ChurnInputData.ProporcionPagosVencidos),
+
+            nameof(ChurnInputData.ConsultasSoporteUltimos90Dias),
+            nameof(ChurnInputData.AntiguedadDias),
+
+            nameof(ChurnInputData.TendenciaVisitas),
+
+            "PlanSocioEncoded",
+            "SedeEncoded",
+            "SexoEncoded"))
             .Append(_mlContext.BinaryClassification.Trainers.FastForest(
                 labelColumnName: nameof(ChurnInputData.Abandono), featureColumnName: "Features",
                 numberOfTrees: 100, numberOfLeaves: 20, minimumExampleCountPerLeaf: 5))

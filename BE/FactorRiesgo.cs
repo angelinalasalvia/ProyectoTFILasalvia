@@ -26,4 +26,6 @@ public static class NombresFactorRiesgo
     public const string HistorialPagosVencidos = "Historial de pagos vencidos";
     public const string CancelacionesFrecuentes = "Cancelaciones frecuentes de reservas";
     public const string AltaConsultaSoporte = "Alta cantidad de consultas a soporte";
+    public const string AltaProporcionPagosVencidos = "Alta proporción de pagos vencidos";
+    public const string TendenciaNegativaAsistencia = "Tendencia negativa de asistencia";
 }

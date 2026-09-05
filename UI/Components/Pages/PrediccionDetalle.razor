@@ -100,7 +100,9 @@ else
                             <div class="factor-item">
                                 <div class="factor-top">
                                     <span class="factor-nombre">@f.Nombre</span>
-                                    <span class="factor-valor @((f.Impacto ?? 0) >= 0 ? "factor-positivo" : "factor-negativo")">@((f.Impacto ?? 0) >= 0 ? "+" : "")@(f.Impacto)%</span>
+                                    <span class="factor-valor factor-positivo">
+                                        Influencia: @((f.Impacto ?? 0).ToString("0.0"))/100
+                                    </span>
                                 </div>
                                 <div class="factor-bar">
                                     <div class="factor-fill @((f.Impacto ?? 0) >= 0 ? "fill-positivo" : "fill-negativo")" style="width:@(Math.Abs(f.Impacto ?? 0))%"></div>

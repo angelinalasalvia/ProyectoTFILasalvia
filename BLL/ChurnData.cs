@@ -11,6 +11,12 @@ public class ChurnInputData
     public float PagosVencidosUltimos60Dias { get; set; }
     public float ConsultasSoporteUltimos90Dias { get; set; }
 
+    public float PagosRegistradosUltimos60Dias { get; set; }
+
+    public float ProporcionPagosVencidos { get; set; }
+
+    public float TendenciaVisitas { get; set; }
+
     public float AntiguedadDias { get; set; }                 
     public string PlanSocio { get; set; } = string.Empty;
     public string Sede { get; set; } = string.Empty;

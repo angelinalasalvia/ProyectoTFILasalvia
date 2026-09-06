@@ -48,14 +48,34 @@ public class BLLFactorRiesgo
 
             double impacto = Math.Clamp(50 + zScore * 15, 0, 100);
 
+            //temporal
+            if (nombre == NombresFactorRiesgo.TendenciaNegativaAsistencia)
+            {
+                Console.WriteLine(
+                    $"[DEBUG TENDENCIA] Cliente: {valor}, Media: {media}, " +
+                    $"Desvío: {desvio}, ZScore: {zScore}, Impacto: {impacto}");
+            }
+
             string nombreMostrar = nombre;
 
             if (nombre == NombresFactorRiesgo.TendenciaNegativaAsistencia)
             {
-                if (valor > 0)
+                if (valor < 0)
+                {
+                    nombreMostrar = "Tendencia negativa de asistencia";
+                }
+                else if (valor > 0 && valor < media)
+                {
+                    nombreMostrar = "Tendencia de asistencia inferior al segmento";
+                }
+                else if (valor > 0 && valor > media)
+                {
                     nombreMostrar = "Tendencia positiva de asistencia";
-                else if (valor == 0)
+                }
+                else
+                {
                     nombreMostrar = "Tendencia estable de asistencia";
+                }
             }
 
             resultado.Add(new FactorRiesgo

@@ -26,7 +26,9 @@
 else
 {
     <h1 class="detalle-title">Análisis de Predicción: @cliente.Nombre @cliente.Apellido</h1>
-    <span class="riesgo-tag">● RIESGO @prediccion?.NivelRiesgo?.ToUpper() - @prediccion?.ProbabilidadAbandono%</span>
+    <span class="riesgo-tag">
+        ● RIESGO @prediccion?.NivelRiesgo?.ToUpper() - @prediccion?.ProbabilidadAbandono.ToString("0.0")%
+    </span>
 
     <div class="detalle-row">
         <div class="detalle-col-izq">
@@ -100,8 +102,8 @@ else
                             <div class="factor-item">
                                 <div class="factor-top">
                                     <span class="factor-nombre">@f.Nombre</span>
-                                    <span class="factor-valor factor-positivo">
-                                        Influencia: @((f.Impacto ?? 0).ToString("0.0"))/100
+                                    <span class="factor-valor @((f.Impacto ?? 0) >= 0 ? "factor-positivo" : "factor-negativo")">
+                                        Índice de influencia: @((f.Impacto ?? 0).ToString("0.0"))/100
                                     </span>
                                 </div>
                                 <div class="factor-bar">
@@ -112,7 +114,7 @@ else
                         }
                     </div>
 
-                    <!-- El radar todavía es estático - lo dejamos dinámico en la próxima parte -->
+                    
                     <div class="radar-container">
                         <svg viewBox="0 0 260 260" class="radar-svg">
                             @for (int i = 0; i < factores.Count; i++)
@@ -139,7 +141,7 @@ else
                 </div>
             </div>
 
-            <!-- Engagement Score: sigue estático, lo conectamos en la próxima parte -->
+            
             <div class="card engagement-card">
                 <h4 class="card-subtitle-dark">Evolución del Compromiso (Engagement Score)</h4>
                 @if (!haySuficienteHistorialEngagement)
@@ -149,11 +151,42 @@ else
                 else
                 {
                     <svg viewBox="0 0 600 220" class="engagement-svg" preserveAspectRatio="none">
+
+                        <!-- Escala del Engagement Score -->
+                        <text x="5" y="23" font-size="9" fill="#777">100</text>
+                        <text x="5" y="73" font-size="9" fill="#777">75</text>
+                        <text x="5" y="123" font-size="9" fill="#777">50</text>
+                        <text x="5" y="173" font-size="9" fill="#777">25</text>
+                        <text x="5" y="198" font-size="9" fill="#777">0</text>
+
+                        <!-- Líneas de referencia -->
                         <line x1="0" y1="20" x2="600" y2="20" stroke="#f0f2f6" stroke-width="1" />
                         <line x1="0" y1="70" x2="600" y2="70" stroke="#f0f2f6" stroke-width="1" />
                         <line x1="0" y1="120" x2="600" y2="120" stroke="#f0f2f6" stroke-width="1" />
                         <line x1="0" y1="170" x2="600" y2="170" stroke="#f0f2f6" stroke-width="1" />
-                        <polyline fill="none" stroke="#d63939" stroke-width="3" points="@EngagementPolylinePuntos()" />
+
+                        <!-- Evolución del Engagement Score -->
+                        <polyline fill="none"
+                                  stroke="#d63939"
+                                  stroke-width="3"
+                                  points="@EngagementPolylinePuntos()" />
+
+                        @for (int i = 0; i < puntosEngagement.Count; i++)
+                        {
+                            double x = puntosEngagement.Count == 1
+                            ? 300
+                            : 600.0 * i / (puntosEngagement.Count - 1);
+
+                            double y = 195 -
+                            (puntosEngagement[i].Score / 100.0) * (195 - 20);
+
+                            <circle cx="@x.ToString(CultureInfo.InvariantCulture)"
+                                    cy="@y.ToString(CultureInfo.InvariantCulture)"
+                                    r="4"
+                                    fill="white"
+                                    stroke="#d63939"
+                                    stroke-width="2" />
+                        }
                     </svg>
                     <div class="engagement-labels">
                         @foreach (var p in puntosEngagement)
@@ -189,14 +222,13 @@ else
         if (prediccion != null)
             nombreModelo = await BLLModelo.ObtenerNombreModelo(prediccion.IdModelo);
         VerificarAnomalias();
-        GenerarGraficoEngagement(cliente); // Pasos 8-9
+        GenerarGraficoEngagement(cliente); 
     }
 
-    // Paso 4 / alternativo 4.1: la GUI decide localmente si hay anomalía
-    // (self-message en el diagrama, no va a la BLL).
+    
     private void VerificarAnomalias()
     {
-        const double umbral = -50; // % por debajo de la media a partir del cual se considera anomalía
+        const double umbral = -50; 
         hayAnomalia = metricas.UsoInstalaciones <= umbral || metricas.InteraccionesApp <= umbral;
     }
 
@@ -206,9 +238,8 @@ else
         metricas = await BLLCliente.ObtenerMetricasRelativasMedia(IdCliente, periodoActivo);
         factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente, periodoActivo);
         VerificarAnomalias();
-        GenerarGraficoEngagement(cliente); // Paso 13
-                                           // El radar (paso 11-12) no necesita llamada aparte: la SVG lee "factores"
-                                           // directamente y Blazor la re-renderiza sola con el nuevo valor.
+        GenerarGraficoEngagement(cliente); 
+                                           
     }
 
     private DateTime? UltimaActividad() => cliente?.Eventos
@@ -226,18 +257,16 @@ else
 
     private const int RadarCX = 130, RadarCY = 130, RadarRadioMax = 95;
 
-    // Paso 7: el polígono real se arma normalizando cada |Impacto| contra el mayor
-    // del período actual, así el factor más pesado siempre toca el borde.
     private string RadarPuntos()
     {
         if (factores.Count == 0) return "";
-        double maxImpacto = factores.Max(f => (double)Math.Abs(f.Impacto ?? 0)); // cast acá
+        double maxImpacto = factores.Max(f => (double)Math.Abs(f.Impacto ?? 0)); 
         if (maxImpacto == 0) maxImpacto = 1;
 
         var puntos = new List<string>();
         for (int i = 0; i < factores.Count; i++)
         {
-            double magnitud = (double)Math.Abs(factores[i].Impacto ?? 0) / maxImpacto; // y acá
+            double magnitud = (double)Math.Abs(factores[i].Impacto ?? 0) / maxImpacto; 
             var (x, y) = PuntoEnAngulo(i, factores.Count, magnitud * RadarRadioMax);
             puntos.Add($"{x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)}");
         }
@@ -249,7 +278,7 @@ else
 
     private (double x, double y) PuntoEnAngulo(int i, int total, double radio)
     {
-        double angulo = (Math.PI * 2 * i / total) - (Math.PI / 2); // arranca arriba
+        double angulo = (Math.PI * 2 * i / total) - (Math.PI / 2); 
         return (RadarCX + radio * Math.Cos(angulo), RadarCY + radio * Math.Sin(angulo));
     }
 
@@ -258,15 +287,15 @@ else
     private List<(string Etiqueta, double Score)> puntosEngagement = new();
     private bool haySuficienteHistorialEngagement = true;
 
-    // Fórmula propuesta — ajustable si encontrás algo similar en FeatureEngineering.cs.
-    // Combina visitas, uso de app y pagos por bucket, normalizado 0-100 dentro de la serie.
-    private const double PesoVisitas = 2.0;
-    private const double PesoApp = 1.5;
-    private const double PesoPago = 10.0;
+    private const double PesoVisitas = 50.0;
+    private const double PesoApp = 30.0;
+    private const double PesoPago = 20.0;
+
+    private const int MaxVisitasPorBucket = 10;
+    private const int MaxUsosAppPorBucket = 10;
+
     private const int CantidadBuckets = 6;
 
-    // Pasos 8-9 / 13 y alternativo 8.1. Autocontenido: usa "cliente.Eventos" que ya
-    // vino cargado (coincide con el self-message del diagrama, sin ida y vuelta al server).
     private void GenerarGraficoEngagement(Cliente? clienteActual)
     {
         puntosEngagement = new();
@@ -293,14 +322,20 @@ else
             int usosApp = delBucket.Count(e => e.Evento == TipoEvento.UsoApp);
             bool huboPago = delBucket.Any(e => e.Evento == TipoEvento.PagoRegistrado);
 
-            double score = (visitas * PesoVisitas) + (usosApp * PesoApp) + (huboPago ? PesoPago : 0);
-            crudos.Add((EtiquetaBucket(fin, periodoActivo), score));
+            double puntosVisitas =
+                Math.Min((double)visitas / MaxVisitasPorBucket, 1.0) * PesoVisitas;
+
+            double puntosApp =
+                Math.Min((double)usosApp / MaxUsosAppPorBucket, 1.0) * PesoApp;
+
+            double puntosPago = huboPago ? PesoPago : 0;
+
+            double score = puntosVisitas + puntosApp + puntosPago;
+
+            crudos.Add((EtiquetaBucket(fin, periodoActivo), Math.Round(score, 1)));
         }
 
-        double maxCrudo = crudos.Max(p => p.Score);
-        puntosEngagement = maxCrudo > 0
-            ? crudos.Select(p => (p.Etiqueta, Math.Round(p.Score / maxCrudo * 100, 1))).ToList()
-            : crudos;
+        puntosEngagement = crudos;
 
         haySuficienteHistorialEngagement = true;
     }
@@ -310,7 +345,7 @@ else
         "semana" => fecha.ToString("dd/MM"),
         "trimestre" => fecha.ToString("MMM"),
         "año" => fecha.ToString("MMM yy"),
-        _ => fecha.ToString("dd/MM") // "mes"
+        _ => fecha.ToString("dd/MM") 
     };
 
     private string EngagementPolylinePuntos()

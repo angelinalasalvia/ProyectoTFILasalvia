@@ -9,35 +9,39 @@ namespace BLL;
 
 public class BLLModelo
 {
-    private readonly IDALCliente _dalCliente;
-    private readonly IDALFactorRiesgo _dalFactorRiesgo;
-    private readonly IDALModelo _dalModelo;
-    private readonly IDALPrediccion _dalPrediccion;
+    private readonly IAccesoDatos _accesoDatos;
     private readonly ILogger<BLLModelo> _logger;
     private readonly MLContext _mlContext;
 
-    public BLLModelo(IDALCliente dalCliente, IDALFactorRiesgo dalFactorRiesgo, IDALModelo dalModelo,
-                      IDALPrediccion dalPrediccion, ILogger<BLLModelo> logger)
+    public BLLModelo(IAccesoDatos accesoDatos, ILogger<BLLModelo> logger)
     {
-        _dalCliente = dalCliente;
-        _dalFactorRiesgo = dalFactorRiesgo;
-        _dalModelo = dalModelo;
-        _dalPrediccion = dalPrediccion;
+        _accesoDatos = accesoDatos;
         _logger = logger;
         _mlContext = new MLContext(seed: 42);
     }
 
     public async Task<string> ObtenerNombreModelo(int idModelo, CancellationToken ct = default)
-        => await _dalModelo.ObtenerNombrePorIdAsync(idModelo, ct) ?? "Modelo desconocido";
+    {
+        var resultado = await _accesoDatos.Leer<Modelo>(
+            "SELECT * FROM Modelo WHERE IdModelo = @idModelo",
+            new { idModelo }, ct: ct);
+        return resultado.FirstOrDefault()?.Nombre ?? "Modelo desconocido";
+    }
+
     public async Task<DateTime?> ObtenerFechaUltimaEjecucion(CancellationToken ct = default)
-        => await _dalModelo.ObtenerFechaUltimaEjecucionAsync(NombresModelo.RandomForestChurn, ct);
+    {
+        var resultado = await _accesoDatos.Leer<Modelo>(
+            "SELECT * FROM Modelo WHERE Nombre = @nombre",
+            new { nombre = NombresModelo.RandomForestChurn }, ct: ct);
+        return resultado.FirstOrDefault()?.UltimaEjecucion;
+    }
 
     public async Task EntrenarYPredecirAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Iniciando ciclo de entrenamiento y predicción de churn...");
         var fechaReferencia = DateTime.Now;
 
-        var clientes = await _dalCliente.ObtenerClientesConEventosAsync(cancellationToken);
+        var clientes = await ConsultasComunes.ObtenerClientesConEventosAsync(_accesoDatos, cancellationToken);
         if (clientes.Count < 20)
         {
             _logger.LogWarning("Muy pocos clientes ({Count}) para entrenar un modelo confiable.", clientes.Count);
@@ -136,11 +140,11 @@ public class BLLModelo
 
     private async Task GuardarResultadosAsync(
         List<(int IdCliente, decimal Probabilidad, string NivelRiesgo, string Factor, decimal Impacto)> resultados,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var nombresFactor = FeatureEngineering.IndicadoresDeRiesgo.Select(i => i.NombreFactor);
-        var factoresPorNombre = await _dalFactorRiesgo.AsegurarCatalogoFactoresAsync(nombresFactor, cancellationToken);
-        var modelo = await _dalModelo.ObtenerOCrearModeloAsync(NombresModelo.RandomForestChurn, cancellationToken);
+        var factoresPorNombre = await AsegurarCatalogoFactoresAsync(nombresFactor, ct);
+        var modelo = await ObtenerOCrearModeloAsync(NombresModelo.RandomForestChurn, ct);
 
         var nuevasPredicciones = resultados.Select(r => new Prediccion
         {
@@ -151,6 +155,85 @@ public class BLLModelo
             ProbabilidadAbandono = r.Probabilidad
         });
 
-        await _dalPrediccion.ReemplazarPrediccionesAsync(resultados.Select(r => r.IdCliente), nuevasPredicciones, cancellationToken);
+        await ReemplazarPrediccionesAsync(resultados.Select(r => r.IdCliente), nuevasPredicciones, ct);
+    }
+
+    // Antes vivía en DALFactorRiesgo (AsegurarCatalogoFactoresAsync). La lógica de
+    // "buscar, y si no existe insertar" ahora es responsabilidad del BLL: el DAL
+    // genérico solo sabe ejecutar la consulta que se le pasa.
+    private async Task<Dictionary<string, FactorRiesgo>> AsegurarCatalogoFactoresAsync(
+        IEnumerable<string> nombresFactor, CancellationToken ct)
+    {
+        var existentes = (await _accesoDatos.Leer<FactorRiesgo>("SELECT * FROM FactorRiesgo", ct: ct)).ToList();
+        var porNombre = existentes.ToDictionary(f => f.Nombre);
+
+        foreach (var nombre in nombresFactor.Distinct())
+        {
+            if (porNombre.ContainsKey(nombre)) continue;
+
+            // OUTPUT INSERTED.* permite recuperar la fila recién insertada (con su Id)
+            // a través del mismo Leer<T>, sin necesitar un método extra en el DAL.
+            var insertados = await _accesoDatos.Leer<FactorRiesgo>(
+                @"INSERT INTO FactorRiesgo (Nombre, Descripcion)
+                  OUTPUT INSERTED.IdFactorRiesgo, INSERTED.Nombre, INSERTED.Descripcion, INSERTED.Impacto
+                  VALUES (@Nombre, @Descripcion)",
+                new { Nombre = nombre, Descripcion = nombre }, ct: ct);
+
+            porNombre[nombre] = insertados.First();
+        }
+
+        return porNombre;
+    }
+
+    // Antes vivía en DALModelo (ObtenerOCrearModeloAsync).
+    private async Task<Modelo> ObtenerOCrearModeloAsync(string nombreModelo, CancellationToken ct)
+    {
+        var actualizados = await _accesoDatos.Leer<Modelo>(
+            @"UPDATE Modelo SET UltimaEjecucion = @fecha
+              OUTPUT INSERTED.IdModelo, INSERTED.Nombre, INSERTED.UltimaEjecucion
+              WHERE Nombre = @nombreModelo",
+            new { fecha = DateTime.Now, nombreModelo }, ct: ct);
+
+        var modelo = actualizados.FirstOrDefault();
+        if (modelo != null) return modelo;
+
+        var insertados = await _accesoDatos.Leer<Modelo>(
+            @"INSERT INTO Modelo (Nombre, UltimaEjecucion)
+              OUTPUT INSERTED.IdModelo, INSERTED.Nombre, INSERTED.UltimaEjecucion
+              VALUES (@nombreModelo, @fecha)",
+            new { nombreModelo, fecha = DateTime.Now }, ct: ct);
+
+        return insertados.First();
+    }
+
+    // Antes vivía en DALPrediccion (ReemplazarPrediccionesAsync): borra las predicciones
+    // previas de los clientes recalculados e inserta las nuevas.
+    private async Task ReemplazarPrediccionesAsync(
+        IEnumerable<int> idsClientes, IEnumerable<Prediccion> nuevasPredicciones, CancellationToken ct)
+    {
+        var idsList = idsClientes.Distinct().ToList();
+        if (idsList.Count > 0)
+        {
+            var (clausulaIn, parametrosIn) = ConsultasComunes.ConstruirClausulaIn("id", idsList);
+            await _accesoDatos.Eliminar($"DELETE FROM Prediccion WHERE IdCliente IN ({clausulaIn})", parametrosIn, ct: ct);
+        }
+
+        // Nota: se inserta de a una porque Escribir() maneja su propia transacción por llamada.
+        // Para un volumen grande de clientes convendría un INSERT masivo (table-valued parameter
+        // o SqlBulkCopy), pero eso ya excede el alcance de "DAL genérico simple" del diagrama.
+        foreach (var prediccion in nuevasPredicciones)
+        {
+            await _accesoDatos.Escribir(
+                @"INSERT INTO Prediccion (IdCliente, IdFactorRiesgo, IdModelo, NivelRiesgo, ProbabilidadAbandono)
+                  VALUES (@IdCliente, @IdFactorRiesgo, @IdModelo, @NivelRiesgo, @ProbabilidadAbandono)",
+                new
+                {
+                    prediccion.IdCliente,
+                    prediccion.IdFactorRiesgo,
+                    prediccion.IdModelo,
+                    prediccion.NivelRiesgo,
+                    prediccion.ProbabilidadAbandono
+                }, ct: ct);
+        }
     }
 }

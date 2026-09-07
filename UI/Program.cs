@@ -14,16 +14,19 @@ builder.Services.AddDbContext<ChurnDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 // DAL 
-builder.Services.AddScoped<IDALCliente, DALCliente>();
+/*builder.Services.AddScoped<IDALCliente, DALCliente>();
 builder.Services.AddScoped<IDALFactorRiesgo, DALFactorRiesgo>();
 builder.Services.AddScoped<IDALModelo, DALModelo>();
-builder.Services.AddScoped<IDALPrediccion, DALPrediccion>();
+builder.Services.AddScoped<IDALPrediccion, DALPrediccion>();*/
+builder.Services.AddScoped<IAccesoDatos, AccesoDatos>();
 
 // BLL
 builder.Services.AddScoped<BLLPrediccion>();
 builder.Services.AddScoped<BLLModelo>();
 builder.Services.AddScoped<BLLCliente>();
 builder.Services.AddScoped<BLLFactorRiesgo>();
+builder.Services.AddScoped<BLLCampana>();
+builder.Services.AddScoped<BLLHistorialAcciones>();
 
 // UI
 builder.Services.AddScoped<GeneradorPdf>();

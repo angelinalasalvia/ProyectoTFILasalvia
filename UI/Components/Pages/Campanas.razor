@@ -1,6 +1,10 @@
 ﻿@page "/campanas"
 @using Microsoft.AspNetCore.Components
+@using BE
+@using BLL
 @inject NavigationManager Navigation
+@inject BLLCampana BLLCampana
+@inject BLLHistorialAcciones BLLHistorialAcciones
 
 <PageTitle>Historial de Campañas</PageTitle>
 
@@ -12,136 +16,231 @@
     <button class="btn-crear-campana" @onclick="IrACrearCampana">⊕ CREAR CAMPAÑA MANUAL</button>
 </div>
 
+@* Filtro de período: afecta solo a las métricas globales (KPIs), no a la tabla. *@
 <div class="card camp-filtros-card">
     <div class="filtro-grupo">
-        <label class="filtro-label">Canal</label>
-        <select class="filtro-select">
-            <option>Todos los canales</option>
-            <option>Email</option>
-            <option>WhatsApp</option>
-        </select>
-    </div>
-    <div class="filtro-grupo">
-        <label class="filtro-label">Rango de Fecha</label>
+        <label class="filtro-label">Período de métricas</label>
         <div class="filtro-rango">
-            <input type="text" class="filtro-fecha" value="10/01/2023" />
+            <input type="date" class="filtro-fecha" @bind="fechaDesdeMetricas" />
             <span class="filtro-rango-sep">a</span>
-            <input type="text" class="filtro-fecha" value="10/31/2023" />
+            <input type="date" class="filtro-fecha" @bind="fechaHastaMetricas" />
         </div>
     </div>
-    <div class="filtro-grupo">
-        <label class="filtro-label">Estado</label>
-        <select class="filtro-select">
-            <option>Cualquiera</option>
-            <option>Activa</option>
-            <option>Finalizada</option>
-        </select>
-    </div>
-    <button class="btn-limpiar-filtro">Limpiar Filtro</button>
-    <button class="btn-filtro-icon">☰</button>
+    <button class="btn-aplicar-filtros" @onclick="AplicarPeriodoMetricas">Aplicar</button>
+    <button class="btn-limpiar-filtro" @onclick="LimpiarPeriodoMetricas">Limpiar Filtro</button>
 </div>
 
-<div class="card camp-kpi-card">
-    <div class="camp-kpi-item">
-        <div class="camp-kpi-label">Éxito Global</div>
-        <div class="camp-kpi-value">68.5% <span class="camp-kpi-badge">+12%</span></div>
-        <div class="camp-kpi-bar"><div class="camp-kpi-fill" style="width:68.5%"></div></div>
-    </div>
-    <div class="camp-kpi-item">
-        <div class="camp-kpi-label">KPI Objetivo Alcanzado</div>
-        <div class="camp-kpi-value">82% <span class="camp-kpi-sub-inline">de campañas</span></div>
-        <div class="camp-kpi-desc">Superando la meta del 75%</div>
-    </div>
-    <div class="camp-kpi-item">
-        <div class="camp-kpi-label">Canal Más Efectivo</div>
-        <div class="camp-kpi-value camp-kpi-canal">💬 WhatsApp</div>
-        <div class="camp-kpi-desc">Tasa de conversión <strong>64%</strong></div>
-    </div>
-    <div class="camp-kpi-item">
-        <div class="camp-kpi-label">Impacto Reducción Churn</div>
-        <div class="camp-kpi-value camp-kpi-negativo">-4.2%</div>
-        <div class="camp-kpi-desc">Impacto directo este mes</div>
-    </div>
-</div>
+@if (errorPeriodoMetricas != null)
+{
+    <div class="camp-alert">@errorPeriodoMetricas</div>
+}
 
-<div class="card camp-table-card">
-    <table class="camp-table">
-        <thead>
-            <tr>
-                <th>NOMBRE DE CAMPAÑA</th>
-                <th>CANAL</th>
-                <th>OBJETIVO</th>
-                <th>TASA DE ÉXITO</th>
-                <th>ACCIONES</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in campanas)
-            {
-                <tr>
-                    <td class="camp-nombre">
-                        @if (c.Nombre == "50% Descuento")
-                        {
-                            <a href="campana-detalle" class="camp-nombre-link">@c.Nombre</a>
-                        }
-                        else
-                        {
-                            @c.Nombre
-                        }
-                    </td>
-                    <td><span class="camp-canal-cell">@c.CanalIcono @c.Canal</span></td>
-                    <td class="camp-objetivo">@c.Objetivo</td>
-                    <td><span class="camp-tasa-badge">@c.Tasa%</span></td>
-                    <td class="camp-acciones-cell">
-                        <button class="camp-acciones-btn" @onclick="() => ToggleMenu(c.Id)">⋮</button>
-
-                        @if (menuAbiertoId == c.Id)
-                        {
-                            <div class="camp-menu-dropdown" @onmouseleave="CerrarMenu">
-                                <button class="camp-menu-item" @onclick="() => IrAEditarCampana(c.Id)">
-                                    ✏️ Editar campaña
-                                </button>
-                            </div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    <div class="camp-pagination">
-        <span class="pagination-info">Mostrando 1-4 de 24 campañas</span>
-        <div class="pagination-controls">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">4</button>
-            <button class="page-btn">5</button>
-            <button class="page-btn">6</button>
-            <button class="page-btn">›</button>
+@if (metricas == null)
+{
+    <p>Cargando métricas...</p>
+}
+else
+{
+    <div class="card camp-kpi-card">
+        <div class="camp-kpi-item">
+            <div class="camp-kpi-label">Éxito Global</div>
+            <div class="camp-kpi-value">@metricas.ExitoGlobal%</div>
+            <div class="camp-kpi-bar"><div class="camp-kpi-fill" style="width:@(metricas.ExitoGlobal)%"></div></div>
+        </div>
+        <div class="camp-kpi-item">
+            <div class="camp-kpi-label">KPI Objetivo Alcanzado</div>
+            <div class="camp-kpi-value">@metricas.PorcentajeCampanasConKpiAlcanzado% <span class="camp-kpi-sub-inline">de campañas</span></div>
+        </div>
+        <div class="camp-kpi-item">
+            <div class="camp-kpi-label">Canal Más Efectivo</div>
+            <div class="camp-kpi-value camp-kpi-canal">@metricas.CanalMasEfectivo</div>
+            <div class="camp-kpi-desc">Tasa de conversión <strong>@metricas.TasaCanalMasEfectivo%</strong></div>
+        </div>
+        <div class="camp-kpi-item">
+            <div class="camp-kpi-label">Impacto Reducción Churn</div>
+            <div class="camp-kpi-value">@metricas.ImpactoReduccionChurn%</div>
+            <div class="camp-kpi-desc">Sin campañas ejecutadas todavía en el período</div>
         </div>
     </div>
-</div>
+}
+
+@if (!huboCampanasRegistradas)
+{
+    <div class="card">
+        <p>Aún no se han ejecutado campañas de retención.</p>
+    </div>
+}
+else
+{
+    <div class="card camp-filtros-card">
+        <div class="filtro-grupo">
+            <label class="filtro-label">Canal</label>
+            <select class="filtro-select" @bind="canalSeleccionado">
+                <option>Todos los canales</option>
+                <option>Email</option>
+                <option>WhatsApp</option>
+            </select>
+        </div>
+        <div class="filtro-grupo">
+            <label class="filtro-label">Nombre de campaña</label>
+            <input type="text" class="filtro-texto" placeholder="Buscar por nombre..." @bind="nombreFiltro" />
+        </div>
+        <button class="btn-aplicar-filtros" @onclick="AplicarFiltroCampanas">Filtrar</button>
+        <button class="btn-limpiar-filtro" @onclick="LimpiarFiltroCampanas">Limpiar Filtro</button>
+    </div>
+
+    <div class="card camp-table-card">
+        @if (mensajeFiltroSinResultados != null)
+        {
+            <p>@mensajeFiltroSinResultados</p>
+        }
+        else
+        {
+            <table class="camp-table">
+                <thead>
+                    <tr>
+                        <th>NOMBRE DE CAMPAÑA</th>
+                        <th>CANAL</th>
+                        <th>OBJETIVO</th>
+                        <th>TASA DE ÉXITO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in CampanasPaginaActual)
+                    {
+                        <tr @onclick="() => IrADetalleCampana(c.IdCampania)" style="cursor:pointer">
+                            <td class="camp-nombre">@c.Nombre</td>
+                            <td><span class="camp-canal-cell">@c.Canal</span></td>
+                            <td class="camp-objetivo">@c.Objetivo</td>
+                            <td><span class="camp-tasa-badge">@(c.TasaExito?.ToString("0.0") ?? "-")%</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="camp-pagination">
+                <span class="pagination-info">
+                    Mostrando @(Math.Min((paginaActual - 1) * tamanioPagina + 1, campanas.Count))-@(Math.Min(paginaActual * tamanioPagina, campanas.Count)) de @campanas.Count campañas
+                </span>
+                <div class="pagination-controls">
+                    <button class="page-btn" @onclick="() => IrAPagina(paginaActual - 1)" disabled="@(paginaActual == 1)">‹</button>
+
+                    @{
+                        var anterior = 0;
+                    }
+                    @foreach (var num in NumerosDePagina())
+                    {
+                        @if (anterior != 0 && num - anterior > 1)
+                        {
+                            <span>...</span>
+                        }
+                        <button class="page-btn @(num == paginaActual ? "active" : "")" @onclick="() => IrAPagina(num)">@num</button>
+                        anterior = num;
+                    }
+
+                    <button class="page-btn" @onclick="() => IrAPagina(paginaActual + 1)" disabled="@(paginaActual == TotalPaginas)">›</button>
+                </div>
+            </div>
+        }
+    </div>
+}
 
 @code {
-    // Id de la fila cuyo menú "⋮" está abierto (null si no hay ninguno abierto).
-    private string? menuAbiertoId;
+    private List<Campana> campanas = new();
+    private MetricasCampana? metricas;
+    private bool huboCampanasRegistradas = true;
+    private string? mensajeFiltroSinResultados;
+    private string? errorPeriodoMetricas;
 
-    private record Campana(string Id, string Nombre, string Canal, string CanalIcono, string Objetivo, double Tasa);
-    private List<Campana> campanas = new()
-    {
-        new("camp-001", "25% Descuento", "Email", "✉️", "1,500 usuarios", 68.2),
-        new("camp-002", "50% Descuento", "WhatsApp", "💬", "800 usuarios", 12.5),
-    };
+    private string canalSeleccionado = "Todos los canales";
+    private string nombreFiltro = string.Empty;
 
-    private void ToggleMenu(string id)
+    private int paginaActual = 1;
+    private const int tamanioPagina = 5;
+
+    private DateTime fechaDesdeMetricas = DateTime.Now.AddDays(-30);
+    private DateTime fechaHastaMetricas = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
     {
-        menuAbiertoId = menuAbiertoId == id ? null : id;
+        await CargarMetricas(fechaDesdeMetricas, fechaHastaMetricas);
+        await CargarCampanas();
     }
 
-    private void CerrarMenu()
+    private async Task CargarMetricas(DateTime desde, DateTime hasta)
     {
-        menuAbiertoId = null;
+        metricas = await BLLHistorialAcciones.ObtenerMetricasGlobalesXPeriodo(desde, hasta);
+    }
+
+    private async Task CargarCampanas()
+    {
+        campanas = await BLLCampana.ObtenerCampanas();
+        huboCampanasRegistradas = campanas.Count > 0;
+        mensajeFiltroSinResultados = null;
+        paginaActual = 1;
+    }
+
+    private async Task AplicarPeriodoMetricas()
+    {
+        if (fechaDesdeMetricas > fechaHastaMetricas)
+        {
+            errorPeriodoMetricas = "El rango de fechas seleccionado no es válido.";
+            return;
+        }
+
+        errorPeriodoMetricas = null;
+        await CargarMetricas(fechaDesdeMetricas, fechaHastaMetricas);
+
+        if (metricas!.CanalMasEfectivo == "Sin datos")
+        {
+            errorPeriodoMetricas = "No existen campañas para el período seleccionado.";
+        }
+    }
+
+    private async Task LimpiarPeriodoMetricas()
+    {
+        fechaDesdeMetricas = DateTime.Now.AddDays(-30);
+        fechaHastaMetricas = DateTime.Now;
+        errorPeriodoMetricas = null;
+        await CargarMetricas(fechaDesdeMetricas, fechaHastaMetricas);
+    }
+
+    private async Task AplicarFiltroCampanas()
+    {
+        var resultado = await BLLCampana.ObtenerCampanasXFiltro(canalSeleccionado, nombreFiltro);
+        campanas = resultado;
+        mensajeFiltroSinResultados = resultado.Count == 0
+            ? "No existen campañas para los criterios seleccionados."
+            : null;
+        paginaActual = 1;
+    }
+
+    private async Task LimpiarFiltroCampanas()
+    {
+        canalSeleccionado = "Todos los canales";
+        nombreFiltro = string.Empty;
+        await CargarCampanas();
+    }
+
+    private List<Campana> CampanasPaginaActual =>
+        campanas.Skip((paginaActual - 1) * tamanioPagina).Take(tamanioPagina).ToList();
+
+    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(campanas.Count / (double)tamanioPagina));
+
+    private void IrAPagina(int pagina)
+    {
+        if (pagina < 1 || pagina > TotalPaginas) return;
+        paginaActual = pagina;
+    }
+
+    private List<int> NumerosDePagina()
+    {
+        var numeros = new List<int> { 1 };
+        int desde = Math.Max(2, paginaActual - 1);
+        int hasta = Math.Min(TotalPaginas - 1, paginaActual + 1);
+        for (int i = desde; i <= hasta; i++) numeros.Add(i);
+        if (TotalPaginas > 1) numeros.Add(TotalPaginas);
+        return numeros.Distinct().ToList();
     }
 
     private void IrACrearCampana()
@@ -149,8 +248,8 @@
         Navigation.NavigateTo("/campanas/crear");
     }
 
-    private void IrAEditarCampana(string id)
+    private void IrADetalleCampana(int idCampania)
     {
-        Navigation.NavigateTo($"/campanas/editar/{id}");
+        Navigation.NavigateTo($"/campanas/detalle/{idCampania}");
     }
 }

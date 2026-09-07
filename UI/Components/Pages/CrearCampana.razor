@@ -1,7 +1,10 @@
 ﻿@page "/campanas/crear"
 @page "/campanas/editar/{CampanaId}"
 @using System.Linq
+@using BE
+@using BLL
 @inject NavigationManager Navigation
+@inject BLLCampana BLLCampana
 
 <PageTitle>@(EsEdicion ? "Editar Campaña" : "Crear Campaña")</PageTitle>
 
@@ -23,10 +26,8 @@
 
 <div class="camp-form-layout">
 
-    <!-- ===================== COLUMNA IZQUIERDA: FORMULARIO ===================== -->
     <div class="camp-form-col">
 
-        <!-- Nombre de campaña -->
         <div class="card camp-form-card">
             <label class="form-label">NOMBRE DE LA CAMPAÑA</label>
             <input class="campana-select camp-form-input @(errores.Contains("nombre") ? "input-error" : "")"
@@ -39,7 +40,6 @@
             }
         </div>
 
-        <!-- Canal de envío -->
         <div class="card camp-form-card">
             <label class="form-label camp-form-label-icon">🔀 Canal de Envío</label>
             <div class="camp-form-canal-row">
@@ -56,7 +56,6 @@
             </div>
         </div>
 
-        <!-- Editor de mensaje -->
         <div class="card camp-form-card">
             <div class="camp-form-editor-header">
                 <label class="form-label camp-form-label-icon">📝 Editor de Mensaje</label>
@@ -68,9 +67,9 @@
             @if (canal == "Email")
             {
                 <label class="camp-form-sublabel">ASUNTO</label>
-                <input class="campana-select camp-form-input @(errores.Contains("asunto") ? "input-error" : "")"
-                       @bind="asunto" @bind:event="oninput" />
-                @if (errores.Contains("asunto"))
+                <input class="campana-select camp-form-input @(errores.Contains("asuntoEmail") ? "input-error" : "")"
+                       @bind="asuntoEmail" @bind:event="oninput" />
+                @if (errores.Contains("asuntoEmail"))
                 {
                     <span class="camp-form-error">El asunto es obligatorio para campañas por Email.</span>
                 }
@@ -91,16 +90,27 @@
             }
         </div>
 
-        <!-- Incentivo + Objetivo -->
+        <div class="card camp-form-card">
+            <label class="form-label camp-form-label-icon">🎯 Público Objetivo</label>
+            <textarea class="camp-form-textarea @(errores.Contains("objetivoDescripcion") ? "input-error" : "")"
+                      rows="2"
+                      @bind="objetivoDescripcion" @bind:event="oninput"
+                      placeholder="Ej: Clientes con riesgo alto que no visitaron en los últimos 30 días"></textarea>
+            @if (errores.Contains("objetivoDescripcion"))
+            {
+                <span class="camp-form-error">Describí a qué clientes apunta esta campaña.</span>
+            }
+        </div>
+
         <div class="camp-form-row-2">
             <div class="card camp-form-card">
                 <label class="form-label camp-form-label-icon">🎁 Incentivo</label>
                 <select class="campana-select camp-form-input @(errores.Contains("incentivo") ? "input-error" : "")"
-                        @bind="incentivo">
+                        @bind="idIncentivoSeleccionado">
                     <option value="">Seleccionar incentivo...</option>
-                    @foreach (var op in incentivosDisponibles)
+                    @foreach (var inc in incentivosDisponibles)
                     {
-                        <option value="@op">@op</option>
+                        <option value="@inc.IdIncentivo">@inc.Nombre</option>
                     }
                 </select>
                 @if (errores.Contains("incentivo"))
@@ -109,12 +119,12 @@
                 }
             </div>
             <div class="card camp-form-card">
-                <label class="form-label camp-form-label-icon">🎯 Objetivo</label>
+                <label class="form-label camp-form-label-icon">🏆 Meta</label>
                 <label class="camp-form-sublabel">CLIENTES A RECUPERAR</label>
                 <input type="number" min="1"
-                       class="campana-select camp-form-input @(errores.Contains("objetivo") ? "input-error" : "")"
-                       @bind="objetivo" />
-                @if (errores.Contains("objetivo"))
+                       class="campana-select camp-form-input @(errores.Contains("metaClientes") ? "input-error" : "")"
+                       @bind="metaClientes" />
+                @if (errores.Contains("metaClientes"))
                 {
                     <span class="camp-form-error">Ingresá una cantidad válida.</span>
                 }
@@ -125,16 +135,19 @@
         {
             <div class="camp-form-confirmacion">✔ @mensajeConfirmacion</div>
         }
+        @if (!string.IsNullOrEmpty(mensajeError))
+        {
+            <div class="login-alerta">@mensajeError</div>
+        }
 
         <div class="camp-form-actions">
             <button type="button" class="btn-cancelar" @onclick="Cancelar">Cancelar</button>
-            <button type="button" class="btn-confirmar" @onclick="GuardarCampana">
-                Guardar campaña ✓
+            <button type="button" class="btn-confirmar" @onclick="GuardarCampana" disabled="@guardando">
+                @(guardando ? "Guardando..." : "Guardar campaña ✓")
             </button>
         </div>
     </div>
 
-    <!-- ===================== COLUMNA DERECHA: VISTA PREVIA ===================== -->
     <div class="camp-form-col-preview">
         <div class="camp-form-preview-wrap">
             <div class="camp-form-preview-topbar">
@@ -147,15 +160,15 @@
             @if (canal == "Email")
             {
                 <div class="camp-form-preview-email">
-                    <h3>@(string.IsNullOrWhiteSpace(asunto) ? "Asunto del mensaje" : asunto)</h3>
+                    <h3>@(string.IsNullOrWhiteSpace(asuntoEmail) ? "Asunto del mensaje" : asuntoEmail)</h3>
                     <p class="camp-form-preview-saludo">Hola @NombreClienteEjemplo,</p>
                     <p class="camp-form-preview-cuerpo">@MensajeConSalto</p>
 
-                    @if (!string.IsNullOrEmpty(incentivo))
+                    @if (!string.IsNullOrEmpty(NombreIncentivoSeleccionado))
                     {
                         <div class="camp-form-beneficio-box">
                             <div class="camp-form-beneficio-label">TU BENEFICIO ESPECIAL</div>
-                            <div class="camp-form-beneficio-valor">@incentivo</div>
+                            <div class="camp-form-beneficio-valor">@NombreIncentivoSeleccionado</div>
                         </div>
                     }
 
@@ -170,11 +183,11 @@
                 <div class="camp-form-preview-whatsapp">
                     <div class="camp-form-preview-wa-bubble">
                         <p class="camp-form-preview-cuerpo">@MensajeConSalto</p>
-                        @if (!string.IsNullOrEmpty(incentivo))
+                        @if (!string.IsNullOrEmpty(NombreIncentivoSeleccionado))
                         {
                             <div class="camp-form-beneficio-box camp-form-beneficio-box-wa">
                                 <div class="camp-form-beneficio-label">TU BENEFICIO ESPECIAL</div>
-                                <div class="camp-form-beneficio-valor">@incentivo</div>
+                                <div class="camp-form-beneficio-valor">@NombreIncentivoSeleccionado</div>
                             </div>
                         }
                         <span class="camp-form-preview-wa-hora">10:24 ✓✓</span>
@@ -186,31 +199,25 @@
 </div>
 
 @code {
-    /// <summary>
-    /// Si viene con valor, el formulario entra en modo edición (CU07).
-    /// Si es null/vacío, entra en modo creación (CU06).
-    /// </summary>
     [Parameter]
     public string? CampanaId { get; set; }
 
     private bool EsEdicion => !string.IsNullOrWhiteSpace(CampanaId);
+    private int idCampaniaActual;
 
     private string nombreCampana = "";
     private string canal = "Email";
-    private string asunto = "";
+    private string asuntoEmail = "";
     private string mensaje = "";
-    private string incentivo = "";
-    private int? objetivo;
+    private string objetivoDescripcion = "";
+    private int? idIncentivoSeleccionado;
+    private int? metaClientes;
     private string mensajeConfirmacion = "";
+    private string mensajeError = "";
+    private bool guardando = false;
     private HashSet<string> errores = new();
 
-    private readonly List<string> incentivosDisponibles = new()
-    {
-        "50% Descuento",
-        "25% Descuento",
-        "Consultoría Gratuita",
-        "Extensión de Servicio"
-    };
+    private List<Incentivo> incentivosDisponibles = new();
 
     private const string plantillaBase =
         "¡Te extrañamos! Tenemos un regalo exclusivo para ti\n\n" +
@@ -221,15 +228,19 @@
 
     private string NombreClienteEjemplo => "María";
 
-    // Reemplaza el placeholder de la plantilla por un nombre de ejemplo para la vista previa.
     private string MensajeConSalto =>
         (mensaje ?? "").Replace("{nombre_cliente}", NombreClienteEjemplo);
 
-    protected override void OnInitialized()
+    private string NombreIncentivoSeleccionado =>
+        incentivosDisponibles.FirstOrDefault(i => i.IdIncentivo == idIncentivoSeleccionado)?.Nombre ?? "";
+
+    protected override async Task OnInitializedAsync()
     {
-        if (EsEdicion)
+        incentivosDisponibles = await BLLCampana.ObtenerIncentivosDisponibles();
+
+        if (EsEdicion && int.TryParse(CampanaId, out var id))
         {
-            CargarCampanaExistente(CampanaId!);
+            await CargarCampanaExistente(id);
         }
         else
         {
@@ -237,37 +248,40 @@
         }
     }
 
-    /// <summary>
-    /// Simula la carga de una campaña ya existente (paso 2 - 4 de CU07).
-    /// En un escenario real esto vendría de un servicio / repositorio.
-    /// </summary>
-    private void CargarCampanaExistente(string id)
+    private async Task CargarCampanaExistente(int id)
     {
-        // TODO: reemplazar por la consulta real a la campaña por id.
-        nombreCampana = "50% Descuento";
-        canal = "WhatsApp";
-        asunto = "";
-        mensaje = "Hola {nombre_cliente}, como cliente valorado tenés un beneficio especial esperándote.";
-        incentivo = "50% Descuento";
-        objetivo = 350;
+        var campana = await BLLCampana.ObtenerCampañaPorId(id);
+        if (campana is null)
+        {
+            mensajeError = "No se encontró la campaña solicitada.";
+            return;
+        }
+
+        idCampaniaActual = campana.IdCampania;
+        nombreCampana = campana.Nombre;
+        canal = campana.Canal;
+        asuntoEmail = campana.AsuntoEmail ?? "";
+        mensaje = campana.Mensaje;
+        objetivoDescripcion = campana.Objetivo;
+        idIncentivoSeleccionado = campana.IdIncentivo;
+        metaClientes = campana.Meta;
     }
 
     private void CargarPlantillaBase()
     {
         mensaje = plantillaBase;
-        if (canal == "Email" && string.IsNullOrWhiteSpace(asunto))
+        if (canal == "Email" && string.IsNullOrWhiteSpace(asuntoEmail))
         {
-            asunto = "¡Te extrañamos! Tenemos un regalo exclusivo para ti";
+            asuntoEmail = "¡Te extrañamos! Tenemos un regalo exclusivo para ti";
         }
     }
 
     private void CambiarCanal(string nuevoCanal)
     {
         canal = nuevoCanal;
-        // El campo Asunto solo aplica a Email (paso 5 CU06 / paso 7 CU07).
         if (canal != "Email")
         {
-            asunto = "";
+            asuntoEmail = "";
         }
     }
 
@@ -276,42 +290,73 @@
         errores.Clear();
 
         if (string.IsNullOrWhiteSpace(nombreCampana)) errores.Add("nombre");
-        if (canal == "Email" && string.IsNullOrWhiteSpace(asunto)) errores.Add("asunto");
+        if (canal == "Email" && string.IsNullOrWhiteSpace(asuntoEmail)) errores.Add("asuntoEmail");
         if (string.IsNullOrWhiteSpace(mensaje)) errores.Add("mensaje");
-        if (string.IsNullOrWhiteSpace(incentivo)) errores.Add("incentivo");
-        if (objetivo is null or <= 0) errores.Add("objetivo");
+        if (string.IsNullOrWhiteSpace(objetivoDescripcion)) errores.Add("objetivoDescripcion");
+        if (idIncentivoSeleccionado is null) errores.Add("incentivo");
+        if (metaClientes is null or <= 0) errores.Add("metaClientes");
 
         return errores.Count == 0;
     }
 
-    private void GuardarCampana()
+    private async Task GuardarCampana()
     {
+        mensajeError = "";
         if (!Validar())
         {
             mensajeConfirmacion = "";
             return;
         }
 
-        // TODO: reemplazar por la persistencia real (crear o actualizar según EsEdicion).
-        mensajeConfirmacion = EsEdicion
-            ? "Campaña actualizada exitosamente."
-            : "Campaña creada exitosamente.";
+        guardando = true;
+        try
+        {
+            var idCanal = await BLLCampana.ObtenerIdCanalPorNombre(canal);
 
-        StateHasChanged();
-        _ = RedirigirConDelay();
+            var campana = new Campana
+            {
+                IdCampania = idCampaniaActual,
+                Nombre = nombreCampana,
+                IdCanal = idCanal,
+                Objetivo = objetivoDescripcion,
+                Meta = metaClientes,
+                AsuntoEmail = canal == "Email" ? asuntoEmail : null,
+                Mensaje = mensaje,
+                IdIncentivo = idIncentivoSeleccionado
+            };
+
+            if (EsEdicion)
+            {
+                await BLLCampana.ActualizarCampana(campana);
+                mensajeConfirmacion = "Campaña actualizada exitosamente.";
+            }
+            else
+            {
+                await BLLCampana.CrearCampana(campana);
+                mensajeConfirmacion = "Campaña creada exitosamente.";
+            }
+
+            StateHasChanged();
+            _ = RedirigirConDelay();
+        }
+        catch (Exception)
+        {
+            mensajeError = "No fue posible guardar la campaña. Intentá nuevamente.";
+        }
+        finally
+        {
+            guardando = false;
+        }
     }
 
     private async Task RedirigirConDelay()
     {
-        // Pequeña pausa para que el usuario alcance a ver el mensaje de confirmación
-        // antes de volver al historial de campañas (paso 15 de CU06 / CU07).
         await Task.Delay(1200);
         Navigation.NavigateTo("/campanas");
     }
 
     private void Cancelar()
     {
-        // Descarta los cambios y vuelve al historial sin guardar (alterno 11.1 / 10.1).
         Navigation.NavigateTo("/campanas");
     }
 }

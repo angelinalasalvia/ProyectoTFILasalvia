@@ -1260,10 +1260,10 @@ div.prob-fill-pred.nivel-bajo {
 
 /* --- Fila de filtros --- */
 .camp-filtros-card {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto auto;
-    gap: 16px;
+    display: flex;
+    flex-wrap: wrap;
     align-items: end;
+    gap: 16px;
     margin-bottom: 18px;
 }
 
@@ -1324,25 +1324,27 @@ div.prob-fill-pred.nivel-bajo {
     font-weight: 600;
     cursor: pointer;
     padding: 9px 4px;
+    margin-left: auto;
+    white-space: nowrap;
 }
 
     .btn-limpiar-filtro:hover {
         text-decoration: underline;
     }
 
+.filtro-texto {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    width: 220px;
+}
+
 .btn-filtro-icon {
     background: #fff;
     border: 1px solid #e5e8ee;
-    border-radius: 8px;
-    width: 38px;
-    height: 38px;
-    cursor: pointer;
-    color: #555b6a;
 }
-
-    .btn-filtro-icon:hover {
-        background: #f6f7fa;
-    }
 
 /* --- Fila de KPIs --- */
 .camp-kpi-card {

@@ -5,15 +5,31 @@ namespace BLL;
 
 public class BLLCliente
 {
-    private readonly IDALCliente _dalCliente;
-    public BLLCliente(IDALCliente dalCliente) => _dalCliente = dalCliente;
+    private readonly IAccesoDatos _accesoDatos;
+    public BLLCliente(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public async Task<Cliente?> ObtenerCliente(int idCliente, CancellationToken ct = default)
-        => await _dalCliente.ObtenerClientePorIdAsync(idCliente, ct);
+    {
+        var resultado = await _accesoDatos.Leer<Cliente>(
+            "SELECT * FROM Cliente WHERE IdCliente = @idCliente",
+            new { idCliente }, ct: ct);
+
+        var cliente = resultado.FirstOrDefault();
+        if (cliente == null) return null;
+
+        // Si en algún punto necesitás los eventos de ESTE cliente puntual (no de todos),
+        // conviene un método aparte más liviano en vez de reusar ConsultasComunes:
+        var eventos = await _accesoDatos.Leer<EventoCliente>(
+            "SELECT * FROM EventosCliente WHERE IdCliente = @idCliente",
+            new { idCliente }, ct: ct);
+        cliente.Eventos = eventos.ToList();
+
+        return cliente;
+    }
 
     public async Task<(double UsoInstalaciones, double InteraccionesApp)> ObtenerMetricasRelativasMedia(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
-        var todos = await _dalCliente.ObtenerClientesConEventosAsync(ct);
+        var todos = await ConsultasComunes.ObtenerClientesConEventosAsync(_accesoDatos, ct);
         var cliente = todos.FirstOrDefault(c => c.IdCliente == idCliente);
         if (cliente == null) return (0, 0);
 
@@ -43,6 +59,6 @@ public class BLLCliente
         "semana" => 7,
         "trimestre" => 90,
         "año" => 365,
-        _ => 30 
+        _ => 30
     };
 }

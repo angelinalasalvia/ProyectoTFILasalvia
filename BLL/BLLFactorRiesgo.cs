@@ -5,12 +5,12 @@ namespace BLL;
 
 public class BLLFactorRiesgo
 {
-    private readonly IDALCliente _dalCliente;
-    public BLLFactorRiesgo(IDALCliente dalCliente) => _dalCliente = dalCliente;
+    private readonly IAccesoDatos _accesoDatos;
+    public BLLFactorRiesgo(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public async Task<List<FactorRiesgo>> ObtenerFactorRiesgo(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
-        var todos = await _dalCliente.ObtenerClientesConEventosAsync(ct);
+        var todos = await ConsultasComunes.ObtenerClientesConEventosAsync(_accesoDatos, ct);
 
         var cliente = todos.FirstOrDefault(c => c.IdCliente == idCliente);
         if (cliente == null) return new List<FactorRiesgo>();

@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject BLLCampana BLLCampana
 @inject BLLHistorialAcciones BLLHistorialAcciones
+@inject IJSRuntime JS
 
 <PageTitle>Historial de Campañas</PageTitle>
 
@@ -90,6 +91,10 @@ else
     </div>
 
     <div class="card camp-table-card">
+        @if (errorAccion != null)
+        {
+            <div class="camp-alert">@errorAccion</div>
+        }
         @if (mensajeFiltroSinResultados != null)
         {
             <p>@mensajeFiltroSinResultados</p>
@@ -103,6 +108,7 @@ else
                         <th>CANAL</th>
                         <th>OBJETIVO</th>
                         <th>TASA DE ÉXITO</th>
+                        <th class="usr-th-acciones">ACCIONES</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -113,6 +119,16 @@ else
                             <td><span class="camp-canal-cell">@c.Canal</span></td>
                             <td class="camp-objetivo">@c.Objetivo</td>
                             <td><span class="camp-tasa-badge">@(c.TasaExito?.ToString("0.0") ?? "-")%</span></td>
+                            <td class="camp-acciones-cell" @onclick:stopPropagation="true">
+                                <button class="integ-menu-btn" title="Más opciones" @onclick="() => ToggleMenu(c.IdCampania)">⋮</button>
+                                @if (menuAbiertoId == c.IdCampania)
+                                {
+                                    <div class="camp-menu-dropdown">
+                                        <button class="camp-menu-item" @onclick="() => IrAEditarCampana(c.IdCampania)">✏️ Editar</button>
+                                        <button class="camp-menu-item" @onclick="() => EliminarCampana(c)">🗑️ Eliminar</button>
+                                    </div>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -151,6 +167,8 @@ else
     private bool huboCampanasRegistradas = true;
     private string? mensajeFiltroSinResultados;
     private string? errorPeriodoMetricas;
+    private string? errorAccion;
+    private int? menuAbiertoId;
 
     private string canalSeleccionado = "Todos los canales";
     private string nombreFiltro = string.Empty;
@@ -251,5 +269,34 @@ else
     private void IrADetalleCampana(int idCampania)
     {
         Navigation.NavigateTo($"/campanas/detalle/{idCampania}");
+    }
+
+    private void ToggleMenu(int idCampania)
+    {
+        menuAbiertoId = menuAbiertoId == idCampania ? null : idCampania;
+    }
+
+    private void IrAEditarCampana(int idCampania)
+    {
+        Navigation.NavigateTo($"/campanas/editar/{idCampania}");
+    }
+
+    private async Task EliminarCampana(Campana c)
+    {
+        menuAbiertoId = null;
+        errorAccion = null;
+
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar la campaña \"{c.Nombre}\"? Esta acción no se puede deshacer.");
+        if (!confirmado) return;
+
+        try
+        {
+            await BLLCampana.EliminarCampana(c.IdCampania);
+            await CargarCampanas();
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 547)
+        {
+            errorAccion = $"No se puede eliminar \"{c.Nombre}\" porque tiene acciones o reglas asociadas.";
+        }
     }
 }

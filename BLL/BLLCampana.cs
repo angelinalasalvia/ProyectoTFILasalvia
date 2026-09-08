@@ -44,67 +44,51 @@ public class BLLCampana
         return resultado.ToList();
     }
 
+    // Usado también por CU05 (CampanaDetalle.razor). El DS de CU07 lo llama
+    // "ObtenerCampaña", pero es la misma operación que ya está en uso acá con
+    // este nombre - unificar el nombre en la documentación de CU07 en vez de
+    // duplicar el método.
     public async Task<Campana?> ObtenerCampañaPorId(int id, CancellationToken ct = default)
     {
         var resultado = await _accesoDatos.Leer<Campana>($"{SelectBase} WHERE camp.IdCampaña = @id", new { id }, ct: ct);
         return resultado.FirstOrDefault();
     }
 
-    // CU06: crea la campaña y devuelve el id generado.
-    public async Task<int> CrearCampana(Campana campana, CancellationToken ct = default)
+    // CU06 - GuardarCampaña(string nombre, int idcanal, string mensaje, int idincentivo, int objetivo): int
+    // Se agregan "objetivoDescripcion" y "asuntoEmail" porque son columnas NOT NULL / usadas en
+    // CU04 (Asunto y Objetivo de texto) que el diagrama no detalla en la firma abreviada.
+    public async Task<int> GuardarCampana(
+        string nombre, int idCanal, string mensaje, int idIncentivo, int metaClientes,
+        string objetivoDescripcion, string? asuntoEmail, CancellationToken ct = default)
     {
         var insertados = await _accesoDatos.Leer<IdSolamente>(
             @"INSERT INTO Campaña (Asunto, Objetivo, IdCanal, IdIncentivo, Mensaje, AsuntoEmail, Meta)
               OUTPUT INSERTED.IdCampaña AS Id
-              VALUES (@Nombre, @Objetivo, @IdCanal, @IdIncentivo, @Mensaje, @AsuntoEmail, @Meta)",
-            new
-            {
-                campana.Nombre,
-                campana.Objetivo,
-                campana.IdCanal,
-                campana.IdIncentivo,
-                campana.Mensaje,
-                campana.AsuntoEmail,
-                campana.Meta
-            }, ct: ct);
+              VALUES (@nombre, @objetivoDescripcion, @idCanal, @idIncentivo, @mensaje, @asuntoEmail, @metaClientes)",
+            new { nombre, objetivoDescripcion, idCanal, idIncentivo, mensaje, asuntoEmail, metaClientes }, ct: ct);
 
         return insertados.First().Id;
     }
 
-    // CU07: actualiza. El nombre (Asunto) no se toca - en el formulario ya
-    // queda deshabilitado en modo edición, es la identidad de la campaña.
-    public async Task ActualizarCampana(Campana campana, CancellationToken ct = default)
+    // CU07 - ModificarCampaña(int id, int idcanal, string mensaje, int idincentivo, int objetivo): int
+    // El nombre (Asunto) no se toca: en el formulario ya queda deshabilitado en modo edición.
+    public async Task<int> ModificarCampana(
+        int idCampania, int idCanal, string mensaje, int idIncentivo, int metaClientes,
+        string objetivoDescripcion, string? asuntoEmail, CancellationToken ct = default)
     {
-        await _accesoDatos.Modificar(
+        return await _accesoDatos.Modificar(
             @"UPDATE Campaña
-              SET Objetivo = @Objetivo, IdCanal = @IdCanal, IdIncentivo = @IdIncentivo,
-                  Mensaje = @Mensaje, AsuntoEmail = @AsuntoEmail, Meta = @Meta
-              WHERE IdCampaña = @IdCampania",
-            new
-            {
-                campana.Objetivo,
-                campana.IdCanal,
-                campana.IdIncentivo,
-                campana.Mensaje,
-                campana.AsuntoEmail,
-                campana.Meta,
-                campana.IdCampania
-            }, ct: ct);
+              SET Objetivo = @objetivoDescripcion, IdCanal = @idCanal, IdIncentivo = @idIncentivo,
+                  Mensaje = @mensaje, AsuntoEmail = @asuntoEmail, Meta = @metaClientes
+              WHERE IdCampaña = @idCampania",
+            new { objetivoDescripcion, idCanal, idIncentivo, mensaje, asuntoEmail, metaClientes, idCampania }, ct: ct);
     }
 
-    public async Task<List<Incentivo>> ObtenerIncentivosDisponibles(CancellationToken ct = default)
+    // Elimina la campaña. Si tiene acciones (HistorialAcciones) o reglas asociadas,
+    // la base de datos rechaza el borrado por la FK; ese caso se traduce en la UI.
+    public async Task EliminarCampana(int idCampania, CancellationToken ct = default)
     {
-        var resultado = await _accesoDatos.Leer<Incentivo>("SELECT * FROM Incentivo", ct: ct);
-        return resultado.ToList();
-    }
-
-    public async Task<int> ObtenerIdCanalPorNombre(string nombreCanal, CancellationToken ct = default)
-    {
-        var resultado = await _accesoDatos.Leer<IdSolamente>(
-            "SELECT IdCanal AS Id FROM Canal WHERE Nombre = @nombreCanal",
-            new { nombreCanal }, ct: ct);
-        return resultado.FirstOrDefault()?.Id
-            ?? throw new InvalidOperationException($"No existe el canal '{nombreCanal}'.");
+        await _accesoDatos.Eliminar("DELETE FROM Campaña WHERE IdCampaña = @idCampania", new { idCampania }, ct: ct);
     }
 
     private class IdSolamente { public int Id { get; set; } }

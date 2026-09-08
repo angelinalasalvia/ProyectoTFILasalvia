@@ -27,8 +27,11 @@ else
     <div class="camp-detalle-title-row">
         <div>
             <h1 class="detalle-title camp-detalle-title">@campana.Nombre</h1>
-            <div class="camp-detalle-canal">@IconoCanal(campana.Canal) @campana.Canal</div>
+            <div class="camp-detalle-canal">
+                @IconoCanal(campana.Canal) @campana.Canal
+            </div>
         </div>
+
         <button class="btn-exportar" @onclick="ExportarInforme" disabled="@exportando">
             @(exportando ? "Generando..." : "⬇ Exportar Reporte")
         </button>
@@ -39,162 +42,323 @@ else
         <div class="login-alerta">@mensajeExportacion</div>
     }
 
+    <!-- KPIs -->
     <div class="camp-detalle-kpi-row">
+
         <div class="card camp-detalle-kpi-card">
             <div class="camp-detalle-kpi-label">TASA DE APERTURA</div>
-            <div class="camp-detalle-kpi-value">@TasaApertura.ToString("0.0")%</div>
-            <div class="camp-detalle-kpi-sub">@MensajesEntregados mensajes entregados</div>
+            <div class="camp-detalle-kpi-value">
+                @TasaApertura.ToString("0.0")%
+            </div>
+            <div class="camp-detalle-kpi-sub">
+                @MensajesEntregados mensajes entregados
+            </div>
         </div>
 
         <div class="card camp-detalle-kpi-card">
             <div class="camp-detalle-kpi-label">CLICS EN ENLACE</div>
-            <div class="camp-detalle-kpi-value">@TasaClics.ToString("0.0")%</div>
-            <div class="camp-detalle-kpi-sub">@ClicsEnlace interacciones únicas</div>
+            <div class="camp-detalle-kpi-value">
+                @TasaClics.ToString("0.0")%
+            </div>
+            <div class="camp-detalle-kpi-sub">
+                @ClicsEnlace interacciones únicas
+            </div>
         </div>
 
         <div class="card camp-detalle-kpi-card">
             <div class="camp-detalle-kpi-label">SOCIOS RECUPERADOS</div>
-            <div class="camp-detalle-kpi-value">@SociosRecuperados <span class="camp-detalle-kpi-meta">/ @(campana.Meta ?? 0) objetivo</span></div>
-            <div class="camp-detalle-kpi-sub">Conversión del @TasaConversion.ToString("0.0")%</div>
+            <div class="camp-detalle-kpi-value">
+                @SociosRecuperados
+                <span class="camp-detalle-kpi-meta">
+                    / @(campana.Meta ?? 0) objetivo
+                </span>
+            </div>
+            <div class="camp-detalle-kpi-sub">
+                Conversión del @TasaConversion.ToString("0.0")%
+            </div>
         </div>
+
     </div>
 
+    <!-- Gráfico -->
     <div class="card camp-rendimiento-card">
+
         <div class="camp-rendimiento-header">
             <div>
                 <h3 class="card-subtitle-dark">Rendimiento Temporal</h3>
-                <p class="camp-rendimiento-sub">Distribución de conversiones durante los primeros 7 días</p>
+                <p class="camp-rendimiento-sub">
+                    Distribución de conversiones y mensajes leídos durante los primeros 7 días
+                </p>
             </div>
+
             <div class="camp-rendimiento-leyenda">
-                <span class="leyenda-item"><span class="leyenda-dot dot-conversion"></span> Conversiones</span>
-                <span class="leyenda-item"><span class="leyenda-dot dot-leidos"></span> Mensajes Leídos</span>
+                <span class="leyenda-item">
+                    <span class="leyenda-dot dot-conversion"></span>
+                    Conversiones
+                </span>
+
+                <span class="leyenda-item">
+                    <span class="leyenda-dot dot-leidos"></span>
+                    Mensajes Leídos
+                </span>
             </div>
         </div>
 
-        @if (historial.Count == 0)
+        @if (historialCompleto.Count == 0)
         {
-            <p class="pred-sin-resultados">Todavía no hay actividad registrada para esta campaña.</p>
+            <p class="pred-sin-resultados">
+                Todavía no hay actividad registrada para esta campaña.
+            </p>
         }
         else
         {
             <div class="camp-chart-container">
+
                 @foreach (var dia in rendimiento)
                 {
                     <div class="camp-chart-col">
+
                         <div class="camp-chart-bar-wrap">
-                            <div class="camp-chart-bar-leido" style="height:@(dia.AlturaLeidos)px"></div>
-                            <div class="camp-chart-bar-conversion" style="height:@(dia.AlturaConversiones)px"></div>
+                            <div class="camp-chart-bar-leido"
+                                 style="height:@(dia.AlturaLeidos)px">
+                            </div>
+
+                            <div class="camp-chart-bar-conversion"
+                                 style="height:@(dia.AlturaConversiones)px">
+                            </div>
                         </div>
-                        <div class="camp-chart-label">@dia.Dia</div>
+
+                        <div class="camp-chart-label">
+                            @dia.Dia
+                        </div>
+
                     </div>
                 }
+
             </div>
         }
+
     </div>
 
+    <!-- Tabla de socios -->
     <div class="card camp-socios-card">
+
         <div class="camp-socios-header">
+
             <h3 class="camp-socios-title">Socios Impactados</h3>
+
             <div class="camp-socios-filtros">
+
                 <div class="filtro-inline">
                     <span class="filtro-inline-label">Plan</span>
-                    <select class="filtro-inline-select" @onchange="e => CambiarFiltro(plan: e.Value?.ToString())">
+
+                    <select class="filtro-inline-select"
+                            value="@planActivo"
+                            @onchange="e => CambiarFiltro(plan: e.Value?.ToString())">
+
                         <option value="Todos">Todos</option>
+
                         @foreach (var p in PlanesDisponibles)
                         {
-                            <option value="@p" selected="@(planActivo == p)">@p</option>
+                            <option value="@p">@p</option>
                         }
+
                     </select>
                 </div>
+
                 <div class="filtro-inline">
                     <span class="filtro-inline-label">Resultado</span>
-                    <select class="filtro-inline-select" @onchange="e => CambiarFiltro(resultado: e.Value?.ToString())">
+
+                    <select class="filtro-inline-select"
+                            value="@resultadoActivo"
+                            @onchange="e => CambiarFiltro(resultado: e.Value?.ToString())">
+
                         <option value="Todos">Todos</option>
                         <option value="Rescatado">Rescatado</option>
                         <option value="Sin acción">Sin acción</option>
                         <option value="Clic en enlace">Clic en enlace</option>
+
                     </select>
                 </div>
+
                 @if (planActivo != "Todos" || resultadoActivo != "Todos")
                 {
-                    <button class="filtro-limpiar" @onclick="LimpiarFiltros">Limpiar filtros</button>
+                    <button class="filtro-limpiar" @onclick="LimpiarFiltros">
+                        Limpiar filtros
+                    </button>
                 }
+
             </div>
+
         </div>
 
         @if (historial.Count == 0)
         {
-            <p class="pred-sin-resultados">No existen clientes para los criterios seleccionados.</p>
+            <p class="pred-sin-resultados">
+                No existen clientes para los criterios seleccionados.
+            </p>
         }
         else
         {
             <table class="camp-socios-table">
+
                 <thead>
                     <tr>
-                        <th class="th-ordenable" @onclick='() => OrdenarPor("nombre")'>SOCIO</th>
-                        <th class="th-ordenable" @onclick='() => OrdenarPor("plan")'>PLAN ACTUAL</th>
-                        <th>ESTADO ENVÍO</th>
-                        <th class="th-ordenable" @onclick='() => OrdenarPor("resultado")'>RESULTADO</th>
-                        <th class="th-ordenable" @onclick='() => OrdenarPor("fecha")'>FECHA ACCIÓN</th>
+
+                        <th class="th-ordenable"
+                            @onclick='() => OrdenarPor("nombre")'>
+                            SOCIO
+                        </th>
+
+                        <th class="th-ordenable"
+                            @onclick='() => OrdenarPor("plan")'>
+                            PLAN ACTUAL
+                        </th>
+
+                        <th>
+                            ESTADO ENVÍO
+                        </th>
+
+                        <th class="th-ordenable"
+                            @onclick='() => OrdenarPor("resultado")'>
+                            RESULTADO
+                        </th>
+
+                        <th class="th-ordenable"
+                            @onclick='() => OrdenarPor("fecha")'>
+                            FECHA ACCIÓN
+                        </th>
+
                     </tr>
                 </thead>
+
                 <tbody>
+
                     @foreach (var h in HistorialPaginaActual)
                     {
                         <tr>
+
                             <td>
                                 <div class="client-cell">
-                                    <div class="client-avatar-initials">@Iniciales(h)</div>
-                                    <div>
-                                        <div class="client-name">@h.NombreCliente @h.ApellidoCliente</div>
-                                        <div class="socio-id">ID: @h.IdCliente</div>
+
+                                    <div class="client-avatar-initials">
+                                        @Iniciales(h)
                                     </div>
+
+                                    <div>
+                                        <div class="client-name">
+                                            @h.NombreCliente @h.ApellidoCliente
+                                        </div>
+
+                                        <div class="socio-id">
+                                            ID: @h.IdCliente
+                                        </div>
+                                    </div>
+
                                 </div>
                             </td>
-                            <td>@h.PlanCliente</td>
-                            <td><span class="estado-envio-cell @ClaseEstado(h.EstadoEnvio)">@IconoEstado(h.EstadoEnvio) @h.EstadoEnvio</span></td>
-                            <td><span class="resultado-badge-camp @ClaseResultado(h.Resultado)">@h.Resultado</span></td>
-                            <td class="fecha-cell">@h.FechaAccion.ToString("dd MMM yyyy, HH:mm")</td>
+
+                            <td>
+                                @h.PlanCliente
+                            </td>
+
+                            <td>
+                                <span class="estado-envio-cell @ClaseEstado(h.EstadoEnvio)">
+                                    @IconoEstado(h.EstadoEnvio) @h.EstadoEnvio
+                                </span>
+                            </td>
+
+                            <td>
+                                <span class="resultado-badge-camp @ClaseResultado(h.Resultado)">
+                                    @h.Resultado
+                                </span>
+                            </td>
+
+                            <td class="fecha-cell">
+                                @h.FechaAccion.ToString("dd MMM yyyy, HH:mm")
+                            </td>
+
                         </tr>
                     }
+
                 </tbody>
+
             </table>
 
             <div class="camp-socios-pagination">
+
                 <span class="pagination-info">
-                    Mostrando @(Math.Min((paginaActual - 1) * tamanioPagina + 1, historial.Count))-@(Math.Min(paginaActual * tamanioPagina, historial.Count)) de @historial.Count socios
-                </span>
-                <div class="pagination-controls">
-                    <button class="page-btn" @onclick="() => IrAPagina(paginaActual - 1)" disabled="@(paginaActual == 1)">‹</button>
-                    @{
+                    Mostrando
+                    @(((paginaActual - 1) * tamanioPagina) + 1)-@(
+                    Math.Min(paginaActual * tamanioPagina, historial.Count)
+                        )
+            de @historial.Count socios
+        </span>
+
+        <div class="pagination-controls">
+
+            <button class="page-btn"
+                    @onclick="() => IrAPagina(paginaActual - 1)"
+                    disabled="@(paginaActual == 1)">
+                ‹
+            </button>
+
+            @{
                         var anterior = 0;
                     }
+
                     @foreach (var num in NumerosDePagina())
                     {
                         @if (anterior != 0 && num - anterior > 1)
                         {
                             <span>...</span>
                         }
-                        <button class="page-btn @(num == paginaActual ? "active" : "")" @onclick="() => IrAPagina(num)">@num</button>
+
+                        <button class="page-btn @(num == paginaActual ? "active" : "")"
+                                @onclick="() => IrAPagina(num)">
+                            @num
+                        </button>
+
                         anterior = num;
                     }
-                    <button class="page-btn" @onclick="() => IrAPagina(paginaActual + 1)" disabled="@(paginaActual == TotalPaginas)">›</button>
+
+                    <button class="page-btn"
+                            @onclick="() => IrAPagina(paginaActual + 1)"
+                            disabled="@(paginaActual == TotalPaginas)">
+                        ›
+                    </button>
+
                 </div>
+
             </div>
         }
+
     </div>
 }
 
 @code {
-    [Parameter] public int IdCampania { get; set; }
+
+    [Parameter]
+    public int IdCampania { get; set; }
 
     private Campana? campana;
+
+    // Historial completo de la campaña.
+    // Se mantiene separado del historial mostrado para que
+    // los filtros no alteren los KPIs ni la exportación.
+    private List<HistorialAccion> historialCompleto = new();
+
+    // Historial actualmente mostrado en la tabla.
     private List<HistorialAccion> historial = new();
+
     private List<(string Dia, int AlturaLeidos, int AlturaConversiones)> rendimiento = new();
 
     private string columnaOrden = "fecha";
+
     private string planActivo = "Todos";
     private string resultadoActivo = "Todos";
+
+    private List<string> planesDisponibles = new();
 
     private int paginaActual = 1;
     private const int tamanioPagina = 5;
@@ -205,62 +369,190 @@ else
     protected override async Task OnInitializedAsync()
     {
         campana = await BLLCampana.ObtenerCampañaPorId(IdCampania);
-        historial = await BLLHistorialAcciones.ObtenerHistorialCampania(IdCampania);
+
+        if (campana == null)
+            return;
+
+        historialCompleto =
+            await BLLHistorialAcciones.ObtenerHistorialCampania(IdCampania);
+
+        historial = historialCompleto.ToList();
+
+        planesDisponibles = historialCompleto
+            .Select(h => h.PlanCliente)
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Distinct()
+            .OrderBy(p => p)
+            .ToList();
+
         CalcularGraficoRendimiento();
     }
 
-    // ----- Paso 4: KPIs (self-call de la GUI, según el diagrama) -----
-    private int MensajesEntregados => historial.Count;
-    private int MensajesLeidos => historial.Count(h => h.EstadoEnvio == "Leído");
-    private double TasaApertura => MensajesEntregados == 0 ? 0 : Math.Round(MensajesLeidos * 100.0 / MensajesEntregados, 1);
+    // ============================================================
+    // KPIs
+    // ============================================================
 
-    private int ClicsEnlace => historial.Count(h => h.Resultado == "Clic en enlace");
-    private double TasaClics => MensajesEntregados == 0 ? 0 : Math.Round(ClicsEnlace * 100.0 / MensajesEntregados, 1);
+    private int MensajesEntregados =>
+        historialCompleto.Count(h =>
+            h.EstadoEnvio.Equals("Entregado", StringComparison.OrdinalIgnoreCase) ||
+            h.EstadoEnvio.Equals("Leído", StringComparison.OrdinalIgnoreCase));
 
-    private int SociosRecuperados => historial.Count(h => h.Resultado == "Rescatado");
-    private double TasaConversion => (campana?.Meta ?? 0) == 0 ? 0 : Math.Round(SociosRecuperados * 100.0 / campana!.Meta!.Value, 1);
+    private int MensajesLeidos =>
+        historialCompleto.Count(h =>
+            h.EstadoEnvio.Equals("Leído", StringComparison.OrdinalIgnoreCase));
 
-    // ----- Paso 5: gráfico de 7 días (self-call de la GUI) -----
+    private double TasaApertura =>
+        MensajesEntregados == 0
+            ? 0
+            : Math.Round(MensajesLeidos * 100.0 / MensajesEntregados, 1);
+
+    private int ClicsEnlace =>
+        historialCompleto
+            .Where(h => h.Resultado.Equals("Clic en enlace", StringComparison.OrdinalIgnoreCase))
+            .Select(h => h.IdCliente)
+            .Distinct()
+            .Count();
+
+    private double TasaClics =>
+        MensajesEntregados == 0
+            ? 0
+            : Math.Round(ClicsEnlace * 100.0 / MensajesEntregados, 1);
+
+    private int SociosRecuperados =>
+        historialCompleto
+            .Where(h => h.Resultado.Equals("Rescatado", StringComparison.OrdinalIgnoreCase))
+            .Select(h => h.IdCliente)
+            .Distinct()
+            .Count();
+
+    private double TasaConversion =>
+        (campana?.Meta ?? 0) == 0
+            ? 0
+            : Math.Round(
+                SociosRecuperados * 100.0 / campana!.Meta!.Value,
+                1);
+
+    // ============================================================
+    // Gráfico de primeros 7 días
+    // ============================================================
+
     private void CalcularGraficoRendimiento()
     {
         rendimiento = new();
-        if (historial.Count == 0) return;
 
-        var inicio = historial.Min(h => h.FechaEnvio).Date;
+        if (historialCompleto.Count == 0)
+            return;
+
+        var inicio = historialCompleto
+            .Min(h => h.FechaEnvio)
+            .Date;
 
         var crudo = new List<(string Dia, int Leidos, int Conversiones)>();
+
         for (int dia = 1; dia <= 7; dia++)
         {
             var desde = inicio.AddDays(dia - 1);
             var hasta = desde.AddDays(1);
-            int leidos = historial.Count(h => h.FechaLectura is { } fl && fl >= desde && fl < hasta);
-            int conversiones = historial.Count(h => h.FechaConversion is { } fc && fc >= desde && fc < hasta);
-            crudo.Add(($"Día {dia}", leidos, conversiones));
+
+            int leidos = historialCompleto.Count(h =>
+                h.FechaLectura.HasValue &&
+                h.FechaLectura.Value >= desde &&
+                h.FechaLectura.Value < hasta);
+
+            int conversiones = historialCompleto.Count(h =>
+                h.FechaConversion.HasValue &&
+                h.FechaConversion.Value >= desde &&
+                h.FechaConversion.Value < hasta);
+
+            crudo.Add((
+                $"Día {dia}",
+                leidos,
+                conversiones));
         }
 
-        int maximo = Math.Max(1, crudo.Max(d => Math.Max(d.Leidos, d.Conversiones)));
+        int maximo = Math.Max(
+            1,
+            crudo.Max(d => Math.Max(d.Leidos, d.Conversiones)));
+
         const int alturaMaximaPx = 120;
 
-        rendimiento = crudo.Select(d => (
-            d.Dia,
-            (int)Math.Round(d.Leidos * alturaMaximaPx / (double)maximo),
-            (int)Math.Round(d.Conversiones * alturaMaximaPx / (double)maximo)
-        )).ToList();
+        rendimiento = crudo
+            .Select(d => (
+                d.Dia,
+                (int)Math.Round(
+                    d.Leidos * alturaMaximaPx / (double)maximo),
+                (int)Math.Round(
+                    d.Conversiones * alturaMaximaPx / (double)maximo)
+            ))
+            .ToList();
     }
 
-    // ----- Pasos 8-9: orden -----
+    // ============================================================
+    // Ordenamiento
+    // ============================================================
+
     private async Task OrdenarPor(string columna)
     {
         columnaOrden = columna;
-        await RecargarConFiltrosYOrden();
+
+        if (planActivo == "Todos" && resultadoActivo == "Todos")
+        {
+            historial =
+                await BLLHistorialAcciones
+                    .OrdenarHistorialCampania(
+                        IdCampania,
+                        columnaOrden);
+        }
+        else
+        {
+            // Primero se aplican los filtros mediante la BLL.
+            var filtrado =
+                await BLLHistorialAcciones.FiltrarPorClientes(
+                    IdCampania,
+                    resultadoActivo,
+                    planActivo);
+
+            // Luego se ordena el resultado filtrado.
+            historial = columna switch
+            {
+                "nombre" => filtrado
+                    .OrderByDescending(h =>
+                        $"{h.NombreCliente} {h.ApellidoCliente}")
+                    .ToList(),
+
+                "plan" => filtrado
+                    .OrderByDescending(h => h.PlanCliente)
+                    .ToList(),
+
+                "resultado" => filtrado
+                    .OrderByDescending(h => h.Resultado)
+                    .ToList(),
+
+                _ => filtrado
+                    .OrderByDescending(h => h.FechaAccion)
+                    .ToList()
+            };
+        }
+
+        paginaActual = 1;
     }
 
-    // ----- Pasos 10-13: filtros -----
-    private async Task CambiarFiltro(string? plan = null, string? resultado = null)
+    // ============================================================
+    // Filtros
+    // ============================================================
+
+    private async Task CambiarFiltro(
+        string? plan = null,
+        string? resultado = null)
     {
-        if (plan != null) planActivo = plan;
-        if (resultado != null) resultadoActivo = resultado;
+        if (plan != null)
+            planActivo = plan;
+
+        if (resultado != null)
+            resultadoActivo = resultado;
+
         paginaActual = 1;
+
         await RecargarConFiltrosYOrden();
     }
 
@@ -268,56 +560,145 @@ else
     {
         planActivo = "Todos";
         resultadoActivo = "Todos";
+
+        columnaOrden = "fecha";
         paginaActual = 1;
-        historial = await BLLHistorialAcciones.ObtenerHistorialCampania(IdCampania);
+
+        historial =
+            await BLLHistorialAcciones
+                .ObtenerHistorialCampania(IdCampania);
     }
 
     private async Task RecargarConFiltrosYOrden()
     {
-        historial = (planActivo != "Todos" || resultadoActivo != "Todos")
-            ? await BLLHistorialAcciones.FiltrarPorClientes(IdCampania, resultadoActivo, planActivo)
-            : await BLLHistorialAcciones.OrdenarHistorialCampania(IdCampania, columnaOrden);
+        if (planActivo == "Todos" && resultadoActivo == "Todos")
+        {
+            historial =
+                await BLLHistorialAcciones
+                    .OrdenarHistorialCampania(
+                        IdCampania,
+                        columnaOrden);
+
+            return;
+        }
+
+        var filtrado =
+            await BLLHistorialAcciones.FiltrarPorClientes(
+                IdCampania,
+                resultadoActivo,
+                planActivo);
+
+        historial = columnaOrden switch
+        {
+            "nombre" => filtrado
+                .OrderByDescending(h =>
+                    $"{h.NombreCliente} {h.ApellidoCliente}")
+                .ToList(),
+
+            "plan" => filtrado
+                .OrderByDescending(h => h.PlanCliente)
+                .ToList(),
+
+            "resultado" => filtrado
+                .OrderByDescending(h => h.Resultado)
+                .ToList(),
+
+            _ => filtrado
+                .OrderByDescending(h => h.FechaAccion)
+                .ToList()
+        };
     }
 
-    private List<string> PlanesDisponibles => historial.Select(h => h.PlanCliente).Distinct().OrderBy(p => p).ToList();
+    private List<string> PlanesDisponibles =>
+        planesDisponibles;
 
-    // ----- Paginación -----
+    // ============================================================
+    // Paginación
+    // ============================================================
+
     private List<HistorialAccion> HistorialPaginaActual =>
-        historial.Skip((paginaActual - 1) * tamanioPagina).Take(tamanioPagina).ToList();
+        historial
+            .Skip((paginaActual - 1) * tamanioPagina)
+            .Take(tamanioPagina)
+            .ToList();
 
-    private int TotalPaginas => Math.Max(1, (int)Math.Ceiling(historial.Count / (double)tamanioPagina));
+    private int TotalPaginas =>
+        Math.Max(
+            1,
+            (int)Math.Ceiling(
+                historial.Count / (double)tamanioPagina));
 
     private void IrAPagina(int pagina)
     {
-        if (pagina < 1 || pagina > TotalPaginas) return;
+        if (pagina < 1 || pagina > TotalPaginas)
+            return;
+
         paginaActual = pagina;
     }
 
     private List<int> NumerosDePagina()
     {
         var numeros = new List<int> { 1 };
+
         int desde = Math.Max(2, paginaActual - 1);
-        int hasta = Math.Min(TotalPaginas - 1, paginaActual + 1);
-        for (int i = desde; i <= hasta; i++) numeros.Add(i);
-        if (TotalPaginas > 1) numeros.Add(TotalPaginas);
-        return numeros.Distinct().ToList();
+        int hasta = Math.Min(
+            TotalPaginas - 1,
+            paginaActual + 1);
+
+        for (int i = desde; i <= hasta; i++)
+            numeros.Add(i);
+
+        if (TotalPaginas > 1)
+            numeros.Add(TotalPaginas);
+
+        return numeros
+            .Distinct()
+            .ToList();
     }
 
-    // ----- Paso 14-16: exportar (self-call de la GUI) -----
+    // ============================================================
+    // Exportación
+    // ============================================================
+
     private async Task ExportarInforme()
     {
+        if (campana == null)
+            return;
+
         exportando = true;
         mensajeExportacion = "";
+
         try
         {
-            var pdfBytes = GeneradorPdf.GenerarInformeCampana(campana!, historial,
-                MensajesEntregados, TasaApertura, ClicsEnlace, TasaClics, SociosRecuperados, TasaConversion);
-            var base64 = Convert.ToBase64String(pdfBytes);
-            await JS.InvokeVoidAsync("descargarArchivo", $"Campana_{campana!.Nombre}_{DateTime.Now:yyyyMMdd_HHmm}.pdf", base64);
+            // IMPORTANTE:
+            // Se exporta el historial completo, no el resultado
+            // de los filtros actuales.
+            var pdfBytes =
+                GeneradorPdf.GenerarInformeCampana(
+                    campana,
+                    historialCompleto,
+                    MensajesEntregados,
+                    TasaApertura,
+                    ClicsEnlace,
+                    TasaClics,
+                    SociosRecuperados,
+                    TasaConversion);
+
+            var base64 =
+                Convert.ToBase64String(pdfBytes);
+
+            await JS.InvokeVoidAsync(
+                "descargarArchivo",
+                $"Campana_{campana.Nombre}_{DateTime.Now:yyyyMMdd_HHmm}.pdf",
+                base64);
+
+            mensajeExportacion =
+                "El PDF se generó correctamente.";
         }
-        catch (Exception)
+        catch
         {
-            mensajeExportacion = "No fue posible generar el archivo. Podés reintentar o seguir navegando el detalle normalmente.";
+            mensajeExportacion =
+                "No fue posible generar el archivo. Podés reintentar o seguir navegando el detalle normalmente.";
         }
         finally
         {
@@ -325,9 +706,13 @@ else
         }
     }
 
-    // ----- Helpers visuales -----
+    // ============================================================
+    // Helpers visuales
+    // ============================================================
+
     private string Iniciales(HistorialAccion h) =>
-        $"{h.NombreCliente.FirstOrDefault()}{h.ApellidoCliente.FirstOrDefault()}".ToUpper();
+        $"{h.NombreCliente.FirstOrDefault()}{h.ApellidoCliente.FirstOrDefault()}"
+            .ToUpper();
 
     private string IconoCanal(string canal) => canal switch
     {
@@ -336,7 +721,11 @@ else
         _ => "📣"
     };
 
-    private string ClaseEstado(string estado) => estado == "Leído" ? "estado-leido" : "estado-entregado";
+    private string ClaseEstado(string estado) =>
+        estado.Equals("Leído", StringComparison.OrdinalIgnoreCase)
+            ? "estado-leido"
+            : "estado-entregado";
+
     private string IconoEstado(string estado) => "✓";
 
     private string ClaseResultado(string resultado) => resultado switch
@@ -346,3 +735,4 @@ else
         _ => "resultado-sin-accion"
     };
 }
+

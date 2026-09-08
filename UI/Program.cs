@@ -27,6 +27,8 @@ builder.Services.AddScoped<BLLCliente>();
 builder.Services.AddScoped<BLLFactorRiesgo>();
 builder.Services.AddScoped<BLLCampana>();
 builder.Services.AddScoped<BLLHistorialAcciones>();
+builder.Services.AddScoped<BLLIncentivo>();
+builder.Services.AddScoped<BLLCanal>();
 
 // UI
 builder.Services.AddScoped<GeneradorPdf>();

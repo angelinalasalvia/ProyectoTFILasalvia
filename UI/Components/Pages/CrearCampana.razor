@@ -5,6 +5,8 @@
 @using BLL
 @inject NavigationManager Navigation
 @inject BLLCampana BLLCampana
+@inject BLLCanal BLLCanal
+@inject BLLIncentivo BLLIncentivo
 
 <PageTitle>@(EsEdicion ? "Editar Campaña" : "Crear Campaña")</PageTitle>
 
@@ -30,7 +32,7 @@
 
         <div class="card camp-form-card">
             <label class="form-label">NOMBRE DE LA CAMPAÑA</label>
-            <input class="campana-select camp-form-input @(errores.Contains("nombre") ? "input-error" : "")"
+            <input class="camp-text-input camp-form-input @(errores.Contains("nombre") ? "input-error" : "")"
                    @bind="nombreCampana" @bind:event="oninput"
                    disabled="@EsEdicion"
                    placeholder="Ej: Campaña de Retención Premium" />
@@ -43,16 +45,14 @@
         <div class="card camp-form-card">
             <label class="form-label camp-form-label-icon">🔀 Canal de Envío</label>
             <div class="camp-form-canal-row">
-                <button type="button"
-                        class="camp-form-canal-btn @(canal == "Email" ? "camp-form-canal-btn-active" : "")"
-                        @onclick='() => CambiarCanal("Email")'>
-                    ✉️ Email
-                </button>
-                <button type="button"
-                        class="camp-form-canal-btn @(canal == "WhatsApp" ? "camp-form-canal-btn-active" : "")"
-                        @onclick='() => CambiarCanal("WhatsApp")'>
-                    💬 WhatsApp
-                </button>
+                @foreach (var c in canalesDisponibles)
+                {
+                    <button type="button"
+                            class="camp-form-canal-btn @(idCanalSeleccionado == c.IdCanal ? "camp-form-canal-btn-active" : "")"
+                            @onclick="() => AjustarFormularioSegunCanal(c)">
+                        @(c.Nombre == "Email" ? "✉️" : "💬") @c.Nombre
+                    </button>
+                }
             </div>
         </div>
 
@@ -64,10 +64,10 @@
                 </button>
             </div>
 
-            @if (canal == "Email")
+            @if (CanalActual == "Email")
             {
                 <label class="camp-form-sublabel">ASUNTO</label>
-                <input class="campana-select camp-form-input @(errores.Contains("asuntoEmail") ? "input-error" : "")"
+                <input class="camp-text-input camp-form-input @(errores.Contains("asuntoEmail") ? "input-error" : "")"
                        @bind="asuntoEmail" @bind:event="oninput" />
                 @if (errores.Contains("asuntoEmail"))
                 {
@@ -122,7 +122,7 @@
                 <label class="form-label camp-form-label-icon">🏆 Meta</label>
                 <label class="camp-form-sublabel">CLIENTES A RECUPERAR</label>
                 <input type="number" min="1"
-                       class="campana-select camp-form-input @(errores.Contains("metaClientes") ? "input-error" : "")"
+                       class="camp-text-input camp-form-input @(errores.Contains("metaClientes") ? "input-error" : "")"
                        @bind="metaClientes" />
                 @if (errores.Contains("metaClientes"))
                 {
@@ -154,14 +154,13 @@
                 <span class="camp-form-preview-dots">
                     <i></i><i></i><i></i>
                 </span>
-                <span class="camp-form-preview-titulo">Vista Previa: @canal</span>
+                <span class="camp-form-preview-titulo">Vista Previa: @CanalActual</span>
             </div>
 
-            @if (canal == "Email")
+            @if (CanalActual == "Email")
             {
                 <div class="camp-form-preview-email">
                     <h3>@(string.IsNullOrWhiteSpace(asuntoEmail) ? "Asunto del mensaje" : asuntoEmail)</h3>
-                    <p class="camp-form-preview-saludo">Hola @NombreClienteEjemplo,</p>
                     <p class="camp-form-preview-cuerpo">@MensajeConSalto</p>
 
                     @if (!string.IsNullOrEmpty(NombreIncentivoSeleccionado))
@@ -206,7 +205,7 @@
     private int idCampaniaActual;
 
     private string nombreCampana = "";
-    private string canal = "Email";
+    private int idCanalSeleccionado;
     private string asuntoEmail = "";
     private string mensaje = "";
     private string objetivoDescripcion = "";
@@ -217,6 +216,7 @@
     private bool guardando = false;
     private HashSet<string> errores = new();
 
+    private List<Canal> canalesDisponibles = new();
     private List<Incentivo> incentivosDisponibles = new();
 
     private const string plantillaBase =
@@ -225,6 +225,8 @@
         "Notamos que no has visitado nuestras instalaciones últimamente y queremos que vuelvas. " +
         "Como eres uno de nuestros clientes más valorados, hemos activado un beneficio especial " +
         "para tu próxima renovación.";
+
+    private string CanalActual => canalesDisponibles.FirstOrDefault(c => c.IdCanal == idCanalSeleccionado)?.Nombre ?? "Email";
 
     private string NombreClienteEjemplo => "María";
 
@@ -236,7 +238,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        incentivosDisponibles = await BLLCampana.ObtenerIncentivosDisponibles();
+        // ObtenerCanales() / ObtenerIncentivos(): List<Canal> / List<Incentivo> del diagrama.
+        canalesDisponibles = await BLLCanal.ObtenerCanales();
+        incentivosDisponibles = await BLLIncentivo.ObtenerIncentivos();
 
         if (EsEdicion && int.TryParse(CampanaId, out var id))
         {
@@ -244,10 +248,12 @@
         }
         else
         {
+            idCanalSeleccionado = canalesDisponibles.FirstOrDefault()?.IdCanal ?? 0;
             CargarPlantillaBase();
         }
     }
 
+    // CU07 - AutocompletarCampos() / MuestraVistaPrevia()
     private async Task CargarCampanaExistente(int id)
     {
         var campana = await BLLCampana.ObtenerCampañaPorId(id);
@@ -259,38 +265,44 @@
 
         idCampaniaActual = campana.IdCampania;
         nombreCampana = campana.Nombre;
-        canal = campana.Canal;
+        idCanalSeleccionado = campana.IdCanal;
         asuntoEmail = campana.AsuntoEmail ?? "";
         mensaje = campana.Mensaje;
         objetivoDescripcion = campana.Objetivo;
         idIncentivoSeleccionado = campana.IdIncentivo;
         metaClientes = campana.Meta;
+        // La vista previa se arma sola por binding reactivo (MensajeConSalto, CanalActual, etc.)
     }
 
     private void CargarPlantillaBase()
     {
         mensaje = plantillaBase;
-        if (canal == "Email" && string.IsNullOrWhiteSpace(asuntoEmail))
+        if (CanalActual == "Email" && string.IsNullOrWhiteSpace(asuntoEmail))
         {
             asuntoEmail = "¡Te extrañamos! Tenemos un regalo exclusivo para ti";
         }
     }
 
-    private void CambiarCanal(string nuevoCanal)
+    // AjustarFormularioSegunCanal(canal) del diagrama: al cambiar el canal, muestra/oculta
+    // el campo Asunto (paso 5 de CU06, paso 7 de CU07). La vista previa (ActualizarVistaPrevia /
+    // AdaptarFormatoVistaPrevia) se resuelve sola porque CanalActual y MensajeConSalto son
+    // propiedades reactivas de Blazor: no hace falta un método aparte para "refrescarla".
+    private void AjustarFormularioSegunCanal(Canal canal)
     {
-        canal = nuevoCanal;
-        if (canal != "Email")
+        idCanalSeleccionado = canal.IdCanal;
+        if (canal.Nombre != "Email")
         {
             asuntoEmail = "";
         }
     }
 
-    private bool Validar()
+    // ValidarCampos() del diagrama.
+    private bool ValidarCampos()
     {
         errores.Clear();
 
         if (string.IsNullOrWhiteSpace(nombreCampana)) errores.Add("nombre");
-        if (canal == "Email" && string.IsNullOrWhiteSpace(asuntoEmail)) errores.Add("asuntoEmail");
+        if (CanalActual == "Email" && string.IsNullOrWhiteSpace(asuntoEmail)) errores.Add("asuntoEmail");
         if (string.IsNullOrWhiteSpace(mensaje)) errores.Add("mensaje");
         if (string.IsNullOrWhiteSpace(objetivoDescripcion)) errores.Add("objetivoDescripcion");
         if (idIncentivoSeleccionado is null) errores.Add("incentivo");
@@ -302,7 +314,7 @@
     private async Task GuardarCampana()
     {
         mensajeError = "";
-        if (!Validar())
+        if (!ValidarCampos())
         {
             mensajeConfirmacion = "";
             return;
@@ -311,28 +323,22 @@
         guardando = true;
         try
         {
-            var idCanal = await BLLCampana.ObtenerIdCanalPorNombre(canal);
-
-            var campana = new Campana
-            {
-                IdCampania = idCampaniaActual,
-                Nombre = nombreCampana,
-                IdCanal = idCanal,
-                Objetivo = objetivoDescripcion,
-                Meta = metaClientes,
-                AsuntoEmail = canal == "Email" ? asuntoEmail : null,
-                Mensaje = mensaje,
-                IdIncentivo = idIncentivoSeleccionado
-            };
+            var asuntoAGuardar = CanalActual == "Email" ? asuntoEmail : null;
 
             if (EsEdicion)
             {
-                await BLLCampana.ActualizarCampana(campana);
+                // ModificarCampaña(int id, int idcanal, string mensaje, int idincentivo, int objetivo)
+                await BLLCampana.ModificarCampana(
+                    idCampaniaActual, idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value,
+                    metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
                 mensajeConfirmacion = "Campaña actualizada exitosamente.";
             }
             else
             {
-                await BLLCampana.CrearCampana(campana);
+                // GuardarCampaña(string nombre, int idcanal, string mensaje, int idincentivo, int objetivo)
+                await BLLCampana.GuardarCampana(
+                    nombreCampana, idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value,
+                    metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
                 mensajeConfirmacion = "Campaña creada exitosamente.";
             }
 

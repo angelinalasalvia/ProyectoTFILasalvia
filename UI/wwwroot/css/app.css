@@ -2133,15 +2133,50 @@ div.prob-fill-pred.nivel-bajo {
         background: #f6f7fa;
     }
 
+}
 
-/* ==========================================================================
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e2432;
+    margin-bottom: 8px;
+}
+
+.camp-text-input {
+    width: 100%;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    background: #fff;
+}
+
+    .camp-text-input:disabled {
+        background: #f4f6f9;
+        color: #8a90a2;
+        cursor: not-allowed;
+    }
+
+.campana-select {
+    width: 100%;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+}
+    /* ==========================================================================
    FIN PANTALLA: CREAR / EDITAR CAMPAÑA
    ========================================================================== */
-
-/* ==========================================================================
+    /* ==========================================================================
    PANTALLA: CLIENTES (Pages/Clientes.razor)
    ========================================================================== */
-.cli-filtros-card {
+    .cli-filtros-card {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
     gap: 20px;

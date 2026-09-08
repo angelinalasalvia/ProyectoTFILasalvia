@@ -10,7 +10,7 @@ public class BLLFactorRiesgo
 
     public async Task<List<FactorRiesgo>> ObtenerFactorRiesgo(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
-        var todos = await ConsultasComunes.ObtenerClientesConEventosAsync(_accesoDatos, ct);
+        var todos = await BLLCliente.ObtenerClientesConEventosAsync(_accesoDatos, ct);
 
         var cliente = todos.FirstOrDefault(c => c.IdCliente == idCliente);
         if (cliente == null) return new List<FactorRiesgo>();

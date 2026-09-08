@@ -1261,11 +1261,76 @@ div.prob-fill-pred.nivel-bajo {
 /* --- Fila de filtros --- */
 .camp-filtros-card {
     display: flex;
-    flex-wrap: wrap;
-    align-items: end;
+    align-items: flex-end;
+    justify-content: flex-end;
     gap: 16px;
     margin-bottom: 18px;
 }
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.filtro-label {
+    font-size: 12px;
+    color: #555b6a;
+    font-weight: 600;
+}
+
+.filtro-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 30px 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.filtro-rango {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filtro-fecha {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    width: 110px;
+}
+
+.filtro-rango-sep {
+    color: #8a90a2;
+    font-size: 13px;
+}
+
+.btn-limpiar-filtro {
+    background: none;
+    border: none;
+    color: #2f6fed;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 9px 4px;
+    white-space: nowrap;
+    margin-left: 0;
+}
+
+    .btn-limpiar-filtro:hover {
+        text-decoration: underline;
+    }
 
 .filtro-grupo {
     display: flex;

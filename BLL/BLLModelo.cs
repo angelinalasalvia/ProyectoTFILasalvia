@@ -41,7 +41,7 @@ public class BLLModelo
         _logger.LogInformation("Iniciando ciclo de entrenamiento y predicción de churn...");
         var fechaReferencia = DateTime.Now;
 
-        var clientes = await ConsultasComunes.ObtenerClientesConEventosAsync(_accesoDatos, cancellationToken);
+        var clientes = await BLLCliente.ObtenerClientesConEventosAsync(_accesoDatos, cancellationToken);
         if (clientes.Count < 20)
         {
             _logger.LogWarning("Muy pocos clientes ({Count}) para entrenar un modelo confiable.", clientes.Count);
@@ -214,7 +214,7 @@ public class BLLModelo
         var idsList = idsClientes.Distinct().ToList();
         if (idsList.Count > 0)
         {
-            var (clausulaIn, parametrosIn) = ConsultasComunes.ConstruirClausulaIn("id", idsList);
+            var (clausulaIn, parametrosIn) = _accesoDatos.ConstruirClausulaIn("id", idsList);
             await _accesoDatos.Eliminar($"DELETE FROM Prediccion WHERE IdCliente IN ({clausulaIn})", parametrosIn, ct: ct);
         }
 

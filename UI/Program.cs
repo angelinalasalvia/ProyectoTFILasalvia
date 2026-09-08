@@ -13,11 +13,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddDbContext<ChurnDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
-// DAL 
-/*builder.Services.AddScoped<IDALCliente, DALCliente>();
-builder.Services.AddScoped<IDALFactorRiesgo, DALFactorRiesgo>();
-builder.Services.AddScoped<IDALModelo, DALModelo>();
-builder.Services.AddScoped<IDALPrediccion, DALPrediccion>();*/
+//DAL
 builder.Services.AddScoped<IAccesoDatos, AccesoDatos>();
 
 // BLL

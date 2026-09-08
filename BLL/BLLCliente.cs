@@ -8,6 +8,17 @@ public class BLLCliente
     private readonly IAccesoDatos _accesoDatos;
     public BLLCliente(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
+    public static async Task<List<Cliente>> ObtenerClientesConEventosAsync(IAccesoDatos accesoDatos, CancellationToken ct = default)
+    {
+        var clientes = (await accesoDatos.Leer<Cliente>("SELECT * FROM Cliente", ct: ct)).ToList();
+        var eventos = (await accesoDatos.Leer<EventoCliente>("SELECT * FROM EventosCliente", ct: ct)).ToList();
+
+        var eventosPorCliente = eventos.ToLookup(e => e.IdCliente);
+        foreach (var cliente in clientes)
+            cliente.Eventos = eventosPorCliente[cliente.IdCliente].ToList();
+
+        return clientes;
+    }
     public async Task<Cliente?> ObtenerCliente(int idCliente, CancellationToken ct = default)
     {
         var resultado = await _accesoDatos.Leer<Cliente>(
@@ -29,7 +40,7 @@ public class BLLCliente
 
     public async Task<(double UsoInstalaciones, double InteraccionesApp)> ObtenerMetricasRelativasMedia(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
-        var todos = await ConsultasComunes.ObtenerClientesConEventosAsync(_accesoDatos, ct);
+        var todos = await BLLCliente.ObtenerClientesConEventosAsync(_accesoDatos, ct);
         var cliente = todos.FirstOrDefault(c => c.IdCliente == idCliente);
         if (cliente == null) return (0, 0);
 

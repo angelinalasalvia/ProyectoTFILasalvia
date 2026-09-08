@@ -72,8 +72,8 @@ public class BLLPrediccion
         var idsClientes = predicciones.Select(p => p.IdCliente).Distinct().ToList();
         var idsFactores = predicciones.Select(p => p.IdFactorRiesgo).Distinct().ToList();
 
-        var (clausulaClientes, parametrosClientes) = ConsultasComunes.ConstruirClausulaIn("idc", idsClientes);
-        var (clausulaFactores, parametrosFactores) = ConsultasComunes.ConstruirClausulaIn("idf", idsFactores);
+        var (clausulaClientes, parametrosClientes) = _accesoDatos.ConstruirClausulaIn("idc", idsClientes);
+        var (clausulaFactores, parametrosFactores) = _accesoDatos.ConstruirClausulaIn("idf", idsFactores);
 
         var clientes = (await _accesoDatos.Leer<Cliente>(
                 $"SELECT * FROM Cliente WHERE IdCliente IN ({clausulaClientes})",

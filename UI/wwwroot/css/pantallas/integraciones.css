@@ -1,0 +1,340 @@
+﻿/* ==========================================================================
+   Pantalla: Gestión de Integraciones (Pages/Integraciones.razor)
+   Reutiliza clases de: base.css, retencion-cliente.css, campana-detalle.css
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: GESTIÓN DE INTEGRACIONES (Pages/Integraciones.razor)
+   Reutiliza: .search-box, .breadcrumb, .detalle-title, .camp-subtitle.
+   ========================================================================== */
+.integ-search-box {
+    width: 320px;
+}
+/* --- KPIs --- */
+.integ-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 22px 0;
+}
+
+.integ-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.integ-kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.integ-kpi-icon-ok {
+    background: #e3f7ea;
+}
+
+.integ-kpi-icon-error {
+    background: #fdeaea;
+}
+
+.integ-kpi-icon-sync {
+    background: #fdf3e3;
+}
+
+.integ-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: #8a90a2;
+    margin-bottom: 4px;
+}
+
+.integ-kpi-valor-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.integ-kpi-valor {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.integ-kpi-valor-error {
+    color: #d63939;
+}
+
+.integ-kpi-sub {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.integ-kpi-sub-error {
+    color: #d63939;
+}
+/* --- Grilla de fuentes --- */
+.integ-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.integ-fuente-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+}
+
+.integ-fuente-error {
+    border: 1px solid #f6c6c6;
+}
+
+.integ-error-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #d63939;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+}
+
+.integ-fuente-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.integ-fuente-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.integ-icon-azul {
+    background: #eaf1fd;
+}
+
+.integ-icon-naranja {
+    background: #fdf1e3;
+}
+
+.integ-icon-gris {
+    background: #eef0f4;
+}
+
+.integ-icon-morado {
+    background: #f1eafd;
+}
+
+.integ-icon-celeste {
+    background: #e3f6fd;
+}
+
+.integ-fuente-nombre-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.integ-fuente-nombre {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.integ-fuente-estado {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #8a90a2;
+    margin-top: 2px;
+}
+
+.integ-estado-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+}
+
+.integ-dot-verde {
+    background: #2f9e5c;
+}
+
+.integ-dot-rojo {
+    background: #d63939;
+}
+
+.integ-menu-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #8a90a2;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+/* --- Datos (última sync / registros / fallo) --- */
+.integ-fuente-datos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.integ-dato-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+    .integ-dato-row span:last-child {
+        font-weight: 700;
+        color: #1e2432;
+    }
+
+.integ-link-error {
+    color: #d63939 !important;
+    font-weight: 700 !important;
+    text-decoration: none;
+}
+
+    .integ-link-error:hover {
+        text-decoration: underline;
+    }
+/* --- Barra de progreso --- */
+.integ-barra-fondo {
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.integ-barra-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.integ-barra-verde {
+    background: #2f9e5c;
+}
+
+.integ-barra-roja {
+    background: #d63939;
+}
+/* --- Acciones --- */
+.integ-fuente-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.integ-btn-editar {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    cursor: pointer;
+}
+
+    .integ-btn-editar:hover {
+        background: #f6f7fa;
+    }
+
+.integ-btn-editar-alerta {
+    border-color: #d63939;
+    color: #d63939;
+}
+
+    .integ-btn-editar-alerta:hover {
+        background: #fdeaea;
+    }
+
+.integ-btn-sync {
+    flex: 1;
+    background: #f6f7fa;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    cursor: pointer;
+}
+
+    .integ-btn-sync:hover:not(:disabled) {
+        background: #eef0f4;
+    }
+
+    .integ-btn-sync:disabled {
+        color: #c7ccd6;
+        cursor: not-allowed;
+    }
+/* --- Card "Añadir nueva fuente" --- */
+.integ-add-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 8px;
+    border: 1.5px dashed #d7dbe3;
+    box-shadow: none;
+    cursor: pointer;
+    min-height: 180px;
+}
+
+    .integ-add-card:hover {
+        background: #fafbfc;
+        border-color: #b7bdc9;
+    }
+
+.integ-add-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #eaf1fd;
+    color: #2f6fed;
+    font-size: 20px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.integ-add-titulo {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.integ-add-sub {
+    font-size: 12px;
+    color: #8a90a2;
+    max-width: 220px;
+}
+/* ==========================================================================
+   FIN PANTALLA: GESTIÓN DE INTEGRACIONES
+   ========================================================================== */

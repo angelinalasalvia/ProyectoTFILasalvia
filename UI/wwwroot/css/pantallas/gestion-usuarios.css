@@ -1,0 +1,104 @@
+﻿/* ==========================================================================
+   Pantalla: Gestión de Usuarios (Pages/GestionUsuarios.razor)
+   Reutiliza clases de: base.css, retencion-cliente.css, clientes.css, integraciones.css, automatizacion.css
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: GESTIÓN DE USUARIOS (Pages/GestionUsuarios.razor)
+   Reutiliza: .card, .kpi-label, .kpi-value, .search-box, .cli-table,
+   .cli-avatar (+ variantes de color), .btn-crear-campana, .camp-subtitle,
+   .pred-filter-row, .filter-left, .filter-label, .filtro-select,
+   .pagination-info, .pred-pagination, .pagination-controls, .page-btn,
+   .integ-fuente-estado, .integ-estado-dot, .integ-dot-verde, .auto-icon-btn.
+   ========================================================================== */
+.usr-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.usr-search-box {
+    flex: 1;
+    max-width: 520px;
+}
+
+.usr-topbar-icons {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.usr-icon-btn {
+    position: relative;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #555b6a;
+    cursor: pointer;
+    padding: 4px;
+}
+
+    .usr-icon-btn:hover {
+        color: #1e2432;
+    }
+
+.usr-notif-dot {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d63939;
+    border: 2px solid #fff;
+}
+
+/* --- KPIs (solo 2, angostas, no ocupan todo el ancho) --- */
+.usr-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(200px, 260px));
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+/* --- Badge de rol --- */
+.usr-rol-badge {
+    background: #eef0f4;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+/* --- Dot gris para estado "Inactivo" --- */
+.usr-dot-gris {
+    background: #c7ccd6;
+}
+
+/* --- Acciones de la fila --- */
+.usr-th-acciones {
+    text-align: right !important;
+}
+
+.usr-acciones-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.usr-mail-alert {
+    background: #fdeaea !important;
+    color: #d63939 !important;
+    border-radius: 6px;
+    margin-right: 4px;
+}
+
+    .usr-mail-alert:hover {
+        background: #f6c6c6 !important;
+    }
+/* ==========================================================================
+   FIN PANTALLA: GESTIÓN DE USUARIOS
+   ========================================================================== */

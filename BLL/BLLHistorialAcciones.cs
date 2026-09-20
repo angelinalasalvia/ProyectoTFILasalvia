@@ -5,14 +5,14 @@ namespace BLL;
 
 public class BLLHistorialAcciones
 {
-    private readonly IAccesoDatos _accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
 
     // Umbral asumido para considerar que una campaña "alcanzó su KPI objetivo".
     // La tabla Campaña no tiene un campo de meta numérica explícito; ajustar si
     // definen un criterio distinto (por ejemplo, un campo MetaTasaExito).
     private const decimal UmbralKpi = 50m;
 
-    public BLLHistorialAcciones(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    public BLLHistorialAcciones(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public Task<MetricasCampana> ObtenerMetricasGlobales(CancellationToken ct = default)
         => ObtenerMetricasGlobalesXPeriodo(DateTime.Now.AddDays(-30), DateTime.Now, ct);

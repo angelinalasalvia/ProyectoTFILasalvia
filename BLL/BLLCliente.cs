@@ -5,10 +5,10 @@ namespace BLL;
 
 public class BLLCliente
 {
-    private readonly IAccesoDatos _accesoDatos;
-    public BLLCliente(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
+    public BLLCliente(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
-    public static async Task<List<Cliente>> ObtenerClientesConEventosAsync(IAccesoDatos accesoDatos, CancellationToken ct = default)
+    public static async Task<List<Cliente>> ObtenerClientesConEventosAsync(AccesoDatos accesoDatos, CancellationToken ct = default)
     {
         var clientes = (await accesoDatos.Leer<Cliente>("SELECT * FROM Cliente", ct: ct)).ToList();
         var eventos = (await accesoDatos.Leer<EventoCliente>("SELECT * FROM EventosCliente", ct: ct)).ToList();

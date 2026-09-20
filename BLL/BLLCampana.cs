@@ -5,8 +5,8 @@ namespace BLL;
 
 public class BLLCampana
 {
-    private readonly IAccesoDatos _accesoDatos;
-    public BLLCampana(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
+    public BLLCampana(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     private const string SelectBase = @"
         SELECT camp.IdCampaña AS IdCampania, camp.Asunto AS Nombre, ca.Nombre AS Canal, ca.IdCanal,

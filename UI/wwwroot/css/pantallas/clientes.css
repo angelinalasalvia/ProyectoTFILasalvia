@@ -1,0 +1,153 @@
+﻿/* ==========================================================================
+   Pantalla: Clientes (Pages/Clientes.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CLIENTES (Pages/Clientes.razor)
+   ========================================================================== */
+.cli-filtros-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 20px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.btn-aplicar-filtros {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    cursor: pointer;
+    white-space: nowrap;
+    height: fit-content;
+}
+
+    .btn-aplicar-filtros:hover {
+        background: #333;
+    }
+/* --- Card de tabla --- */
+.cli-table-card {
+    padding: 20px;
+}
+
+.cli-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+    .cli-table-header h3 {
+        margin: 0;
+        font-size: 17px;
+    }
+
+.cli-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cli-search-box {
+    width: 260px;
+}
+/* --- Tabla --- */
+.cli-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .cli-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        border-bottom: 1px solid #eef0f4;
+        padding: 10px 8px;
+    }
+
+    .cli-table td {
+        padding: 16px 8px;
+        border-bottom: 1px solid #f4f5f8;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+.cli-email {
+    color: #555b6a;
+}
+
+.cli-row-clickeable {
+    cursor: pointer;
+}
+
+    .cli-row-clickeable:hover {
+        background: #fafbfc;
+    }
+/* --- Avatares con iniciales --- */
+.cli-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.cli-avatar-azul {
+    background: #4c6ef5;
+}
+
+.cli-avatar-ambar {
+    background: #e0a13a;
+}
+
+.cli-avatar-rojo {
+    background: #e07a6b;
+}
+/* --- Badge de historial de pagos --- */
+.cli-pago-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cli-pago-al-dia {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+.cli-pago-pendiente {
+    background: #fdf3e3;
+    color: #c98a1f;
+}
+
+.cli-pago-vencido {
+    background: #fdeaea;
+    color: #d63939;
+}
+/* --- Link de plan --- */
+.cli-plan-link {
+    color: #2f6fed;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+    .cli-plan-link:hover {
+        text-decoration: underline;
+    }
+
+/* ==========================================================================
+   FIN PANTALLA: CLIENTES
+   ========================================================================== */
+

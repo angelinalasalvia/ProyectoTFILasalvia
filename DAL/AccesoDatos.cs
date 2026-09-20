@@ -5,7 +5,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace DAL
 {
-    public interface IAccesoDatos
+    /* ELIMINAR
+     public interface IAccesoDatos
     {
         Task<IEnumerable<T>> Leer<T>(string consulta, object? parametros = null, bool esStoreProcedure = false, CancellationToken ct = default) where T : new();
         Task<int> Escribir(string consulta, object? parametros = null, bool esStoreProcedure = false, CancellationToken ct = default);
@@ -14,9 +15,9 @@ namespace DAL
 
         (string Clausula, Dictionary<string, object?> Parametros)
             ConstruirClausulaIn(string prefijo, List<int> valores);
-    }
+    }*/
 
-    public class AccesoDatos : IAccesoDatos
+    public class AccesoDatos 
     {
         private readonly string _cadenaConexion;
 

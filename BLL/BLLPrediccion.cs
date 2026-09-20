@@ -5,8 +5,8 @@ namespace BLL;
 
 public class BLLPrediccion
 {
-    private readonly IAccesoDatos _accesoDatos;
-    public BLLPrediccion(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
+    public BLLPrediccion(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public async Task<(int Alto, int Medio, int Bajo)> ObtenerResumenNivelesRiesgo(CancellationToken ct = default)
     {

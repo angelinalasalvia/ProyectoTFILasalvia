@@ -9,11 +9,11 @@ namespace BLL;
 
 public class BLLModelo
 {
-    private readonly IAccesoDatos _accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
     private readonly ILogger<BLLModelo> _logger;
     private readonly MLContext _mlContext;
 
-    public BLLModelo(IAccesoDatos accesoDatos, ILogger<BLLModelo> logger)
+    public BLLModelo(AccesoDatos accesoDatos, ILogger<BLLModelo> logger)
     {
         _accesoDatos = accesoDatos;
         _logger = logger;

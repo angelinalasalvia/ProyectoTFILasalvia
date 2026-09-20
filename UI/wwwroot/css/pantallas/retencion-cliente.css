@@ -1,0 +1,277 @@
+﻿/* ==========================================================================
+   Pantalla: Retención de Cliente (Pages/RetencionCliente.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: RETENCIÓN DE CLIENTE (Pages/RetencionCliente.razor)
+   Por ahora hardcodeada para Carlos Ruiz, igual que la de detalle.
+   ========================================================================== */
+
+.breadcrumb {
+    font-size: 13px;
+    color: #8a90a2;
+    margin-bottom: 6px;
+}
+
+.breadcrumb-sep {
+    margin: 0 4px;
+}
+
+.retencion-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.retencion-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-cancelar {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1e2432;
+}
+
+    .btn-cancelar:hover {
+        background: #f6f7fa;
+    }
+
+.btn-confirmar {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .btn-confirmar:hover {
+        background: #333;
+    }
+
+/* --- Banner de campaña sugerida por IA --- */
+.ia-banner {
+    background: linear-gradient(135deg, #2f6fed, #4c6ef5);
+    border-radius: 12px;
+    padding: 22px 24px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+.ia-icon {
+    background: rgba(255,255,255,0.2);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.ia-content h3 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+}
+
+.ia-content p {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    opacity: 0.9;
+    max-width: 560px;
+    line-height: 1.5;
+}
+
+.ia-aviso {
+    background: rgba(255,255,255,0.15);
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+/* --- Cards de sección con header gris --- */
+.seccion-card {
+    padding: 0;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.seccion-header {
+    background: #f6f7fa;
+    padding: 14px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #555b6a;
+    letter-spacing: .5px;
+    border-bottom: 1px solid #eef0f4;
+}
+
+/* --- Tabla de historial --- */
+.historial-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .historial-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        padding: 14px 20px 8px 20px;
+    }
+
+    .historial-table td {
+        padding: 12px 20px;
+        font-size: 14px;
+        border-top: 1px solid #f4f5f8;
+    }
+
+.campana-nombre {
+    font-weight: 600;
+}
+
+.canal-cell {
+    color: #555b6a;
+}
+
+.fecha-cell {
+    color: #8a90a2;
+}
+
+.resultado-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.resultado-neutro {
+    background: #f0f2f6;
+    color: #555b6a;
+}
+
+.resultado-exito {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+/* --- Formulario de selección de campaña --- */
+.form-block {
+    padding: 20px 20px 0 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e2432;
+    margin-bottom: 8px;
+}
+
+.campana-select {
+    width: 100%;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+}
+
+.canal-incentivo-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    background: #f6f7fa;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 20px 0 20px;
+}
+
+.canal-incentivo-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cii-label {
+    font-size: 11px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+.cii-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.canal-whatsapp {
+    color: #2f6fed;
+}
+
+.mensaje-preview {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 14px;
+    color: #1e2432;
+    line-height: 1.6;
+    background: #fff;
+}
+
+.programacion-block {
+    padding-bottom: 20px;
+}
+
+.radio-row {
+    display: flex;
+    gap: 24px;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fafbfc;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+    .radio-option input[type="radio"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+/* ==========================================================================
+   FIN PANTALLA: RETENCIÓN DE CLIENTE
+   ========================================================================== */
+

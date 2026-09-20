@@ -5,8 +5,8 @@ namespace BLL;
 
 public class BLLFactorRiesgo
 {
-    private readonly IAccesoDatos _accesoDatos;
-    public BLLFactorRiesgo(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
+    public BLLFactorRiesgo(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public async Task<List<FactorRiesgo>> ObtenerFactorRiesgo(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {

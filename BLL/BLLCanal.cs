@@ -5,8 +5,8 @@ namespace BLL;
 
 public class BLLCanal
 {
-    private readonly IAccesoDatos _accesoDatos;
-    public BLLCanal(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
+    public BLLCanal(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public async Task<List<Canal>> ObtenerCanales(CancellationToken ct = default)
     {

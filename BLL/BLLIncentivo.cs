@@ -5,8 +5,8 @@ namespace BLL;
 
 public class BLLIncentivo
 {
-    private readonly IAccesoDatos _accesoDatos;
-    public BLLIncentivo(IAccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    private readonly AccesoDatos _accesoDatos;
+    public BLLIncentivo(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     public async Task<List<Incentivo>> ObtenerIncentivos(CancellationToken ct = default)
     {

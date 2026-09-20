@@ -1,0 +1,245 @@
+﻿/* ==========================================================================
+   Pantalla: Automatización (Pages/Automatizacion.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: AUTOMATIZACIÓN (Pages/Automatizacion.razor)
+   ========================================================================== */
+.auto-search-box {
+    width: 320px;
+}
+/* --- Título + botón "Nueva Regla" --- */
+.auto-titulo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    gap: 20px;
+}
+
+.auto-titulo {
+    font-size: 20px;
+    margin: 0 0 6px 0;
+    color: #1e2432;
+}
+
+.auto-subtitulo {
+    font-size: 13px;
+    color: #8a90a2;
+    margin: 0;
+    max-width: 620px;
+}
+/* --- Encabezado del listado --- */
+.auto-listado-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+    .auto-listado-header h3 {
+        margin: 0;
+        font-size: 15px;
+    }
+
+.auto-filtro-orden {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #555b6a;
+    cursor: pointer;
+}
+/* --- Lista de reglas --- */
+.auto-reglas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.auto-regla-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.auto-regla-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.auto-regla-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auto-regla-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.auto-badge-activa {
+    background: #eaf1fd;
+    color: #2f6fed;
+}
+
+.auto-badge-pausada {
+    background: #eef0f4;
+    color: #8a90a2;
+}
+
+.auto-regla-fecha {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.auto-regla-estado {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.auto-regla-estado-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+}
+
+.auto-estado-pausada {
+    color: #8a90a2;
+}
+/* --- Switch de Activa/Pausada --- */
+.auto-switch {
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    background: #dfe3ea;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    padding: 0;
+    transition: background .15s ease;
+}
+
+.auto-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left .15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.auto-switch-on {
+    background: #2f6fed;
+}
+
+    .auto-switch-on .auto-switch-knob {
+        left: 20px;
+    }
+/* --- Flujo SI / ENTONCES --- */
+.auto-regla-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: 14px;
+    align-items: center;
+}
+
+.auto-regla-condicion,
+.auto-regla-accion {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auto-regla-conector {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: #8a90a2;
+}
+
+.auto-cond-box,
+.auto-accion-box {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e2432;
+    padding: 10px 14px;
+    border-radius: 8px;
+}
+
+.auto-box-alerta {
+    background: #fdf3e3;
+    color: #c98a1f;
+}
+
+.auto-accion-box {
+    background: #eaf1fd;
+}
+
+.auto-box-muted {
+    background: #f0f2f6 !important;
+    color: #8a90a2 !important;
+}
+
+.auto-regla-flecha {
+    font-size: 16px;
+    color: #c7ccd6;
+    justify-self: center;
+}
+
+.auto-regla-stats {
+    text-align: right;
+}
+
+.auto-regla-stats-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: #8a90a2;
+    margin-bottom: 4px;
+}
+
+.auto-regla-stats-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e2432;
+}
+/* --- Nota adicional (ej: reglas pausadas por integración pendiente) --- */
+.auto-regla-nota {
+    font-size: 12px;
+    color: #8a90a2;
+    font-style: italic;
+}
+/* --- Acciones (editar / eliminar) --- */
+.auto-regla-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #f4f5f8;
+    padding-top: 12px;
+}
+
+.auto-icon-btn {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    color: #8a90a2;
+    padding: 4px;
+}
+
+    .auto-icon-btn:hover {
+        color: #1e2432;
+    }
+/* ==========================================================================
+   FIN PANTALLA: AUTOMATIZACIÓN
+   ========================================================================== */

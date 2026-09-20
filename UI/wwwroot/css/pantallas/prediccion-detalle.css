@@ -1,0 +1,293 @@
+﻿/* ==========================================================================
+   Pantalla: Detalle de Predicción (Pages/PrediccionDetalle.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: DETALLE DE PREDICCIÓN (Pages/PrediccionDetalleCarlos.razor)
+   Por ahora hardcodeada para Carlos Ruiz. Cuando se programe la lógica real
+   esto se va a convertir en una ruta con parámetro (ej: /prediccion/{id}).
+   ========================================================================== */
+
+.back-link {
+    color: #2f6fed;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+/* Hace clickeable el nombre de un cliente en la tabla de Predicciones */
+.client-name-link {
+    color: #111;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .client-name-link:hover {
+        text-decoration: underline;
+        color: #2f6fed;
+    }
+
+.detalle-title {
+    font-size: 26px;
+    margin: 20px 0 10px 0;
+}
+
+.riesgo-tag {
+    display: inline-block;
+    color: #d63939;
+    background: #fdeaea;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+}
+
+.detalle-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.detalle-col-izq,
+.detalle-col-der {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.card-subtitle {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin: 0 0 16px 0;
+}
+
+.card-subtitle-dark {
+    font-size: 16px;
+    color: #1e2432;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* --- Card de perfil --- */
+.perfil-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.perfil-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #f0f2f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.perfil-nombre {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.perfil-email {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.perfil-datos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 1px solid #eef0f4;
+    padding-top: 14px;
+}
+
+.perfil-dato {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.dato-label {
+    color: #8a90a2;
+}
+
+.dato-value {
+    font-weight: 600;
+    color: #1e2432;
+}
+
+/* --- Card vs. media del segmento --- */
+.segmento-item {
+    margin-bottom: 14px;
+}
+
+    .segmento-item:last-child {
+        margin-bottom: 0;
+    }
+
+.segmento-label {
+    font-size: 13px;
+    color: #555b6a;
+    margin-bottom: 4px;
+}
+
+.segmento-value {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+    .segmento-value.negativo {
+        color: #d63939;
+    }
+
+/* --- Botón de acción de retención --- */
+.btn-accion-retencion {
+    background: #2f6fed;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+    .btn-accion-retencion:hover {
+        background: #2559c9;
+    }
+
+.btn-icon {
+    font-size: 16px;
+}
+
+/* --- Card de factores de riesgo --- */
+.factores-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.periodo-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 6px 26px 6px 10px;
+    font-size: 12px;
+    color: #555b6a;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.factores-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+}
+
+.factores-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.factor-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.factor-nombre {
+    color: #555b6a;
+}
+
+.factor-valor {
+    font-weight: 700;
+}
+
+    .factor-valor.factor-negativo {
+        color: #d63939;
+    }
+
+    .factor-valor.factor-positivo {
+        color: #2f9e5c;
+    }
+
+.factor-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.factor-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+    .factor-fill.fill-negativo {
+        background: #d63939;
+    }
+
+    .factor-fill.fill-positivo {
+        background: #2f6fed;
+    }
+
+.factor-desc {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.radar-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.radar-svg {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+}
+
+/* --- Card de evolución de engagement --- */
+.engagement-svg {
+    width: 100%;
+    height: 220px;
+}
+
+.engagement-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #8a90a2;
+    margin-top: 8px;
+}
+
+/* ==========================================================================
+   FIN PANTALLA: DETALLE DE PREDICCIÓN
+   ========================================================================== */

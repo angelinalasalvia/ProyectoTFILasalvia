@@ -1,0 +1,236 @@
+﻿/* ==========================================================================
+   Pantalla: Detalle de Cliente (Pages/ClienteDetalle.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: DETALLE DE CLIENTE 
+   ========================================================================== */
+
+/* --- Card de perfil --- */
+.detcli-perfil-card {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.detcli-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.detcli-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #eef0f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+
+.detcli-status-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #2f9e5c;
+    border: 2px solid #fff;
+}
+
+.detcli-nombre {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.detcli-subtitulo {
+    font-size: 13px;
+    color: #2f6fed;
+    font-weight: 600;
+    margin: 2px 0 10px 0;
+}
+
+.detcli-meta-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: #555b6a;
+}
+/* --- Fila principal: asistencia + línea de tiempo --- */
+.detcli-main-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: start;
+}
+
+.detcli-asistencia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.detcli-asistencia-sub {
+    font-size: 12px;
+    color: #8a90a2;
+    margin: 4px 0 0 0;
+}
+/* --- Gráfico de barras de asistencia --- */
+.detcli-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 180px;
+}
+
+.detcli-bar-col {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+}
+
+.detcli-bar {
+    width: 100%;
+    background: #c9d6f7;
+    border-radius: 4px 4px 0 0;
+}
+
+.detcli-bar-alerta {
+    background: #f2b0a8;
+}
+
+.detcli-chart-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #8a90a2;
+    letter-spacing: .5px;
+    margin-top: 10px;
+}
+/* --- Línea de tiempo --- */
+.detcli-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.detcli-timeline-item {
+    display: flex;
+    gap: 12px;
+    padding-bottom: 20px;
+    position: relative;
+}
+
+    .detcli-timeline-item:not(:last-child)::before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 14px;
+        bottom: 0;
+        width: 1px;
+        background: #eef0f4;
+    }
+
+.detcli-timeline-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+}
+
+.detcli-dot-azul {
+    background: #2f6fed;
+}
+
+.detcli-dot-gris {
+    background: #c7ccd6;
+}
+
+.detcli-dot-ambar {
+    background: #e0a13a;
+}
+
+.detcli-timeline-content {
+    flex: 1;
+}
+
+.detcli-timeline-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.detcli-timeline-titulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.detcli-timeline-fecha {
+    font-size: 11px;
+    color: #8a90a2;
+    white-space: nowrap;
+}
+
+.detcli-timeline-desc {
+    font-size: 12px;
+    color: #8a90a2;
+    margin-top: 2px;
+}
+
+.detcli-timeline-monto {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e2432;
+    margin-top: 4px;
+}
+/* --- KPIs inferiores --- */
+.detcli-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.detcli-kpi-card {
+    background: #eef1fb;
+    border-radius: 12px;
+    padding: 18px 20px;
+}
+
+.detcli-kpi-label {
+    font-size: 12px;
+    color: #555b6a;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+}
+
+.detcli-kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.detcli-kpi-delta-neg {
+    font-size: 13px;
+    font-weight: 700;
+    color: #d63939;
+}
+
+.detcli-kpi-sub-inline {
+    font-size: 13px;
+    font-weight: 400;
+    color: #8a90a2;
+}
+/* ==========================================================================
+   FIN PANTALLA: DETALLE DE CLIENTE
+   ========================================================================== */

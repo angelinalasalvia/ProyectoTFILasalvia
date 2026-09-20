@@ -1,0 +1,74 @@
+﻿/* ==========================================================================
+   Estilos base y generales: reset, tipografía body, contenedor .app-container,
+   .main-content / .page-header / .header-icons y la tarjeta .card genérica.
+   Se usa en TODAS las pantallas.
+   ========================================================================== */
+
+/* Oculta el spinner de carga por defecto de Blazor (el círculo negro). */
+.loading-progress,
+.loading-progress-text {
+    display: none !important;
+}
+
+/* ==========================================================================
+   RESET Y BASE GENERAL
+   Estilos base que aplican a toda la aplicación, sin importar la pantalla.
+   ========================================================================== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f9;
+    color: #1e2432;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+
+/* ==========================================================================
+   CONTENIDO PRINCIPAL (contenedor genérico)
+   General: el área donde se renderiza cada pantalla (@Body en MainLayout).
+   ========================================================================== */
+.main-content {
+    flex: 1;
+    padding: 28px 36px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+    .page-header h1 {
+        font-size: 28px;
+        margin: 0;
+    }
+
+.header-icons {
+    display: flex;
+    gap: 18px;
+    font-size: 18px;
+    color: #555;
+}
+
+
+/* ==========================================================================
+   CARD BASE (componente genérico reutilizable)
+   General: usado por Dashboard y se va a reutilizar en otras pantallas
+   (Clientes, Campañas, Reportes, etc.) como contenedor de bloques.
+   ========================================================================== */
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid #eef0f4;
+}

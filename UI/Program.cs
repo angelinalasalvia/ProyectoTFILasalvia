@@ -14,7 +14,7 @@ builder.Services.AddDbContext<ChurnDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 //DAL
-builder.Services.AddScoped<IAccesoDatos, AccesoDatos>();
+builder.Services.AddScoped<AccesoDatos>();
 
 // BLL
 builder.Services.AddScoped<BLLPrediccion>();
@@ -25,6 +25,9 @@ builder.Services.AddScoped<BLLCampana>();
 builder.Services.AddScoped<BLLHistorialAcciones>();
 builder.Services.AddScoped<BLLIncentivo>();
 builder.Services.AddScoped<BLLCanal>();
+builder.Services.AddScoped<BLLRegla>();
+builder.Services.AddScoped<BLLSede>();
+builder.Services.AddScoped<BLLPlanSocio>();
 
 // UI
 builder.Services.AddScoped<GeneradorPdf>();

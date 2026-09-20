@@ -1,6 +1,12 @@
 ﻿@page "/automatizacion/nueva-regla"
 @page "/automatizacion/editar-regla/{ReglaId}"
+@using BLL
 @inject NavigationManager Navigation
+@inject BLLSede BLLSede
+@inject BLLPlanSocio BLLPlanSocio
+@inject BLLRegla BLLRegla
+@inject BLLCampana BLLCampana
+@inject BLLIncentivo BLLIncentivo
 
 <PageTitle>@(EsEdicion ? "Editar Regla" : "Nueva Regla")</PageTitle>
 
@@ -23,6 +29,10 @@
 {
     <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeConfirmacion</div>
 }
+@if (!string.IsNullOrEmpty(mensajeError))
+{
+    <div class="camp-form-error">⚠ @mensajeError</div>
+}
 
 <!-- Nombre de la regla -->
 <div class="card regla-card">
@@ -30,6 +40,7 @@
     <input class="campana-select @(errores.Contains("nombre") ? "input-error" : "")"
            @bind="nombreRegla" @bind:event="oninput"
            disabled="@EsEdicion"
+           maxlength="50"
            placeholder="Ej: Rescate de Socios de Alto Riesgo" />
     @if (errores.Contains("nombre"))
     {
@@ -112,7 +123,11 @@
     </div>
 
     <label class="form-label">CAMPAÑA ASOCIADA</label>
-    @if (campañasDisponibles.Count == 0)
+    @if (cargando)
+    {
+        <p>Cargando campañas...</p>
+    }
+    else if (campañasDisponibles.Count == 0)
     {
         <div class="regla-sin-campanias">
             Todavía no hay campañas creadas. Necesitás al menos una campaña para poder configurar una regla.
@@ -172,25 +187,22 @@
     <div class="regla-segmentacion-row">
         <div>
             <label class="camp-form-sublabel">TIPO DE PLAN</label>
-            <div class="regla-chips">
-                @foreach (var plan in tiposPlanDisponibles)
+            <select class="campana-select" @bind="planSeleccionadoId">
+                <option value="">Todos los planes</option>
+                @foreach (var plan in planesDisponibles)
                 {
-                    var seleccionado = tiposPlanSeleccionados.Contains(plan);
-                    <button type="button"
-                            class="regla-chip @(seleccionado ? "regla-chip-seleccionado" : "")"
-                            @onclick="() => AlternarPlan(plan)">
-                        @plan @(seleccionado ? "✕" : "")
-                    </button>
+                    <option value="@plan.IdPlan">@plan.Nombre</option>
                 }
-            </div>
+            </select>
         </div>
         <div>
             <label class="camp-form-sublabel">SEDE / UBICACIÓN</label>
-            <select class="campana-select" @bind="sedeSeleccionada">
-                <option>Todas las sedes</option>
-                <option>Sede Central</option>
-                <option>Sede Norte</option>
-                <option>Sede Sur</option>
+            <select class="campana-select" @bind="sedeSeleccionadaId">
+                <option value="">Todas las sedes</option>
+                @foreach (var sede in sedesDisponibles)
+                {
+                    <option value="@sede.IdSede">@sede.Nombre</option>
+                }
             </select>
         </div>
     </div>
@@ -201,12 +213,20 @@
     public string? ReglaId { get; set; }
 
     private bool EsEdicion => !string.IsNullOrWhiteSpace(ReglaId);
+    private int? IdRegla => int.TryParse(ReglaId, out var id) ? id : null;
 
     private string nombreRegla = "";
-    private string sedeSeleccionada = "Todas las sedes";
-    private string campañaSeleccionadaId = "";
     private string mensajeConfirmacion = "";
+    private string mensajeError = "";
+    private bool cargando = true;
+    private bool guardando = false;
     private HashSet<string> errores = new();
+
+    // --- Segmentación adicional (CU11, pasos 8-9) ---
+    private List<BE.Sede> sedesDisponibles = new();
+    private List<BE.PlanSocio> planesDisponibles = new();
+    private int? sedeSeleccionadaId;
+    private int? planSeleccionadoId;
 
     // --- Definición de atributos disponibles para las condiciones ---
     private record AtributoDefinicion(string Nombre, bool EsNumerico, string Unidad, List<string>? Opciones);
@@ -222,12 +242,13 @@
     private AtributoDefinicion AtributoDef(string nombre) =>
         atributosDisponibles.FirstOrDefault(a => a.Nombre == nombre) ?? atributosDisponibles[0];
 
+    // Condición tal como la maneja el formulario (no es BE.Condicion).
     private class Condicion
     {
         public string Atributo { get; set; } = "Nivel de Riesgo";
         public string ValorTexto { get; set; } = "Alto";
         public int? ValorNumero { get; set; } = 15;
-        public string LogicaConSiguiente { get; set; } = "Y"; // conecta esta condición con la anterior
+        public string LogicaConSiguiente { get; set; } = "Y"; // conecta esta condición con la ANTERIOR (solo se muestra desde la 2ª)
     }
 
     private List<Condicion> condiciones = new()
@@ -236,47 +257,69 @@
     };
 
     // --- Campañas existentes disponibles para asociar (CU11, paso 5) ---
-    private record CampañaResumen(string Id, string Nombre, string Canal, string Incentivo, string MensajePreview);
+    private record CampañaResumen(int Id, string Nombre, string Canal, string Incentivo, string MensajePreview);
 
-    private List<CampañaResumen> campañasDisponibles = new()
-    {
-        new("camp-001", "25% Descuento", "Email", "25% Descuento",
-            "Hola [Nombre], te echamos de menos en el gym. Vuelve esta semana y obtén un 25% de dto..."),
-        new("camp-002", "50% Descuento", "WhatsApp", "50% Descuento",
-            "Hola [Nombre], como socio valorado tenés un 50% de descuento esperándote esta semana."),
-    };
+    private List<CampañaResumen> campañasDisponibles = new();
+    private int? campañaSeleccionadaId;
 
     private CampañaResumen? CampañaSeleccionada =>
         campañasDisponibles.FirstOrDefault(c => c.Id == campañaSeleccionadaId);
 
-    // --- Segmentación adicional ---
-    private List<string> tiposPlanDisponibles = new() { "Mensual", "Premium", "Anual" };
-    private HashSet<string> tiposPlanSeleccionados = new() { "Mensual" };
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        var campanas = await BLLCampana.ObtenerCampanas();
+        var incentivos = (await BLLIncentivo.ObtenerIncentivos()).ToDictionary(i => i.IdIncentivo, i => i.Nombre);
+
+        campañasDisponibles = campanas.Select(c => new CampañaResumen(
+            c.IdCampania,
+            c.Nombre,
+            c.Canal,
+            c.IdIncentivo is int idInc && incentivos.TryGetValue(idInc, out var nombreInc) ? nombreInc : "—",
+            c.Mensaje)).ToList();
+
+        sedesDisponibles = await BLLSede.ObtenerSedes();
+        planesDisponibles = await BLLPlanSocio.ObtenerPlanes();
+
         if (EsEdicion)
         {
-            CargarReglaExistente(ReglaId!);
+            await CargarReglaExistente();
         }
+
+        cargando = false;
     }
 
-    /// <summary>
-    /// Simula la carga de una regla ya existente. En un escenario real esto
-    /// vendría de un servicio / repositorio, buscando por ReglaId.
-    /// </summary>
-    private void CargarReglaExistente(string id)
+    private async Task CargarReglaExistente()
     {
-        // TODO: reemplazar por la consulta real a la regla por id.
-        nombreRegla = "Rescate de Socios de Alto Riesgo";
-        condiciones = new()
+        var regla = IdRegla is int id ? await BLLRegla.ObtenerReglaPorId(id) : null;
+        if (regla is null)
         {
-            new Condicion { Atributo = "Nivel de Riesgo", ValorTexto = "Alto" },
-            new Condicion { Atributo = "Inactividad", ValorNumero = 15, LogicaConSiguiente = "Y" },
-        };
-        campañaSeleccionadaId = "camp-001";
-        tiposPlanSeleccionados = new() { "Mensual" };
-        sedeSeleccionada = "Todas las sedes";
+            Navigation.NavigateTo("/automatizacion");
+            return;
+        }
+
+        nombreRegla = regla.Nombre;
+        campañaSeleccionadaId = regla.IdCampania;
+        sedeSeleccionadaId = regla.IdSede;
+        planSeleccionadoId = regla.IdPlan;
+
+        // En BD, Operador es el conector con la condición SIGUIENTE (ver BLLRegla.ArmarResumen).
+        // En el formulario, LogicaConSiguiente es el conector con la ANTERIOR.
+        condiciones = new();
+        for (int i = 0; i < regla.Condiciones.Count; i++)
+        {
+            var c = regla.Condiciones[i];
+            var def = AtributoDef(c.Atributo);
+
+            condiciones.Add(new Condicion
+            {
+                Atributo = c.Atributo,
+                ValorTexto = def.EsNumerico ? def.Opciones?.FirstOrDefault() ?? "" : c.Valor,
+                ValorNumero = def.EsNumerico && int.TryParse(c.Valor, out var n) ? n : null,
+                LogicaConSiguiente = i > 0 ? regla.Condiciones[i - 1].Operador : "Y"
+            });
+        }
+
+        if (condiciones.Count == 0) condiciones.Add(new Condicion());
     }
 
     private void AgregarCondicion()
@@ -298,14 +341,6 @@
         c.LogicaConSiguiente = c.LogicaConSiguiente == "Y" ? "O" : "Y";
     }
 
-    private void AlternarPlan(string plan)
-    {
-        if (!tiposPlanSeleccionados.Remove(plan))
-        {
-            tiposPlanSeleccionados.Add(plan);
-        }
-    }
-
     /// <summary>
     /// Estimación en tiempo real de clientes impactados (CU11, pasos 4, 7 y 9).
     /// Cálculo simulado: en un escenario real vendría del backend / modelo de IA.
@@ -321,11 +356,8 @@
         }
 
         if (CampañaSeleccionada is not null) factor *= 0.9;
-        if (tiposPlanSeleccionados.Count > 0 && tiposPlanSeleccionados.Count < tiposPlanDisponibles.Count)
-        {
-            factor *= (double)tiposPlanSeleccionados.Count / tiposPlanDisponibles.Count;
-        }
-        if (sedeSeleccionada != "Todas las sedes") factor *= 0.4;
+        if (planSeleccionadoId is not null) factor *= 0.35;
+        if (sedeSeleccionadaId is not null) factor *= 0.4;
 
         return Math.Max(1, (int)(baseClientes * factor));
     }
@@ -344,35 +376,81 @@
             if (incompleta) errores.Add($"condicion-{i}");
         }
 
-        if (campañasDisponibles.Count > 0 && string.IsNullOrWhiteSpace(campañaSeleccionadaId))
-        {
-            errores.Add("campana");
-        }
+        if (campañaSeleccionadaId is null) errores.Add("campana");
 
         return errores.Count == 0;
     }
 
-    private void GuardarRegla()
+    // Valor que se guarda para una condición. Si el usuario cambió el atributo, ValorTexto puede
+    // quedar con un valor de otro atributo (ej. "Alto" en Historial de Pagos): en ese caso el <select>
+    // muestra la primera opción, así que se guarda esa, que es lo que el usuario está viendo.
+    private string ValorParaGuardar(Condicion c)
     {
+        var def = AtributoDef(c.Atributo);
+        if (def.EsNumerico) return c.ValorNumero!.Value.ToString();
+        return def.Opciones!.Contains(c.ValorTexto) ? c.ValorTexto : def.Opciones[0];
+    }
+
+    // Formulario -> BE. Ver nota de CargarReglaExistente: Operador = conector con la SIGUIENTE.
+    private List<BE.Condicion> ACondicionesBE()
+    {
+        var lista = new List<BE.Condicion>();
+        for (int i = 0; i < condiciones.Count; i++)
+        {
+            lista.Add(new BE.Condicion
+            {
+                Atributo = condiciones[i].Atributo,
+                Valor = ValorParaGuardar(condiciones[i]),
+                Operador = i + 1 < condiciones.Count ? condiciones[i + 1].LogicaConSiguiente : "Y"
+            });
+        }
+        return lista;
+    }
+
+    private async Task GuardarRegla()
+    {
+        // Evita crear la regla dos veces si se hace doble clic mientras espera la redirección.
+        if (guardando) return;
+
         // Alterno 5.1: no hay campañas creadas en el sistema.
         if (campañasDisponibles.Count == 0)
         {
             return;
         }
 
+        mensajeError = "";
         if (!Validar())
         {
             mensajeConfirmacion = "";
             return;
         }
 
-        // TODO: reemplazar por la persistencia real (crear o actualizar según EsEdicion).
-        mensajeConfirmacion = EsEdicion
-            ? "Regla actualizada exitosamente."
-            : "Regla creada exitosamente con estado Activa.";
+        guardando = true;
+        try
+        {
+            var condicionesBE = ACondicionesBE();
+
+            if (EsEdicion)
+            {
+                await BLLRegla.ModificarRegla(IdRegla!.Value, nombreRegla.Trim(), campañaSeleccionadaId!.Value, condicionesBE, sedeSeleccionadaId, planSeleccionadoId);
+                mensajeConfirmacion = "Regla actualizada exitosamente.";
+            }
+            else
+            {
+                await BLLRegla.CrearRegla(nombreRegla.Trim(), campañaSeleccionadaId!.Value, condicionesBE, sedeSeleccionadaId, planSeleccionadoId);
+                mensajeConfirmacion = "Regla creada exitosamente con estado Activa.";
+            }
+        }
+        catch (Exception ex)
+        {
+            guardando = false;
+            mensajeConfirmacion = "";
+            mensajeError = $"No se pudo guardar la regla: {ex.Message}";
+            return;
+        }
 
         StateHasChanged();
-        _ = RedirigirConDelay();
+        await RedirigirConDelay();
     }
 
     private async Task RedirigirConDelay()

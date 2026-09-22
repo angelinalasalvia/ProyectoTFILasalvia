@@ -5,10 +5,10 @@ namespace BLL;
 
 public static class FeatureEngineering
 {
-   
+
     public static ChurnInputData Construir(Cliente cliente, List<EventoCliente> eventos, DateTime fechaReferencia, int? diasVentana = null)
     {
-        
+
         var ultimos30 = fechaReferencia.AddDays(-(diasVentana ?? 30));
         var ultimos60 = fechaReferencia.AddDays(-(diasVentana ?? 60));
         var ultimos90 = fechaReferencia.AddDays(-(diasVentana ?? 90));
@@ -80,34 +80,154 @@ public static class FeatureEngineering
         (NombresFactorRiesgo.TendenciaNegativaAsistencia, f => f.TendenciaVisitas, false),
     };
 
-    public static (string NombreFactor, decimal ImpactoPorcentual) DeterminarFactorPrincipal(
-        ChurnInputData features,
-        Dictionary<string, (double Media, double Desvio)> estadisticasPoblacion)
+    // ------------------------------------------------------------------------------------
+    // Columnas numéricas que arma "Features" (BLLModelo.EntrenarModelo), en orden.
+    // ------------------------------------------------------------------------------------
+    // Es la fuente única de verdad: BLLModelo la usa para construir el Concatenate() del
+    // pipeline, y MapearContribuciones la usa para saber a qué variable corresponde cada
+    // posición del vector que devuelve CalculateFeatureContribution (que respeta ese mismo
+    // orden). Después de estas 11 columnas el vector sigue con PlanSocioEncoded, SedeEncoded
+    // y SexoEncoded (variable, según cuántas categorías haya); esas posiciones no se listan acá
+    // a propósito, quedan fuera de los "factores" que ve el usuario (ver conversación: por ahora
+    // no se muestran plan/sede/sexo como factor).
+    //
+    // NombreFactor es null en las columnas que el modelo usa mejorar la predicción pero que no
+    // tienen hoy un factor propio en el catálogo (ReservasUltimos30Dias, PagosRegistradosUltimos60Dias,
+    // AntiguedadDias): su contribución existe pero no se muestra por separado.
+    public static readonly (string NombreColumna, string? NombreFactor)[] ColumnasNumericas =
     {
-        string mejorFactor = IndicadoresDeRiesgo[0].NombreFactor;
-        double mejorZScore = 0;
-        bool encontroFactor = false;
+        (nameof(ChurnInputData.VisitasUltimos30Dias), NombresFactorRiesgo.BajaFrecuenciaAsistencia),
+        (nameof(ChurnInputData.UsoAppUltimos30Dias), NombresFactorRiesgo.BajaInteraccionApp),
+        (nameof(ChurnInputData.ReservasUltimos30Dias), null),
+        (nameof(ChurnInputData.CancelacionesUltimos30Dias), NombresFactorRiesgo.CancelacionesFrecuentes),
+        (nameof(ChurnInputData.DiasDesdeUltimaActividad), NombresFactorRiesgo.InactividadReciente),
+        (nameof(ChurnInputData.PagosVencidosUltimos60Dias), NombresFactorRiesgo.HistorialPagosVencidos),
+        (nameof(ChurnInputData.PagosRegistradosUltimos60Dias), null),
+        (nameof(ChurnInputData.ProporcionPagosVencidos), NombresFactorRiesgo.AltaProporcionPagosVencidos),
+        (nameof(ChurnInputData.ConsultasSoporteUltimos90Dias), NombresFactorRiesgo.AltaConsultaSoporte),
+        (nameof(ChurnInputData.AntiguedadDias), null),
+        (nameof(ChurnInputData.TendenciaVisitas), NombresFactorRiesgo.TendenciaNegativaAsistencia),
+    };
 
-        foreach (var (nombre, selector, altoEsRiesgo) in IndicadoresDeRiesgo)
+    // ------------------------------------------------------------------------------------
+    // Traduce la explicación real del modelo (CalculateFeatureContribution) a la lista de
+    // factores que se guarda en Prediccion_FactorRiesgo.
+    // ------------------------------------------------------------------------------------
+    // 'contribuciones' viene de ChurnPredictionConContribuciones.FeatureContributions: un valor
+    // por cada posición del vector "Features", en el mismo orden que ColumnasNumericas (+ el
+    // one-hot de plan/sede/sexo al final, que acá se ignora).
+    //
+    // El signo ya viene correcto desde ML.NET (no hace falta el truco de "AltoEsRiesgo" que
+    // usaba el z-score viejo): positivo empuja hacia el riesgo, negativo lo reduce. Se
+    // normaliza a -100..100 repartiendo proporcionalmente el "peso" entre los 8 factores
+    // mostrados, para que la barra de la pantalla (que espera un número tipo porcentaje)
+    // siga teniendo sentido.
+    public static List<(string NombreFactor, decimal Impacto, string Descripcion)> MapearContribuciones(
+        float[] contribuciones,
+        ChurnInputData features,
+        Dictionary<string, (double Media, double Desvio)> estadisticasSegmento)
+    {
+        var crudos = new List<(string NombreFactor, double Contribucion)>();
+        for (int i = 0; i < ColumnasNumericas.Length && i < contribuciones.Length; i++)
         {
-            var (media, desvio) = estadisticasPoblacion[nombre];
-            double valor = selector(features);
-
-            if (desvio < 0.0001) continue;
-
-            double zScore = (valor - media) / desvio;
-            if (!altoEsRiesgo) zScore *= -1;
-
-            if (!encontroFactor || zScore > mejorZScore)
-            {
-                mejorZScore = zScore;
-                mejorFactor = nombre;
-                encontroFactor = true;
-            }
+            var nombreFactor = ColumnasNumericas[i].NombreFactor;
+            if (nombreFactor is null) continue;
+            crudos.Add((nombreFactor, contribuciones[i]));
         }
 
-        double impacto = Math.Clamp(50 + mejorZScore * 15, 0, 100);
-        return (mejorFactor, (decimal)Math.Round(impacto, 2));
+        double sumaAbsolutas = crudos.Sum(c => Math.Abs(c.Contribucion));
+
+        var resultado = new List<(string, decimal, string)>();
+        foreach (var (nombreFactor, contribucion) in crudos)
+        {
+            double impactoRelativo = sumaAbsolutas < 0.0001 ? 0 : 100 * contribucion / sumaAbsolutas;
+
+            var selector = IndicadoresDeRiesgo.First(i => i.NombreFactor == nombreFactor).Selector;
+            double valorCliente = selector(features);
+            var (media, _) = estadisticasSegmento[nombreFactor];
+
+            resultado.Add((
+                nombreFactor,
+                (decimal)Math.Round(impactoRelativo, 1),
+                GenerarDescripcion(nombreFactor, valorCliente, media)));
+        }
+
+        // Los que más empujaron hacia el riesgo primero; los factores protectores (impacto
+        // negativo) quedan al final.
+        return resultado.OrderByDescending(f => f.Item2).ToList();
+    }
+
+    // Antes vivía en BLLFactorRiesgo (se calculaba ahí, contra el segmento, cada vez que se
+    // abría la pantalla de detalle). Ahora se llama una sola vez por cliente, en
+    // EntrenarYPredecirAsync, y el resultado queda guardado.
+    public static string GenerarDescripcion(string nombreFactor, double valorCliente, double media)
+    {
+        if (nombreFactor == NombresFactorRiesgo.InactividadReciente)
+        {
+            return $"{Math.Round(valorCliente, 1)} días desde la última actividad vs. " +
+                   $"{Math.Round(media, 1)} días en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.BajaFrecuenciaAsistencia)
+        {
+            return $"{Math.Round(valorCliente, 1)} visitas en el período vs. " +
+                   $"{Math.Round(media, 1)} en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.BajaInteraccionApp)
+        {
+            return $"{Math.Round(valorCliente, 1)} interacciones con la App en el período vs. " +
+                   $"{Math.Round(media, 1)} en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.HistorialPagosVencidos)
+        {
+            string pagosCliente = Math.Round(valorCliente, 1) == 1 ? "pago vencido" : "pagos vencidos";
+            string pagosMedia = Math.Round(media, 1) == 1 ? "pago vencido" : "pagos vencidos";
+
+            return $"{Math.Round(valorCliente, 1)} {pagosCliente} en el período vs. " +
+                   $"{Math.Round(media, 1)} {pagosMedia} en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.CancelacionesFrecuentes)
+        {
+            return $"{Math.Round(valorCliente, 1)} cancelaciones en el período vs. " +
+                   $"{Math.Round(media, 1)} en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.AltaConsultaSoporte)
+        {
+            return $"{Math.Round(valorCliente, 1)} consultas a soporte en el período vs. " +
+                   $"{Math.Round(media, 1)} en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.AltaProporcionPagosVencidos)
+        {
+            return $"{Math.Round(valorCliente * 100, 1)}% de los pagos vencieron vs. " +
+                   $"{Math.Round(media * 100, 1)}% en el segmento.";
+        }
+
+        if (nombreFactor == NombresFactorRiesgo.TendenciaNegativaAsistencia)
+        {
+            string tendenciaCliente = valorCliente > 0
+                ? "aumento"
+                : valorCliente < 0
+                    ? "disminución"
+                    : "sin cambios";
+
+            string tendenciaMedia = media > 0
+                ? "aumento"
+                : media < 0
+                    ? "disminución"
+                    : "sin cambios";
+
+            return $"{tendenciaCliente} de {Math.Abs(Math.Round(valorCliente, 1))} visitas " +
+                   $"respecto al período anterior vs. {tendenciaMedia} de " +
+                   $"{Math.Abs(Math.Round(media, 1))} en el segmento.";
+        }
+
+        return $"{Math.Round(valorCliente, 1)} vs. una media de " +
+               $"{Math.Round(media, 1)} en el segmento.";
     }
 
     public static ChurnInputData ConstruirParaPeriodo(

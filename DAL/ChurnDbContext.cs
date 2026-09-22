@@ -15,6 +15,7 @@ public class ChurnDbContext : DbContext
     public DbSet<FactorRiesgo> FactoresRiesgo => Set<FactorRiesgo>();
     public DbSet<Modelo> Modelos => Set<Modelo>();
     public DbSet<Prediccion> Predicciones => Set<Prediccion>();
+    public DbSet<PrediccionFactorRiesgo> PrediccionFactoresRiesgo => Set<PrediccionFactorRiesgo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,5 +28,10 @@ public class ChurnDbContext : DbContext
         modelBuilder.Entity<FactorRiesgo>()
             .Property(f => f.Impacto)
             .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<PrediccionFactorRiesgo>()
+            .Property(f => f.Impacto)
+            .HasColumnType("decimal(18,2)");
     }
 }
+

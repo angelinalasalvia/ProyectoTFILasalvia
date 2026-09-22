@@ -243,6 +243,43 @@
     .regla-chip-seleccionado:hover {
         background: #d7e5fb;
     }
+
+/* --- Chips de valores múltiples y textos auxiliares --- */
+.regla-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.regla-chip {
+    padding: 6px 14px;
+    border: 1px solid #e5e8ee;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555b6a;
+    cursor: pointer;
+}
+
+    .regla-chip:hover {
+        background: #f6f7fa;
+    }
+
+.regla-chip-activo {
+    border-color: #2f6fed;
+    background: #eaf1fd;
+    color: #2f6fed;
+}
+
+.regla-label-prioridad {
+    display: block;
+    margin-top: 14px;
+}
+
+.regla-resumen-logico {
+    margin-top: 12px;
+}
 /* ==========================================================================
    FIN PANTALLA: CREAR / EDITAR REGLA DE AUTOMATIZACIÓN
    ========================================================================== */

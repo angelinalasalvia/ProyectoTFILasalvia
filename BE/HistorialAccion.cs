@@ -14,6 +14,7 @@ public class HistorialAccion
     public int IdCampania { get; set; }
     public int IdCliente { get; set; }
     public int IdUsuario { get; set; }
+    public int? IdRegla { get; set; } // regla que originó la acción (NULL en acciones manuales o anteriores al motor)
     public string Resultado { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;
 
@@ -24,4 +25,16 @@ public class HistorialAccion
     public string NombreCliente { get; set; } = string.Empty;
     public string ApellidoCliente { get; set; } = string.Empty;
     public string PlanCliente { get; set; } = string.Empty;
+
+
+
+    // Valores que usa el motor de reglas (constantes de la clase; no son columnas).
+    public const string TipoEnvioAutomatico = "Envío automático";
+    public const string EstadoActivo = "Activo";          // envío en observación (sin resultado todavía)
+    public const string EstadoFinalizada = "Finalizada";  // envío cerrado
+    public const string EnvioEntregado = "Entregado";
+    public const string EnvioLeido = "Leído";
+    public const string ResultadoRescatado = "Rescatado";
+    public const string ResultadoClic = "Clic en enlace";
+    public const string ResultadoSinAccion = "Sin acción";
 }

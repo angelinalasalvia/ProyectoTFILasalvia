@@ -29,6 +29,7 @@
 {
     <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeConfirmacion</div>
 }
+
 @if (!string.IsNullOrEmpty(mensajeError))
 {
     <div class="camp-form-error">⚠ @mensajeError</div>
@@ -45,6 +46,15 @@
     @if (errores.Contains("nombre"))
     {
         <span class="camp-form-error">El nombre de la regla es obligatorio.</span>
+    }
+
+    <label class="form-label regla-label-prioridad">PRIORIDAD (1 = MÁS ALTA)</label>
+    <input type="number" class="campana-select @(errores.Contains("prioridad") ? "input-error" : "")"
+           min="@BE.Regla.PrioridadMinima" max="@BE.Regla.PrioridadMaxima" @bind="prioridad" />
+    <span class="camp-form-sublabel">Si un cliente cumple varias reglas a la vez, se ejecuta la de número más bajo.</span>
+    @if (errores.Contains("prioridad"))
+    {
+        <span class="camp-form-error">Ingresá un número entre @BE.Regla.PrioridadMinima y @BE.Regla.PrioridadMaxima.</span>
     }
 </div>
 
@@ -66,18 +76,19 @@
 
         @if (idx > 0)
         {
+            var previa = condiciones[idx - 1];
             <div class="regla-conector-pill-wrap">
-                <button type="button" class="regla-conector-pill" @onclick="() => AlternarLogica(c)">
-                    @c.LogicaConSiguiente
+                <button type="button" class="regla-conector-pill" @onclick="() => AlternarLogica(previa)">
+                    @previa.Operador
                 </button>
             </div>
         }
 
         <div class="regla-cond-box @(errores.Contains($"condicion-{idx}") ? "input-error" : "")">
-            <span class="regla-cond-label">@(idx == 0 ? "SI EL SOCIO TIENE..." : $"{c.LogicaConSiguiente} ADEMÁS...")</span>
+            <span class="regla-cond-label">@(idx == 0 ? "SI EL SOCIO TIENE..." : $"{condiciones[idx - 1].Operador} ADEMÁS...")</span>
             <div class="regla-cond-fields">
-                <select class="regla-cond-select-atributo" @bind="c.Atributo">
-                    @foreach (var a in atributosDisponibles)
+                <select class="regla-cond-select-atributo" @bind="c.Atributo" @bind:after="() => AlCambiarAtributo(c)">
+                    @foreach (var a in BE.Condicion.Atributos)
                     {
                         <option value="@a.Nombre">@a.Nombre</option>
                     }
@@ -86,14 +97,27 @@
                 @if (atrDef.EsNumerico)
                 {
                     <span class="regla-cond-texto">es mayor a</span>
-                    <input type="number" min="0" class="regla-cond-input-num" @bind="c.ValorNumero" />
+                    <input type="number" min="1" class="regla-cond-input-num" @bind="c.Valor" />
                     <span class="regla-cond-texto">@atrDef.Unidad</span>
+                }
+                else if (atrDef.PermiteMultiples)
+                {
+                    <span class="regla-cond-texto">es cualquiera de</span>
+                    <div class="regla-chips">
+                        @foreach (var op in atrDef.Opciones)
+                        {
+                            <button type="button" class="regla-chip @(EstaElegido(c, op) ? "regla-chip-activo" : "")"
+                                    @onclick="() => AlternarValor(c, op)">
+                                @op
+                            </button>
+                        }
+                    </div>
                 }
                 else
                 {
                     <span class="regla-cond-texto">es igual a</span>
-                    <select class="regla-cond-select-valor" @bind="c.ValorTexto">
-                        @foreach (var op in atrDef.Opciones!)
+                    <select class="regla-cond-select-valor" @bind="c.Valor">
+                        @foreach (var op in atrDef.Opciones)
                         {
                             <option value="@op">@op</option>
                         }
@@ -111,6 +135,11 @@
     <div class="regla-estimacion-box">
         📊 <strong>≈ @EstimacionClientes().ToString("N0") clientes</strong> cumplen esta configuración
     </div>
+
+    <p class="camp-form-sublabel regla-resumen-logico">
+        Se leerá como: <strong>@ResumenActual()</strong><br />
+        El Y se evalúa antes que el O.
+    </p>
 </div>
 
 <!-- 2. Definir acción -->
@@ -140,7 +169,7 @@
             <option value="">Seleccionar campaña...</option>
             @foreach (var camp in campañasDisponibles)
             {
-                <option value="@camp.Id">@camp.Nombre</option>
+                <option value="@camp.IdCampania">@camp.Nombre</option>
             }
         </select>
         @if (errores.Contains("campana"))
@@ -162,14 +191,14 @@
             </div>
             <div>
                 <label class="camp-form-sublabel">RECOMPENSA / INCENTIVO</label>
-                <input class="campana-select" disabled value="@(CampañaSeleccionada?.Incentivo ?? "—")" />
+                <input class="campana-select" disabled value="@IncentivoSeleccionado" />
             </div>
         </div>
 
         @if (CampañaSeleccionada is not null)
         {
             <div class="regla-vista-previa">
-                <strong>Vista Previa:</strong> "@CampañaSeleccionada.MensajePreview"
+                <strong>Vista Previa:</strong> "@CampañaSeleccionada.Mensaje"
             </div>
         }
     }
@@ -216,6 +245,7 @@
     private int? IdRegla => int.TryParse(ReglaId, out var id) ? id : null;
 
     private string nombreRegla = "";
+    private int? prioridad = BE.Regla.PrioridadPorDefecto;
     private string mensajeConfirmacion = "";
     private string mensajeError = "";
     private bool cargando = true;
@@ -228,55 +258,36 @@
     private int? sedeSeleccionadaId;
     private int? planSeleccionadoId;
 
-    // --- Definición de atributos disponibles para las condiciones ---
-    private record AtributoDefinicion(string Nombre, bool EsNumerico, string Unidad, List<string>? Opciones);
-
-    private List<AtributoDefinicion> atributosDisponibles = new()
+    // --- Condiciones: se editan directamente como BE.Condicion (mismo formato que la BD) ---
+    // Operador = conector de la condición con la SIGUIENTE. El botón Y/O que se ve entre dos
+    // condiciones es el Operador de la de arriba.
+    private List<BE.Condicion> condiciones = new()
     {
-        new("Nivel de Riesgo", false, "", new() { "Bajo", "Medio", "Alto", "Muy Alto" }),
-        new("Inactividad", true, "días", null),
-        new("Historial de Pagos", false, "", new() { "Al día", "Pendiente", "Vencido" }),
-        new("Actividad", true, "%", null),
+        new BE.Condicion { Atributo = BE.Condicion.NivelRiesgo, Valor = "Alto" },
     };
 
-    private AtributoDefinicion AtributoDef(string nombre) =>
-        atributosDisponibles.FirstOrDefault(a => a.Nombre == nombre) ?? atributosDisponibles[0];
-
-    // Condición tal como la maneja el formulario (no es BE.Condicion).
-    private class Condicion
+    // Los atributos válidos (y sus valores) están definidos en BE.Condicion.Atributos.
+    private static (string Nombre, bool EsNumerico, string Unidad, string[] Opciones, bool PermiteMultiples) AtributoDef(string nombre)
     {
-        public string Atributo { get; set; } = "Nivel de Riesgo";
-        public string ValorTexto { get; set; } = "Alto";
-        public int? ValorNumero { get; set; } = 15;
-        public string LogicaConSiguiente { get; set; } = "Y"; // conecta esta condición con la ANTERIOR (solo se muestra desde la 2ª)
+        var def = BE.Condicion.BuscarAtributo(nombre);
+        return def.Nombre is null ? BE.Condicion.Atributos[0] : def; // atributo desconocido (dato viejo): se usa el primero
     }
 
-    private List<Condicion> condiciones = new()
-    {
-        new Condicion { Atributo = "Nivel de Riesgo", ValorTexto = "Alto" },
-    };
-
     // --- Campañas existentes disponibles para asociar (CU11, paso 5) ---
-    private record CampañaResumen(int Id, string Nombre, string Canal, string Incentivo, string MensajePreview);
-
-    private List<CampañaResumen> campañasDisponibles = new();
+    private List<BE.Campana> campañasDisponibles = new();
+    private Dictionary<int, string> nombresIncentivo = new();
     private int? campañaSeleccionadaId;
 
-    private CampañaResumen? CampañaSeleccionada =>
-        campañasDisponibles.FirstOrDefault(c => c.Id == campañaSeleccionadaId);
+    private BE.Campana? CampañaSeleccionada =>
+        campañasDisponibles.FirstOrDefault(c => c.IdCampania == campañaSeleccionadaId);
+
+    private string IncentivoSeleccionado =>
+        CampañaSeleccionada?.IdIncentivo is int idInc && nombresIncentivo.TryGetValue(idInc, out var nombre) ? nombre : "—";
 
     protected override async Task OnInitializedAsync()
     {
-        var campanas = await BLLCampana.ObtenerCampanas();
-        var incentivos = (await BLLIncentivo.ObtenerIncentivos()).ToDictionary(i => i.IdIncentivo, i => i.Nombre);
-
-        campañasDisponibles = campanas.Select(c => new CampañaResumen(
-            c.IdCampania,
-            c.Nombre,
-            c.Canal,
-            c.IdIncentivo is int idInc && incentivos.TryGetValue(idInc, out var nombreInc) ? nombreInc : "—",
-            c.Mensaje)).ToList();
-
+        campañasDisponibles = await BLLCampana.ObtenerCampanas();
+        nombresIncentivo = (await BLLIncentivo.ObtenerIncentivos()).ToDictionary(i => i.IdIncentivo, i => i.Nombre);
         sedesDisponibles = await BLLSede.ObtenerSedes();
         planesDisponibles = await BLLPlanSocio.ObtenerPlanes();
 
@@ -298,47 +309,65 @@
         }
 
         nombreRegla = regla.Nombre;
+        prioridad = regla.Prioridad;
         campañaSeleccionadaId = regla.IdCampania;
         sedeSeleccionadaId = regla.IdSede;
         planSeleccionadoId = regla.IdPlan;
+        condiciones = regla.Condiciones;
 
-        // En BD, Operador es el conector con la condición SIGUIENTE (ver BLLRegla.ArmarResumen).
-        // En el formulario, LogicaConSiguiente es el conector con la ANTERIOR.
-        condiciones = new();
-        for (int i = 0; i < regla.Condiciones.Count; i++)
+        // Dato viejo: un atributo que ya no existe se reemplaza por el primero con su valor inicial.
+        foreach (var c in condiciones.Where(c => BE.Condicion.BuscarAtributo(c.Atributo).Nombre is null))
         {
-            var c = regla.Condiciones[i];
-            var def = AtributoDef(c.Atributo);
-
-            condiciones.Add(new Condicion
-            {
-                Atributo = c.Atributo,
-                ValorTexto = def.EsNumerico ? def.Opciones?.FirstOrDefault() ?? "" : c.Valor,
-                ValorNumero = def.EsNumerico && int.TryParse(c.Valor, out var n) ? n : null,
-                LogicaConSiguiente = i > 0 ? regla.Condiciones[i - 1].Operador : "Y"
-            });
+            AlCambiarAtributo(c);
         }
 
-        if (condiciones.Count == 0) condiciones.Add(new Condicion());
+        if (condiciones.Count == 0)
+        {
+            condiciones.Add(new BE.Condicion { Atributo = BE.Condicion.NivelRiesgo, Valor = "Alto" });
+        }
     }
 
     private void AgregarCondicion()
     {
-        condiciones.Add(new Condicion { Atributo = "Inactividad", LogicaConSiguiente = "Y" });
+        condiciones[^1].Operador = BE.Condicion.Y; // conector con la nueva condición (por defecto Y)
+        condiciones.Add(new BE.Condicion { Atributo = BE.Condicion.Inactividad, Valor = "15" });
     }
 
-    private void EliminarCondicion(Condicion c)
+    private void EliminarCondicion(BE.Condicion c)
     {
         // Siempre debe quedar al menos una condición.
         if (condiciones.Count > 1)
         {
             condiciones.Remove(c);
+            condiciones[^1].Operador = BE.Condicion.Y; // la última no conecta con nada
         }
     }
 
-    private void AlternarLogica(Condicion c)
+    // 'previa' es la condición que está arriba del botón: su Operador es el conector con la de abajo.
+    private void AlternarLogica(BE.Condicion previa)
     {
-        c.LogicaConSiguiente = c.LogicaConSiguiente == "Y" ? "O" : "Y";
+        previa.Operador = previa.Operador == BE.Condicion.Y ? BE.Condicion.O : BE.Condicion.Y;
+    }
+
+    // Al cambiar el atributo se descarta el valor del anterior (evita guardar un valor
+    // que pertenece a otro atributo, ej. "Alto" en Historial de Pagos).
+    private void AlCambiarAtributo(BE.Condicion c)
+    {
+        var def = AtributoDef(c.Atributo);
+        c.Atributo = def.Nombre;
+        c.Valor = def.EsNumerico ? "15" : def.Opciones[0];
+    }
+
+    // Botones de los atributos que admiten varios valores (ej. Nivel de Riesgo = Medio o Alto).
+    private static bool EstaElegido(BE.Condicion c, string valor) =>
+        BE.Condicion.SepararValores(c.Valor).Contains(valor);
+
+    private void AlternarValor(BE.Condicion c, string valor)
+    {
+        var def = AtributoDef(c.Atributo);
+        var elegidos = BE.Condicion.SepararValores(c.Valor).ToHashSet();
+        if (!elegidos.Remove(valor)) elegidos.Add(valor);
+        c.Valor = BE.Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); // siempre en el orden de las opciones
     }
 
     /// <summary>
@@ -368,11 +397,16 @@
 
         if (string.IsNullOrWhiteSpace(nombreRegla)) errores.Add("nombre");
 
+        if (prioridad is null || prioridad < BE.Regla.PrioridadMinima || prioridad > BE.Regla.PrioridadMaxima)
+            errores.Add("prioridad");
+
         for (int i = 0; i < condiciones.Count; i++)
         {
             var c = condiciones[i];
             var def = AtributoDef(c.Atributo);
-            var incompleta = def.EsNumerico ? c.ValorNumero is null or <= 0 : string.IsNullOrWhiteSpace(c.ValorTexto);
+            var incompleta = def.EsNumerico
+                ? !(int.TryParse(c.Valor, out var n) && n > 0)
+                : !def.Opciones.Any(o => EstaElegido(c, o));
             if (incompleta) errores.Add($"condicion-{i}");
         }
 
@@ -381,31 +415,8 @@
         return errores.Count == 0;
     }
 
-    // Valor que se guarda para una condición. Si el usuario cambió el atributo, ValorTexto puede
-    // quedar con un valor de otro atributo (ej. "Alto" en Historial de Pagos): en ese caso el <select>
-    // muestra la primera opción, así que se guarda esa, que es lo que el usuario está viendo.
-    private string ValorParaGuardar(Condicion c)
-    {
-        var def = AtributoDef(c.Atributo);
-        if (def.EsNumerico) return c.ValorNumero!.Value.ToString();
-        return def.Opciones!.Contains(c.ValorTexto) ? c.ValorTexto : def.Opciones[0];
-    }
-
-    // Formulario -> BE. Ver nota de CargarReglaExistente: Operador = conector con la SIGUIENTE.
-    private List<BE.Condicion> ACondicionesBE()
-    {
-        var lista = new List<BE.Condicion>();
-        for (int i = 0; i < condiciones.Count; i++)
-        {
-            lista.Add(new BE.Condicion
-            {
-                Atributo = condiciones[i].Atributo,
-                Valor = ValorParaGuardar(condiciones[i]),
-                Operador = i + 1 < condiciones.Count ? condiciones[i + 1].LogicaConSiguiente : "Y"
-            });
-        }
-        return lista;
-    }
+    // Vista previa de cómo se va a leer la regla (mismo texto que se ve en el listado).
+    private string ResumenActual() => BLLRegla.ArmarResumen(condiciones);
 
     private async Task GuardarRegla()
     {
@@ -428,16 +439,16 @@
         guardando = true;
         try
         {
-            var condicionesBE = ACondicionesBE();
-
             if (EsEdicion)
             {
-                await BLLRegla.ModificarRegla(IdRegla!.Value, nombreRegla.Trim(), campañaSeleccionadaId!.Value, condicionesBE, sedeSeleccionadaId, planSeleccionadoId);
+                await BLLRegla.ModificarRegla(IdRegla!.Value, nombreRegla.Trim(), campañaSeleccionadaId!.Value, condiciones,
+                    sedeSeleccionadaId, planSeleccionadoId, prioridad!.Value);
                 mensajeConfirmacion = "Regla actualizada exitosamente.";
             }
             else
             {
-                await BLLRegla.CrearRegla(nombreRegla.Trim(), campañaSeleccionadaId!.Value, condicionesBE, sedeSeleccionadaId, planSeleccionadoId);
+                await BLLRegla.CrearRegla(nombreRegla.Trim(), campañaSeleccionadaId!.Value, condiciones,
+                    sedeSeleccionadaId, planSeleccionadoId, prioridad!.Value);
                 mensajeConfirmacion = "Regla creada exitosamente con estado Activa.";
             }
         }

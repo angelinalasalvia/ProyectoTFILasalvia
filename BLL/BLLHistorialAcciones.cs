@@ -128,5 +128,133 @@ public class BLLHistorialAcciones
             parametros, ct: ct);
         return resultadoLista.ToList();
     }
+
+    // ------------------------------------------------------------------------------------
+    // Envíos automáticos (motor de reglas)
+    // ------------------------------------------------------------------------------------
+
+    private const string EmailUsuarioSistema = "sistema@mailtest.com";
+    private const int DiasVentanaResultado = 7; // igual a la ventana que muestra CampanaDetalle
+
+    // Los envíos automáticos se registran con el usuario "Sistema" (HistorialAcciones.IdUsuario es obligatorio).
+    // Se lee sobre HistorialAccion porque solo interesa IdUsuario (todavía no hay clase Usuario en BE).
+    public async Task<int> ObtenerIdUsuarioSistema(CancellationToken ct = default)
+    {
+        var usuario = (await _accesoDatos.Leer<HistorialAccion>(
+            "SELECT IdUsuario FROM Usuario WHERE Email = @email",
+            new { email = EmailUsuarioSistema }, ct: ct)).FirstOrDefault();
+
+        return usuario?.IdUsuario
+            ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}). Ejecutá el script de datos.");
+    }
+
+    // Registra un envío (simulado: todavía no hay API de WhatsApp / Email). Queda "Entregado", en observación
+    // (Estado = Activo, sin Resultado) y actualiza ClientesAlcanzados de la campaña, todo en una transacción.
+    public Task RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
+                                CancellationToken ct = default)
+        => _accesoDatos.Escribir(
+            @"INSERT INTO HistorialAcciones (EstadoEnvio, FechaEnvio, TipoAccion, IdCampaña, IdCliente, IdUsuario, Estado, IdRegla)
+              VALUES (@estadoEnvio, @fechaEnvio, @tipoAccion, @idCampania, @idCliente, @idUsuario, @estado, @idRegla);
+
+              UPDATE Campaña SET ClientesAlcanzados =
+                  (SELECT COUNT(DISTINCT h.IdCliente) FROM HistorialAcciones h WHERE h.IdCampaña = @idCampania)
+              WHERE IdCampaña = @idCampania;",
+            new
+            {
+                estadoEnvio = HistorialAccion.EnvioEntregado,
+                fechaEnvio,
+                tipoAccion,
+                idCampania,
+                idCliente,
+                idUsuario,
+                estado = HistorialAccion.EstadoActivo,
+                idRegla
+            }, ct: ct);
+
+    // Cierra los envíos automáticos cuya ventana de observación (7 días) ya terminó y devuelve cuántos cerró.
+    //  - Rescatado: el cliente tuvo una visita o un pago registrado después del envío, dentro de la ventana
+    //    (sale de EventosCliente, no de una API).
+    //  - Si no volvió, la lectura y el clic se simulan (mientras no haya API real). La semilla es el IdHistorial,
+    //    así que el mismo envío siempre da el mismo resultado y las pruebas son repetibles.
+    public async Task<int> CerrarAccionesPendientes(DateTime ahora, CancellationToken ct = default)
+    {
+        var pendientes = (await _accesoDatos.Leer<HistorialAccion>(
+            @"SELECT IdHistorial, IdCliente, FechaEnvio
+              FROM HistorialAcciones
+              WHERE Estado = @activo AND TipoAccion = @tipo AND Resultado IS NULL AND FechaEnvio <= @limite",
+            new
+            {
+                activo = HistorialAccion.EstadoActivo,
+                tipo = HistorialAccion.TipoEnvioAutomatico,
+                limite = ahora.AddDays(-DiasVentanaResultado)
+            }, ct: ct)).ToList();
+
+        foreach (var accion in pendientes)
+        {
+            // MIN() devuelve una fila con NULL si no hubo eventos: Fecha queda en su valor por defecto.
+            var vuelta = (await _accesoDatos.Leer<EventoCliente>(
+                @"SELECT MIN(Fecha) AS Fecha
+                  FROM EventosCliente
+                  WHERE IdCliente = @idCliente AND Evento IN (@visita, @pago)
+                    AND Fecha > @envio AND Fecha <= @fin",
+                new
+                {
+                    idCliente = accion.IdCliente,
+                    visita = TipoEvento.VisitaGimnasio,
+                    pago = TipoEvento.PagoRegistrado,
+                    envio = accion.FechaEnvio,
+                    fin = accion.FechaEnvio.AddDays(DiasVentanaResultado)
+                }, ct: ct)).FirstOrDefault();
+
+            string resultado, estadoEnvio;
+            DateTime? fechaLectura = null, fechaConversion = null;
+
+            if (vuelta is not null && vuelta.Fecha != default)
+            {
+                resultado = HistorialAccion.ResultadoRescatado;
+                estadoEnvio = HistorialAccion.EnvioLeido;
+                fechaLectura = accion.FechaEnvio.AddHours(1);
+                fechaConversion = vuelta.Fecha;
+            }
+            else
+            {
+                var azar = new Random(accion.IdHistorial).NextDouble();
+                if (azar < 0.15)      // 15 %: hizo clic
+                {
+                    resultado = HistorialAccion.ResultadoClic;
+                    estadoEnvio = HistorialAccion.EnvioLeido;
+                    fechaLectura = accion.FechaEnvio.AddHours(2);
+                }
+                else if (azar < 0.60) // 45 %: lo leyó pero no hizo nada
+                {
+                    resultado = HistorialAccion.ResultadoSinAccion;
+                    estadoEnvio = HistorialAccion.EnvioLeido;
+                    fechaLectura = accion.FechaEnvio.AddHours(3);
+                }
+                else                  // 40 %: solo llegó a entregarse
+                {
+                    resultado = HistorialAccion.ResultadoSinAccion;
+                    estadoEnvio = HistorialAccion.EnvioEntregado;
+                }
+            }
+
+            await _accesoDatos.Modificar(
+                @"UPDATE HistorialAcciones
+                  SET Resultado = @resultado, EstadoEnvio = @estadoEnvio, FechaLectura = @fechaLectura,
+                      FechaConversion = @fechaConversion, Estado = @estado
+                  WHERE IdHistorial = @idHistorial",
+                new
+                {
+                    resultado,
+                    estadoEnvio,
+                    fechaLectura,
+                    fechaConversion,
+                    estado = HistorialAccion.EstadoFinalizada,
+                    idHistorial = accion.IdHistorial
+                }, ct: ct);
+        }
+
+        return pendientes.Count;
+    }
 }
 

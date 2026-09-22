@@ -189,5 +189,50 @@ public static class FeatureEngineering
             Abandono = cliente.EstadoRegistro == "Inactivo"
         };
     }
+    // ------------------------------------------------------------------------------------
+    // Panel de entrenamiento con fecha de corte
+    // ------------------------------------------------------------------------------------
+    // Antes, cada cliente aportaba UNA fila con su estado ACTUAL (Abandono = está inactivo hoy),
+    // así que el modelo aprendía a reconocer a quienes ya se habían ido, no a quienes están por irse
+    // (con esa etiqueta, "días desde la última actividad" separa casi perfectamente a los dos grupos).
+    //
+    // Acá cada cliente aporta VARIAS filas, una por cada corte semanal de su historia. En cada corte
+    // las variables se calculan solo con los eventos anteriores a esa fecha (así no hay fuga de datos
+    // del futuro) y la etiqueta pasa a ser prospectiva: "¿el cliente dejó de venir dentro de los
+    // 'horizonteDias' siguientes a este corte?". El nivel de riesgo y sus umbrales (Alto/Medio/Bajo)
+    // no cambian: lo único que cambia es cómo se entrena el modelo que calcula la probabilidad.
+    //
+    // Proxy de "fecha de baja": no hay una columna con la fecha exacta en que un cliente se dio de
+    // baja, así que se usa su último evento registrado (solo para los clientes hoy Inactivos). Es una
+    // aproximación: el cliente pudo haber dejado de venir unos días antes de ese último evento.
+    public static List<ChurnInputData> ConstruirPanelEntrenamiento(
+        List<Cliente> clientes, DateTime fechaActual, int horizonteDias = 30, int diasEntreCortes = 7, int diasHistoriaMinima = 30)
+    {
+        var filas = new List<ChurnInputData>();
+        var ultimoCorteValido = fechaActual.AddDays(-horizonteDias);
+
+        foreach (var cliente in clientes)
+        {
+            var eventos = cliente.Eventos.OrderBy(e => e.Fecha).ToList();
+            if (eventos.Count == 0) continue;
+
+            var primerEvento = eventos[0].Fecha;
+            var fechaBaja = cliente.EstadoRegistro == "Inactivo" ? eventos[^1].Fecha : (DateTime?)null;
+
+            for (var corte = primerEvento.AddDays(diasHistoriaMinima); corte <= ultimoCorteValido; corte = corte.AddDays(diasEntreCortes))
+            {
+                // Si para este corte ya se había ido, el corte no aporta información nueva: se descarta
+                // (un modelo de churn predice la baja, no confirma una que ya pasó).
+                if (fechaBaja is not null && corte >= fechaBaja.Value) continue;
+
+                var eventosHastaElCorte = eventos.Where(e => e.Fecha <= corte).ToList();
+                var fila = Construir(cliente, eventosHastaElCorte, corte);
+                fila.Abandono = fechaBaja is not null && fechaBaja.Value <= corte.AddDays(horizonteDias);
+                filas.Add(fila);
+            }
+        }
+
+        return filas;
+    }
 }
 

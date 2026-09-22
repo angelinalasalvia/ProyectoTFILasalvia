@@ -11,7 +11,7 @@
 <div class="page-header">
     <div class="search-box auto-search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Buscar reglas..." @bind="textoBusqueda" @bind:event="oninput" />
+        <input type="text" placeholder="Buscar reglas..." @bind="textoBusqueda" @bind:event="oninput" @bind:after="CargarReglas" />
     </div>
     <div class="header-icons">
         <span>🔔</span>
@@ -26,15 +26,34 @@
         <h2 class="auto-titulo">Reglas de Automatización</h2>
         <p class="auto-subtitulo">Configura disparadores inteligentes que ejecutan acciones de marketing y soporte cuando los modelos de IA detectan riesgos críticos en tus clientes.</p>
     </div>
-    <button class="btn-crear-campana" @onclick="NuevaRegla">+ Nueva Regla</button>
+    <div class="retencion-actions">
+        <button class="btn-cancelar" @onclick="EjecutarAhora" disabled="@ejecutando">▶ Ejecutar reglas ahora</button>
+        <button class="btn-crear-campana" @onclick="NuevaRegla">+ Nueva Regla</button>
+    </div>
 </div>
+
+@if (!string.IsNullOrEmpty(mensajeEjecucion))
+{
+    <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeEjecucion</div>
+}
+@if (!string.IsNullOrEmpty(mensajeErrorEjecucion))
+{
+    <div class="camp-form-error">⚠ @mensajeErrorEjecucion</div>
+}
+
 
 <!-- Listado de reglas -->
 <div class="auto-listado-header">
     <h3>Listado de Reglas</h3>
     <div class="auto-filtro-orden">
         <span>▽</span>
-        <span>Filtrar por: @ordenSeleccionado</span>
+        <label for="orden-reglas">Filtrar por:</label>
+        <select id="orden-reglas" class="auto-filtro-select" @bind="ordenSeleccionado" @bind:after="CargarReglas">
+            @foreach (var opcion in OpcionesOrden)
+            {
+                <option value="@opcion">@opcion</option>
+            }
+        </select>
     </div>
 </div>
 
@@ -45,7 +64,7 @@
 else
 {
     <div class="auto-reglas-lista">
-        @foreach (var r in ReglasFiltradas)
+        @foreach (var r in reglas)
         {
             var pausada = r.Estado == EstadosRegla.Pausada;
 
@@ -53,7 +72,9 @@ else
                 <div class="auto-regla-top">
                     <div class="auto-regla-meta">
                         <span class="auto-regla-badge @(pausada ? "auto-badge-pausada" : "auto-badge-activa")">@r.Canal.ToUpper()</span>
+                        <strong>@r.Nombre</strong>
                         <span class="auto-regla-fecha">• @TextoRelativo(r.FechaCreacion, pausada)</span>
+                        <span class="auto-regla-fecha">• Prioridad @r.Prioridad</span>
                     </div>
                     <div class="auto-regla-estado">
                         <span class="auto-regla-estado-label @(pausada ? "auto-estado-pausada" : "")">
@@ -71,6 +92,12 @@ else
                         <span class="auto-regla-conector">SI</span>
                         <div class="auto-cond-box @(pausada ? "auto-box-muted" : "auto-box-alerta")">
                             ⚠️ @r.CondicionResumen
+                            @if (r.NombrePlan is not null || r.NombreSede is not null)
+                            {
+                                <br />
+                    
+                                <small>Solo @string.Join(" · ", new[] { r.NombrePlan, r.NombreSede }.Where(x => x is not null))</small>
+                            }
                         </div>
                     </div>
                     <span class="auto-regla-flecha">→</span>
@@ -98,38 +125,64 @@ else
             </div>
         }
 
-        @if (!ReglasFiltradas.Any())
+        @if (!reglas.Any())
         {
-            <p>No se encontraron reglas.</p>
+            <p>
+                @(string.IsNullOrWhiteSpace(textoBusqueda)
+                        ? "Aún no hay reglas de automatización configuradas."
+                        : "No hay reglas que coincidan con el texto ingresado.")
+    </p>
         }
     </div>
 }
 
 @code {
     private string textoBusqueda = "";
-    private string ordenSeleccionado = "Más Recientes";
+    private string ordenSeleccionado = "Más recientes";
+    private static readonly string[] OpcionesOrden = { "Más recientes", "Más ejecutadas", "Alfabético" };
     private bool cargando = true;
+    private bool ejecutando = false;
+    private string mensajeEjecucion = "";
+    private string mensajeErrorEjecucion = "";
     private List<Regla> reglas = new();
 
     protected override async Task OnInitializedAsync()
     {
         await CargarReglas();
-    }
-
-    private async Task CargarReglas()
-    {
-        cargando = true;
-        reglas = await BLLRegla.ObtenerReglas();
         cargando = false;
     }
 
-    // Filtrado en memoria por texto de búsqueda (nombre, condición o campaña).
-    private IEnumerable<Regla> ReglasFiltradas =>
-        reglas.Where(r =>
-            string.IsNullOrWhiteSpace(textoBusqueda) ||
-            r.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-            r.CondicionResumen.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-            r.NombreCampania.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+    // CU10, pasos 5-8: la búsqueda por nombre y el orden se resuelven en BLLRegla.
+    private async Task CargarReglas()
+    {
+        reglas = string.IsNullOrWhiteSpace(textoBusqueda)
+            ? await BLLRegla.ObtenerReglasOrdenadas(ordenSeleccionado)
+            : await BLLRegla.BuscarReglaPorNombre(textoBusqueda.Trim(), ordenSeleccionado);
+    }
+
+    // Ejecuta el motor a demanda (también se va a ejecutar solo cuando el modelo termine de predecir).
+    private async Task EjecutarAhora()
+    {
+        if (ejecutando) return;
+
+        ejecutando = true;
+        mensajeEjecucion = "";
+        mensajeErrorEjecucion = "";
+        try
+        {
+            var (enviados, cerrados) = await BLLRegla.EjecutarReglas();
+            mensajeEjecucion = $"Envíos nuevos: {enviados.Count}. Envíos anteriores cerrados con resultado: {cerrados}.";
+            await CargarReglas(); // actualiza el contador de ejecuciones
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorEjecucion = $"No se pudieron ejecutar las reglas: {ex.Message}";
+        }
+        finally
+        {
+            ejecutando = false;
+        }
+    }
 
     private async Task ToggleActiva(Regla r)
     {

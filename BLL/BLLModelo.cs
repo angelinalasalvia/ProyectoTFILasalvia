@@ -10,12 +10,14 @@ namespace BLL;
 public class BLLModelo
 {
     private readonly AccesoDatos _accesoDatos;
+    private readonly BLLRegla _bllRegla;
     private readonly ILogger<BLLModelo> _logger;
     private readonly MLContext _mlContext;
 
-    public BLLModelo(AccesoDatos accesoDatos, ILogger<BLLModelo> logger)
+    public BLLModelo(AccesoDatos accesoDatos, BLLRegla bllRegla, ILogger<BLLModelo> logger)
     {
         _accesoDatos = accesoDatos;
+        _bllRegla = bllRegla;
         _logger = logger;
         _mlContext = new MLContext(seed: 42);
     }
@@ -48,14 +50,30 @@ public class BLLModelo
             return;
         }
 
+        // Snapshot de HOY de cada cliente: se usa para las estadísticas de población (factor principal
+        // de riesgo) y como entrada de la predicción real. Su Abandono (= está inactivo hoy) no se usa
+        // para entrenar; ver ConstruirPanelEntrenamiento.
         var todasLasFeatures = clientes.Select(c => new ClienteConFeatures
         {
             IdCliente = c.IdCliente,
             Features = FeatureEngineering.Construir(c, c.Eventos.ToList(), fechaReferencia)
         }).ToList();
 
-        var (modeloEntrenado, metrica) = EntrenarModelo(todasLasFeatures.Select(x => x.Features));
-        _logger.LogInformation("Modelo entrenado. AUC: {AUC:P1} | Accuracy: {Acc:P1} | F1Score: {F1:P1}",
+        // Entrenamiento con fecha de corte: cada cliente aporta varias filas históricas (una por semana
+        // de su historia), con las variables calculadas solo hasta esa fecha y la etiqueta "¿abandonó
+        // dentro de los 30 días siguientes?". Evita que el modelo entrene con datos del futuro.
+        var panelEntrenamiento = FeatureEngineering.ConstruirPanelEntrenamiento(clientes, fechaReferencia);
+        if (panelEntrenamiento.Count < 20)
+        {
+            _logger.LogWarning("Panel de entrenamiento insuficiente ({Count} filas) para entrenar un modelo confiable.", panelEntrenamiento.Count);
+            return;
+        }
+
+        var (modeloEntrenado, metrica) = EntrenarModelo(panelEntrenamiento);
+        _logger.LogInformation(
+            "Modelo entrenado con panel histórico: {Filas} filas ({Positivos} abandonos, {Tasa:P1}). AUC: {AUC:P1} | Accuracy: {Acc:P1} | F1Score: {F1:P1}",
+            panelEntrenamiento.Count, panelEntrenamiento.Count(f => f.Abandono),
+            (double)panelEntrenamiento.Count(f => f.Abandono) / panelEntrenamiento.Count,
             metrica.AreaUnderRocCurve, metrica.Accuracy, metrica.F1Score);
 
         var estadisticas = CalcularEstadisticasPoblacion(todasLasFeatures.Select(x => x.Features));
@@ -78,6 +96,21 @@ public class BLLModelo
 
         await GuardarResultadosAsync(resultados, cancellationToken);
         _logger.LogInformation("Ciclo completado. {Count} clientes activos re-evaluados.", resultados.Count);
+
+        // Con las predicciones ya actualizadas, se evalúan las reglas activas (CU10) contra los
+        // niveles de riesgo recién calculados y se registran los envíos automáticos que correspondan.
+        try
+        {
+            var (enviados, cerrados) = await _bllRegla.EjecutarReglas(fechaReferencia, cancellationToken);
+            _logger.LogInformation(
+                "Motor de reglas ejecutado tras la predicción: {Enviados} envíos nuevos, {Cerrados} envíos anteriores cerrados con resultado.",
+                enviados.Count, cerrados);
+        }
+        catch (Exception ex)
+        {
+            // Un error del motor de reglas no debe invalidar el ciclo de predicción que ya se guardó.
+            _logger.LogError(ex, "Error ejecutando el motor de reglas tras la predicción.");
+        }
     }
 
     private (ITransformer Modelo, BinaryClassificationMetrics Metricas) EntrenarModelo(IEnumerable<ChurnInputData> datos)

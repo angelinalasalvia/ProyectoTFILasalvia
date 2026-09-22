@@ -240,6 +240,15 @@
     .auto-icon-btn:hover {
         color: #1e2432;
     }
+
+.auto-filtro-select {
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2f6fed;
+    cursor: pointer;
+}
 /* ==========================================================================
    FIN PANTALLA: AUTOMATIZACIÓN
    ========================================================================== */

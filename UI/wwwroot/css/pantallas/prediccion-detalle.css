@@ -1,7 +1,6 @@
 ﻿/* ==========================================================================
    Pantalla: Detalle de Predicción (Pages/PrediccionDetalle.razor)
    ========================================================================== */
-
 /* ==========================================================================
    PANTALLA: DETALLE DE PREDICCIÓN (Pages/PrediccionDetalleCarlos.razor)
    Por ahora hardcodeada para Carlos Ruiz. Cuando se programe la lógica real
@@ -227,11 +226,12 @@
     font-weight: 700;
 }
 
-    .factor-valor.factor-negativo {
+    /* Impacto positivo = empuja hacia el riesgo (rojo); negativo = lo reduce (verde). */
+    .factor-valor.factor-positivo {
         color: #d63939;
     }
 
-    .factor-valor.factor-positivo {
+    .factor-valor.factor-negativo {
         color: #2f9e5c;
     }
 
@@ -249,12 +249,12 @@
     border-radius: 4px;
 }
 
-    .factor-fill.fill-negativo {
+    .factor-fill.fill-positivo {
         background: #d63939;
     }
 
-    .factor-fill.fill-positivo {
-        background: #2f6fed;
+    .factor-fill.fill-negativo {
+        background: #2f9e5c;
     }
 
 .factor-desc {
@@ -291,3 +291,29 @@
 /* ==========================================================================
    FIN PANTALLA: DETALLE DE PREDICCIÓN
    ========================================================================== */
+
+
+/* --- Textos de ayuda --- */
+.card-hint {
+    font-size: 12px;
+    color: #8a90a2;
+    margin: 2px 0 12px;
+    line-height: 1.4;
+}
+
+.leyenda-riesgo {
+    color: #d63939;
+    font-weight: 600;
+}
+
+.leyenda-protector {
+    color: #2f9e5c;
+    font-weight: 600;
+}
+
+.anomalia-nota {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.85;
+}

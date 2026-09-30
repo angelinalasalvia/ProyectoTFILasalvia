@@ -40,22 +40,24 @@ public class BLLCliente
 
     public async Task<(double UsoInstalaciones, double InteraccionesApp)> ObtenerMetricasRelativasMedia(int idCliente, string periodo = "mes", CancellationToken ct = default)
     {
-        var todos = await BLLCliente.ObtenerClientesConEventosAsync(_accesoDatos, ct);
+        var todos = await ObtenerClientesConEventosAsync(_accesoDatos, ct);
         var cliente = todos.FirstOrDefault(c => c.IdCliente == idCliente);
         if (cliente == null) return (0, 0);
 
-        var desde = DateTime.Now.AddDays(-DiasSegunPeriodo(periodo));
-        var segmento = todos.Where(c => c.PlanSocio == cliente.PlanSocio).ToList();
+        var ahora = DateTime.Now;
+        var segmento = todos
+            .Where(c => c.PlanSocio == cliente.PlanSocio && c.EstadoRegistro == "Socio Activo")
+            .ToList();
+        if (segmento.Count == 0) return (0, 0);
 
-        double usoCliente = cliente.Eventos.Count(e => e.Evento == TipoEvento.VisitaGimnasio && e.Fecha >= desde);
-        double usoMedia = segmento.Average(c => c.Eventos.Count(e => e.Evento == TipoEvento.VisitaGimnasio && e.Fecha >= desde));
-
-        double appCliente = cliente.Eventos.Count(e => e.Evento == TipoEvento.UsoApp && e.Fecha >= desde);
-        double appMedia = segmento.Average(c => c.Eventos.Count(e => e.Evento == TipoEvento.UsoApp && e.Fecha >= desde));
+        var fCliente = FeatureEngineering.Construir(cliente, cliente.Eventos.ToList(), ahora);
+        var fSegmento = segmento
+            .Select(c => FeatureEngineering.Construir(c, c.Eventos.ToList(), ahora))
+            .ToList();
 
         return (
-            CalcularPorcentajeRelativo(usoCliente, usoMedia),
-            CalcularPorcentajeRelativo(appCliente, appMedia)
+            CalcularPorcentajeRelativo(fCliente.VisitasUltimos30Dias, fSegmento.Average(f => f.VisitasUltimos30Dias)),
+            CalcularPorcentajeRelativo(fCliente.UsoAppUltimos30Dias, fSegmento.Average(f => f.UsoAppUltimos30Dias))
         );
     }
 

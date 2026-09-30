@@ -162,72 +162,29 @@ public static class FeatureEngineering
     // EntrenarYPredecirAsync, y el resultado queda guardado.
     public static string GenerarDescripcion(string nombreFactor, double valorCliente, double media)
     {
+        double v = Math.Round(valorCliente, 1);
+        string Plural(string singular, string plural) => v == 1 ? singular : plural;
+
         if (nombreFactor == NombresFactorRiesgo.InactividadReciente)
-        {
-            return $"{Math.Round(valorCliente, 1)} días desde la última actividad vs. " +
-                   $"{Math.Round(media, 1)} días en el segmento.";
-        }
-
+            return $"{v} días desde la última actividad registrada.";
         if (nombreFactor == NombresFactorRiesgo.BajaFrecuenciaAsistencia)
-        {
-            return $"{Math.Round(valorCliente, 1)} visitas en el período vs. " +
-                   $"{Math.Round(media, 1)} en el segmento.";
-        }
-
+            return $"{v} {Plural("visita", "visitas")} al gimnasio en los últimos 30 días.";
         if (nombreFactor == NombresFactorRiesgo.BajaInteraccionApp)
-        {
-            return $"{Math.Round(valorCliente, 1)} interacciones con la App en el período vs. " +
-                   $"{Math.Round(media, 1)} en el segmento.";
-        }
-
+            return $"{v} {Plural("uso", "usos")} de la app en los últimos 30 días.";
         if (nombreFactor == NombresFactorRiesgo.HistorialPagosVencidos)
-        {
-            string pagosCliente = Math.Round(valorCliente, 1) == 1 ? "pago vencido" : "pagos vencidos";
-            string pagosMedia = Math.Round(media, 1) == 1 ? "pago vencido" : "pagos vencidos";
-
-            return $"{Math.Round(valorCliente, 1)} {pagosCliente} en el período vs. " +
-                   $"{Math.Round(media, 1)} {pagosMedia} en el segmento.";
-        }
-
+            return $"{v} {Plural("pago vencido", "pagos vencidos")} en los últimos 60 días.";
         if (nombreFactor == NombresFactorRiesgo.CancelacionesFrecuentes)
-        {
-            return $"{Math.Round(valorCliente, 1)} cancelaciones en el período vs. " +
-                   $"{Math.Round(media, 1)} en el segmento.";
-        }
-
+            return $"{v} {Plural("cancelación", "cancelaciones")} de reservas en los últimos 30 días.";
         if (nombreFactor == NombresFactorRiesgo.AltaConsultaSoporte)
-        {
-            return $"{Math.Round(valorCliente, 1)} consultas a soporte en el período vs. " +
-                   $"{Math.Round(media, 1)} en el segmento.";
-        }
-
+            return $"{v} {Plural("consulta", "consultas")} a soporte en los últimos 90 días.";
         if (nombreFactor == NombresFactorRiesgo.AltaProporcionPagosVencidos)
-        {
-            return $"{Math.Round(valorCliente * 100, 1)}% de los pagos vencieron vs. " +
-                   $"{Math.Round(media * 100, 1)}% en el segmento.";
-        }
-
+            return $"{Math.Round(valorCliente * 100, 1)}% de los pagos de los últimos 60 días vencieron.";
         if (nombreFactor == NombresFactorRiesgo.TendenciaNegativaAsistencia)
-        {
-            string tendenciaCliente = valorCliente > 0
-                ? "aumento"
-                : valorCliente < 0
-                    ? "disminución"
-                    : "sin cambios";
+            return v == 0
+                ? "Sin cambios en las visitas: últimos 30 días vs. los 30 días previos."
+                : $"{(v > 0 ? "+" : "")}{v} visitas: últimos 30 días vs. los 30 días previos.";
 
-            string tendenciaMedia = media > 0
-                ? "aumento"
-                : media < 0
-                    ? "disminución"
-                    : "sin cambios";
-
-            return $"{tendenciaCliente} de {Math.Abs(Math.Round(valorCliente, 1))} visitas " +
-                   $"respecto al período anterior vs. {tendenciaMedia} de " +
-                   $"{Math.Abs(Math.Round(media, 1))} en el segmento.";
-        }
-
-        return $"{Math.Round(valorCliente, 1)} vs. una media de " +
-               $"{Math.Round(media, 1)} en el segmento.";
+        return $"{v}.";
     }
 
     public static ChurnInputData ConstruirParaPeriodo(

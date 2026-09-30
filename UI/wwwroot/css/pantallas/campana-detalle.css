@@ -1,0 +1,292 @@
+﻿/* ==========================================================================
+   Pantalla: Detalle de Campaña (Pages/CampanaDetalle.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: DETALLE DE CAMPAÑA (Pages/CampanaDetalle.razor)
+   Por ahora hardcodeada para "50% Descuento". Cuando se programe la lógica
+   real esto se va a convertir en una ruta con parámetro (ej: /campana/{id}).
+   ========================================================================== */
+
+.camp-nombre-link {
+    color: #1e2432;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .camp-nombre-link:hover {
+        color: #2f6fed;
+        text-decoration: underline;
+    }
+
+.camp-detalle-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.camp-detalle-title {
+    margin: 0 0 6px 0;
+    font-size: 24px;
+}
+
+.camp-detalle-canal {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+/* --- KPIs superiores --- */
+.camp-detalle-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.camp-detalle-kpi-label {
+    font-size: 11px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+}
+
+.camp-detalle-kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.camp-detalle-kpi-up {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2f9e5c;
+}
+
+.camp-detalle-kpi-meta {
+    font-size: 14px;
+    font-weight: 400;
+    color: #8a90a2;
+}
+
+.camp-detalle-kpi-sub {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+/* --- Card de rendimiento temporal (gráfico de barras) --- */
+.camp-rendimiento-card {
+    margin-bottom: 18px;
+}
+
+.camp-rendimiento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.camp-rendimiento-sub {
+    font-size: 12px;
+    color: #8a90a2;
+    margin: 4px 0 0 0;
+}
+
+.camp-rendimiento-leyenda {
+    display: flex;
+    gap: 16px;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #555b6a;
+}
+
+.leyenda-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-conversion {
+    background: #2f6fed;
+}
+
+.dot-leidos {
+    background: #dfe3ea;
+}
+
+.camp-chart-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 200px;
+    padding-top: 20px;
+}
+
+.camp-chart-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.camp-chart-bar-wrap {
+    width: 32px;
+    display: flex;
+    flex-direction: column-reverse;
+    border-radius: 4px 4px 0 0;
+    overflow: hidden;
+}
+
+.camp-chart-bar-leido {
+    background: #dfe3ea;
+    width: 100%;
+}
+
+.camp-chart-bar-conversion {
+    background: #2f6fed;
+    width: 100%;
+}
+
+.camp-chart-label {
+    font-size: 11px;
+    color: #8a90a2;
+}
+
+/* --- Card de socios impactados --- */
+.camp-socios-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.camp-socios-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+.camp-socios-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.camp-socios-filtros {
+    display: flex;
+    gap: 16px;
+}
+
+.filtro-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filtro-inline-label {
+    font-size: 13px;
+    color: #555b6a;
+}
+
+.filtro-inline-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 7px 26px 7px 10px;
+    font-size: 13px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.camp-socios-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .camp-socios-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        background: #f6f7fa;
+        padding: 12px 20px;
+        border-top: 1px solid #eef0f4;
+        border-bottom: 1px solid #eef0f4;
+    }
+
+    .camp-socios-table td {
+        padding: 14px 20px;
+        font-size: 14px;
+        border-bottom: 1px solid #f4f5f8;
+        vertical-align: middle;
+    }
+
+.socio-id {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.estado-envio-cell {
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.estado-leido {
+    color: #2f9e5c;
+}
+
+.estado-entregado {
+    color: #2f6fed;
+}
+
+.resultado-badge-camp {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.resultado-rescatado {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+.resultado-sin-accion {
+    background: #f0f2f6;
+    color: #8a90a2;
+}
+
+.resultado-clic {
+    background: #eaf1fd;
+    color: #2f6fed;
+}
+
+.camp-socios-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+}
+
+/* ==========================================================================
+   FIN PANTALLA: DETALLE DE CAMPAÑA
+   ========================================================================== */
+

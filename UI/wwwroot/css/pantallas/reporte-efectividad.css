@@ -1,0 +1,330 @@
+﻿/* ==========================================================================
+   Pantalla: Reporte de Efectividad (Pages/ReporteEfectividad.razor)
+   Reutiliza clases de: base.css, retencion-cliente.css
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: REPORTE DE EFECTIVIDAD (Pages/ReporteEfectividad.razor)
+   Reutiliza: .breadcrumb, .retencion-header-row, .retencion-actions,
+   .btn-cancelar, .btn-confirmar, .card-subtitle-dark.
+   ========================================================================== */
+.rep-icons-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+/* --- KPIs --- */
+.rep-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 22px 0;
+}
+
+.rep-kpi-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rep-kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rep-kpi-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #eaf1fd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.rep-kpi-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.rep-badge-positivo {
+    background: #e3f7ea;
+    color: #2f9e5c;
+}
+
+.rep-badge-negativo {
+    background: #fdeaea;
+    color: #d63939;
+}
+
+.rep-badge-neutro {
+    background: #f0f2f6;
+    color: #555b6a;
+}
+
+.rep-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: #8a90a2;
+}
+
+.rep-kpi-valor {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.rep-kpi-sub {
+    font-size: 12px;
+    color: #8a90a2;
+}
+/* --- Fila principal: canal + incentivos --- */
+.rep-main-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: start;
+}
+
+.rep-canal-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 18px;
+}
+
+.rep-canal-nombre {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e2432;
+    margin-bottom: 16px;
+}
+
+.rep-canal-icono {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: #eaf1fd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+.rep-canal-metrica {
+    margin-bottom: 14px;
+}
+
+.rep-canal-metrica-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #555b6a;
+    margin-bottom: 6px;
+}
+
+.rep-canal-metrica-valor {
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.rep-canal-barra-fondo {
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.rep-canal-barra-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.rep-barra-azul {
+    background: #2f6fed;
+}
+
+.rep-barra-azul-claro {
+    background: #a9c3f7;
+}
+
+.rep-barra-verde {
+    background: #2f9e5c;
+}
+
+.rep-barra-verde-claro {
+    background: #9fd9b8;
+}
+/* --- Mejores incentivos --- */
+.rep-incentivos-list {
+    list-style: none;
+    margin: 18px 0 0 0;
+    padding: 0;
+}
+
+.rep-incentivo-item {
+    margin-bottom: 16px;
+}
+
+.rep-incentivo-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.rep-incentivo-nombre {
+    font-weight: 600;
+    color: #1e2432;
+}
+
+.rep-incentivo-clientes {
+    color: #8a90a2;
+}
+
+.rep-incentivo-barra-fondo {
+    height: 6px;
+    background: #eef0f4;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.rep-incentivo-barra-fill {
+    height: 100%;
+    background: #111;
+    border-radius: 999px;
+}
+/* --- ROI de retención --- */
+.rep-roi-card {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr auto;
+    gap: 28px;
+    align-items: center;
+}
+
+.rep-roi-texto p {
+    font-size: 13px;
+    color: #8a90a2;
+    line-height: 1.6;
+    margin: 10px 0 16px 0;
+}
+
+.rep-roi-legend {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: #555b6a;
+}
+
+.rep-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.rep-dot-azul {
+    background: #2f6fed;
+}
+
+.rep-dot-negro {
+    background: #111;
+}
+
+.rep-roi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: #8a90a2;
+    margin-bottom: 8px;
+}
+
+.rep-roi-bar {
+    display: flex;
+    height: 40px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.rep-roi-bar-costo {
+    background: #2f6fed;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rep-roi-bar-valor {
+    background: #111;
+    color: #fff;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rep-roi-stats {
+    display: flex;
+    gap: 40px;
+}
+
+.rep-roi-stats-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: #8a90a2;
+    margin-bottom: 4px;
+}
+
+.rep-roi-stats-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.rep-roi-margen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.rep-roi-margen-badge {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    border: 2px solid #2f9e5c;
+    color: #2f9e5c;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rep-roi-margen-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: #8a90a2;
+}
+/* ==========================================================================
+   FIN PANTALLA: REPORTE DE EFECTIVIDAD
+   ========================================================================== */
+

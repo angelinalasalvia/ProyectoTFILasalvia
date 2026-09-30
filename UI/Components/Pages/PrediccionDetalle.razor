@@ -59,18 +59,22 @@ else
 
             <div class="card segmento-card">
                 <h4 class="card-subtitle">VS. MEDIA DEL SEGMENTO</h4>
+                <p class="card-hint">Compara al socio con el promedio de los socios activos de su mismo plan (@cliente.PlanSocio), sobre los últimos 30 días.</p>
                 <div class="segmento-item">
-                    <div class="segmento-label">Uso de instalaciones</div>
+                    <div class="segmento-label">Uso de instalaciones (visitas al gimnasio)</div>
                     <div class="segmento-value @ClaseRelativo(metricas.UsoInstalaciones)">@FormatearRelativo(metricas.UsoInstalaciones)</div>
                 </div>
                 <div class="segmento-item">
-                    <div class="segmento-label">Interacciones con la App</div>
+                    <div class="segmento-label">Interacciones con la App (usos de la app)</div>
                     <div class="segmento-value @ClaseRelativo(metricas.InteraccionesApp)">@FormatearRelativo(metricas.InteraccionesApp)</div>
                 </div>
 
                 @if (hayAnomalia)
                 {
-                    <div class="login-alerta">⚠️ Se detectó una anomalía respecto a la media del segmento.</div>
+                    <div class="login-alerta">
+                        ⚠️ Anomalía detectada: @detalleAnomalia
+                        <div class="anomalia-nota">Se marca cuando el uso del gimnasio o de la app está @(umbralAnomalia)% o más por debajo del promedio de su segmento en los últimos 30 días.</div>
+                    </div>
                 }
                 else
                 {
@@ -87,13 +91,10 @@ else
         <div class="detalle-col-der">
             <div class="card factores-card">
                 <div class="factores-header">
-                    <h4 class="card-subtitle-dark">Factores que influyen en el riesgo</h4>
-                    <select class="periodo-select" @onchange="CambiarPeriodo">
-                        <option value="semana">Última semana</option>
-                        <option value="mes" selected>Último mes</option>
-                        <option value="trimestre">Último trimestre</option>
-                        <option value="año">Último año</option>
-                    </select>
+                    <div>
+                        <h4 class="card-subtitle-dark">Factores que influyen en el riesgo</h4>
+                        <p class="card-hint">Muestra cuánto pesó cada variable del socio en la predicción del modelo. Los porcentajes suman 100% entre todos los factores. <span class="leyenda-riesgo">Rojo: aumenta el riesgo</span> · <span class="leyenda-protector">Verde: lo reduce</span>.</p>
+                    </div>                    
                 </div>
                 <div class="factores-content">
                     <div class="factores-lista">
@@ -103,7 +104,7 @@ else
                                 <div class="factor-top">
                                     <span class="factor-nombre">@f.Nombre</span>
                                     <span class="factor-valor @((f.Impacto ?? 0) >= 0 ? "factor-positivo" : "factor-negativo")">
-                                        Índice de influencia: @((f.Impacto ?? 0).ToString("0.0"))/100
+                                        @((f.Impacto ?? 0) >= 0 ? "Aumenta el riesgo" : "Reduce el riesgo"): @(Math.Abs(f.Impacto ?? 0).ToString("0.0"))%
                                     </span>
                                 </div>
                                 <div class="factor-bar">
@@ -114,7 +115,7 @@ else
                         }
                     </div>
 
-                    
+
                     <div class="radar-container">
                         <svg viewBox="0 0 260 260" class="radar-svg">
                             @for (int i = 0; i < factores.Count; i++)
@@ -141,9 +142,17 @@ else
                 </div>
             </div>
 
-            
+
             <div class="card engagement-card">
-                <h4 class="card-subtitle-dark">Evolución del Compromiso (Engagement Score)</h4>
+                <div class="factores-header">
+                    <h4 class="card-subtitle-dark">Evolución del Compromiso (Engagement Score)</h4>
+                    <select class="periodo-select" @onchange="CambiarPeriodo">
+                        <option value="semana">Última semana</option>
+                        <option value="mes" selected>Último mes</option>
+                        <option value="trimestre">Último trimestre</option>
+                        <option value="año">Último año</option>
+                    </select>
+                </div>
                 @if (!haySuficienteHistorialEngagement)
                 {
                     <p class="pred-sin-resultados">El cliente no cuenta con historial suficiente para generar la evolución del Engagement Score.</p>
@@ -210,6 +219,8 @@ else
     private string nombreModelo = "";
     private string periodoActivo = "mes";
     private bool hayAnomalia;
+    private string detalleAnomalia = "";
+    private const int umbralAnomalia = 50;
 
     protected override async Task OnInitializedAsync() => await CargarDatos();
 
@@ -217,29 +228,33 @@ else
     {
         cliente = await BLLCliente.ObtenerCliente(IdCliente);
         prediccion = await BLLPrediccion.ObtenerPrediccionPorCliente(IdCliente);
-        metricas = await BLLCliente.ObtenerMetricasRelativasMedia(IdCliente, periodoActivo);
-        factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente, periodoActivo);
+        metricas = await BLLCliente.ObtenerMetricasRelativasMedia(IdCliente);
+        factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente);
         if (prediccion != null)
             nombreModelo = await BLLModelo.ObtenerNombreModelo(prediccion.IdModelo);
         VerificarAnomalias();
-        GenerarGraficoEngagement(cliente); 
+        GenerarGraficoEngagement(cliente);
     }
 
-    
+
     private void VerificarAnomalias()
     {
-        const double umbral = -50; 
-        hayAnomalia = metricas.UsoInstalaciones <= umbral || metricas.InteraccionesApp <= umbral;
+        const double umbral = -umbralAnomalia;
+        var motivos = new List<string>();
+        if (metricas.UsoInstalaciones <= umbral)
+            motivos.Add($"el uso de instalaciones está {Math.Abs(metricas.UsoInstalaciones)}% por debajo de la media");
+        if (metricas.InteraccionesApp <= umbral)
+            motivos.Add($"las interacciones con la app están {Math.Abs(metricas.InteraccionesApp)}% por debajo de la media");
+
+        hayAnomalia = motivos.Count > 0;
+        detalleAnomalia = hayAnomalia ? string.Join(" y ", motivos) + "." : "";
     }
 
     private async Task CambiarPeriodo(ChangeEventArgs e)
     {
         periodoActivo = e.Value?.ToString() ?? "mes";
-        metricas = await BLLCliente.ObtenerMetricasRelativasMedia(IdCliente, periodoActivo);
-        factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente, periodoActivo);
-        VerificarAnomalias();
-        GenerarGraficoEngagement(cliente); 
-                                           
+        GenerarGraficoEngagement(cliente);
+        await Task.CompletedTask;
     }
 
     private DateTime? UltimaActividad() => cliente?.Eventos
@@ -251,7 +266,9 @@ else
         .Select(e => (DateTime?)e.Fecha).Max();
 
     private string FormatearRelativo(double valor) =>
-        valor >= 0 ? $"+{valor}% por encima de la media" : $"{Math.Abs(valor)}% por debajo de la media";
+        valor == 0 ? "En la media del segmento"
+        : valor > 0 ? $"+{valor}% por encima de la media"
+        : $"{Math.Abs(valor)}% por debajo de la media";
 
     private string ClaseRelativo(double valor) => valor >= 0 ? "positivo" : "negativo";
 
@@ -260,13 +277,13 @@ else
     private string RadarPuntos()
     {
         if (factores.Count == 0) return "";
-        double maxImpacto = factores.Max(f => (double)Math.Abs(f.Impacto ?? 0)); 
+        double maxImpacto = factores.Max(f => (double)Math.Abs(f.Impacto ?? 0));
         if (maxImpacto == 0) maxImpacto = 1;
 
         var puntos = new List<string>();
         for (int i = 0; i < factores.Count; i++)
         {
-            double magnitud = (double)Math.Abs(factores[i].Impacto ?? 0) / maxImpacto; 
+            double magnitud = (double)Math.Abs(factores[i].Impacto ?? 0) / maxImpacto;
             var (x, y) = PuntoEnAngulo(i, factores.Count, magnitud * RadarRadioMax);
             puntos.Add($"{x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)}");
         }
@@ -278,7 +295,7 @@ else
 
     private (double x, double y) PuntoEnAngulo(int i, int total, double radio)
     {
-        double angulo = (Math.PI * 2 * i / total) - (Math.PI / 2); 
+        double angulo = (Math.PI * 2 * i / total) - (Math.PI / 2);
         return (RadarCX + radio * Math.Cos(angulo), RadarCY + radio * Math.Sin(angulo));
     }
 
@@ -345,7 +362,7 @@ else
         "semana" => fecha.ToString("dd/MM"),
         "trimestre" => fecha.ToString("MMM"),
         "año" => fecha.ToString("MMM yy"),
-        _ => fecha.ToString("dd/MM") 
+        _ => fecha.ToString("dd/MM")
     };
 
     private string EngagementPolylinePuntos()

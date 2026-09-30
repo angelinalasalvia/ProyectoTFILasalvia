@@ -191,25 +191,7 @@ else
     private double PorcentajeKpi(int cantidad) =>
         predicciones.Count == 0 ? 0 : Math.Round(cantidad * 100.0 / predicciones.Count, 1);
 
-    // Paso 6-7: filtro por nivel de riesgo.
-    /*private List<Prediccion> PrediccionesFiltradas
-    {
-        get
-        {
-            var filtradas = filtroActivo == "Todos"
-                ? predicciones
-                : predicciones.Where(p => p.NivelRiesgo == filtroActivo).ToList();
-
-            // Paso 4/8-9: orden.
-            return criterioOrden switch
-            {
-                "nombre" => filtradas.OrderBy(p => p.Cliente!.Nombre).ThenBy(p => p.Cliente!.Apellido).ToList(),
-                "nivel" => filtradas.OrderBy(p => OrdenNivel(p.NivelRiesgo)).ToList(),
-                _ => filtradas.OrderByDescending(p => p.ProbabilidadAbandono).ToList(), // "probabilidad" (default, paso 4)
-            };
-        }
-    }*/
-
+   
     private int OrdenNivel(string nivel) => nivel switch
     {
         "Alto" => 0,

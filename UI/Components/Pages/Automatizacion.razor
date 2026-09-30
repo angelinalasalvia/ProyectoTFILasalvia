@@ -1,5 +1,9 @@
 ﻿@page "/automatizacion"
+@using BE
+@using BLL
 @inject NavigationManager Navigation
+@inject BLLRegla BLLRegla
+@inject IJSRuntime JS
 
 <PageTitle>Reglas de Automatización</PageTitle>
 
@@ -7,7 +11,7 @@
 <div class="page-header">
     <div class="search-box auto-search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Buscar reglas..." @bind="textoBusqueda" @bind:event="oninput" />
+        <input type="text" placeholder="Buscar reglas..." @bind="textoBusqueda" @bind:event="oninput" @bind:after="CargarReglas" />
     </div>
     <div class="header-icons">
         <span>🔔</span>
@@ -22,147 +26,169 @@
         <h2 class="auto-titulo">Reglas de Automatización</h2>
         <p class="auto-subtitulo">Configura disparadores inteligentes que ejecutan acciones de marketing y soporte cuando los modelos de IA detectan riesgos críticos en tus clientes.</p>
     </div>
-    <button class="btn-crear-campana" @onclick="NuevaRegla">+ Nueva Regla</button>
+    <div class="retencion-actions">
+        <button class="btn-cancelar" @onclick="EjecutarAhora" disabled="@ejecutando">▶ Ejecutar reglas ahora</button>
+        <button class="btn-crear-campana" @onclick="NuevaRegla">+ Nueva Regla</button>
+    </div>
 </div>
+
+@if (!string.IsNullOrEmpty(mensajeEjecucion))
+{
+    <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeEjecucion</div>
+}
+@if (!string.IsNullOrEmpty(mensajeErrorEjecucion))
+{
+    <div class="camp-form-error">⚠ @mensajeErrorEjecucion</div>
+}
+
 
 <!-- Listado de reglas -->
 <div class="auto-listado-header">
     <h3>Listado de Reglas</h3>
     <div class="auto-filtro-orden">
         <span>▽</span>
-        <span>Filtrar por: @ordenSeleccionado</span>
+        <label for="orden-reglas">Filtrar por:</label>
+        <select id="orden-reglas" class="auto-filtro-select" @bind="ordenSeleccionado" @bind:after="CargarReglas">
+            @foreach (var opcion in OpcionesOrden)
+            {
+                <option value="@opcion">@opcion</option>
+            }
+        </select>
     </div>
 </div>
 
-<div class="auto-reglas-lista">
-    @foreach (var r in ReglasFiltradas)
-    {
-        <div class="card auto-regla-card">
-            <div class="auto-regla-top">
-                <div class="auto-regla-meta">
-                    <span class="auto-regla-badge @(r.Pausada ? "auto-badge-pausada" : "auto-badge-activa")">@r.Tipo</span>
-                    <span class="auto-regla-fecha">• @r.CreadoTexto</span>
-                </div>
-                <div class="auto-regla-estado">
-                    <span class="auto-regla-estado-label @(r.Pausada ? "auto-estado-pausada" : "")">
-                        @(r.Pausada ? "Pausada" : "Activa")
-                    </span>
-                    <button class="auto-switch @(r.Activa ? "auto-switch-on" : "")"
-                            @onclick="() => ToggleActiva(r)">
-                        <span class="auto-switch-knob"></span>
-                    </button>
-                </div>
-            </div>
+@if (cargando)
+{
+    <p>Cargando reglas...</p>
+}
+else
+{
+    <div class="auto-reglas-lista">
+        @foreach (var r in reglas)
+        {
+            var pausada = r.Estado == EstadosRegla.Pausada;
 
-            <div class="auto-regla-flow">
-                <div class="auto-regla-condicion">
-                    <span class="auto-regla-conector">SI</span>
-                    <div class="auto-cond-box @(r.Pausada ? "auto-box-muted" : "auto-box-alerta")">
-                        @r.CondicionIcono @r.CondicionTexto
+            <div class="card auto-regla-card">
+                <div class="auto-regla-top">
+                    <div class="auto-regla-meta">
+                        <span class="auto-regla-badge @(pausada ? "auto-badge-pausada" : "auto-badge-activa")">@r.Canal.ToUpper()</span>
+                        <strong>@r.Nombre</strong>
+                        <span class="auto-regla-fecha">• @TextoRelativo(r.FechaCreacion, pausada)</span>
+                        <span class="auto-regla-fecha">• Prioridad @r.Prioridad</span>
+                    </div>
+                    <div class="auto-regla-estado">
+                        <span class="auto-regla-estado-label @(pausada ? "auto-estado-pausada" : "")">
+                            @(pausada ? "Pausada" : "Activa")
+                        </span>
+                        <button class="auto-switch @(!pausada ? "auto-switch-on" : "")"
+                                @onclick="() => ToggleActiva(r)">
+                            <span class="auto-switch-knob"></span>
+                        </button>
                     </div>
                 </div>
-                <span class="auto-regla-flecha">→</span>
-                <div class="auto-regla-accion">
-                    <span class="auto-regla-conector">ENTONCES</span>
-                    <div class="auto-accion-box @(r.Pausada ? "auto-box-muted" : "")">
-                        @r.AccionIcono @r.AccionTexto
+
+                <div class="auto-regla-flow">
+                    <div class="auto-regla-condicion">
+                        <span class="auto-regla-conector">SI</span>
+                        <div class="auto-cond-box @(pausada ? "auto-box-muted" : "auto-box-alerta")">
+                            ⚠️ @r.CondicionResumen
+                            @if (r.NombrePlan is not null || r.NombreSede is not null)
+                            {
+                                <br />
+                    
+                                <small>Solo @string.Join(" · ", new[] { r.NombrePlan, r.NombreSede }.Where(x => x is not null))</small>
+                            }
+                        </div>
+                    </div>
+                    <span class="auto-regla-flecha">→</span>
+                    <div class="auto-regla-accion">
+                        <span class="auto-regla-conector">ENTONCES</span>
+                        <div class="auto-accion-box @(pausada ? "auto-box-muted" : "")">
+                            @IconoAccion(r.Canal) Enviar campaña: @r.NombreCampania
+                        </div>
+                    </div>
+                    <div class="auto-regla-stats">
+                        <div class="auto-regla-stats-label">EJECUCIONES</div>
+                        <div class="auto-regla-stats-value">@r.VecesEjecutada.ToString("N0")</div>
                     </div>
                 </div>
-                <div class="auto-regla-stats">
-                    <div class="auto-regla-stats-label">EJECUCIONES</div>
-                    <div class="auto-regla-stats-value">@r.Ejecuciones.ToString("N0")</div>
+
+                @if (BLLRegla.RequiereAccionAdicional(r))
+                {
+                    <div class="auto-regla-nota">ℹ️ Esta regla requiere revisar la integración del canal.</div>
+                }
+
+                <div class="auto-regla-actions">
+                    <button class="auto-icon-btn" title="Editar regla" @onclick="() => EditarRegla(r)">✏️</button>
+                    <button class="auto-icon-btn" title="Eliminar regla" @onclick="() => EliminarRegla(r)">🗑️</button>
                 </div>
             </div>
+        }
 
-            @if (!string.IsNullOrEmpty(r.NotaExtra))
-            {
-                <div class="auto-regla-nota">ℹ️ @r.NotaExtra</div>
-            }
-
-            <div class="auto-regla-actions">
-                <button class="auto-icon-btn" title="Editar regla" @onclick="() => EditarRegla(r)">✏️</button>
-                <button class="auto-icon-btn" title="Eliminar regla" @onclick="() => EliminarRegla(r)">🗑️</button>
-            </div>
-        </div>
-    }
-</div>
+        @if (!reglas.Any())
+        {
+            <p>
+                @(string.IsNullOrWhiteSpace(textoBusqueda)
+                        ? "Aún no hay reglas de automatización configuradas."
+                        : "No hay reglas que coincidan con el texto ingresado.")
+    </p>
+        }
+    </div>
+}
 
 @code {
     private string textoBusqueda = "";
-    private string ordenSeleccionado = "Más Recientes";
+    private string ordenSeleccionado = "Más recientes";
+    private static readonly string[] OpcionesOrden = { "Más recientes", "Más ejecutadas", "Alfabético" };
+    private bool cargando = true;
+    private bool ejecutando = false;
+    private string mensajeEjecucion = "";
+    private string mensajeErrorEjecucion = "";
+    private List<Regla> reglas = new();
 
-    private class ReglaAutomatizacion
+    protected override async Task OnInitializedAsync()
     {
-        public string Id { get; set; } = "";
-        public string Tipo { get; set; } = "";
-        public string CreadoTexto { get; set; } = "";
-        public bool Activa { get; set; }
-        public bool Pausada { get; set; }
-        public string CondicionIcono { get; set; } = "";
-        public string CondicionTexto { get; set; } = "";
-        public string AccionIcono { get; set; } = "";
-        public string AccionTexto { get; set; } = "";
-        public int Ejecuciones { get; set; }
-        public string? NotaExtra { get; set; }
+        await CargarReglas();
+        cargando = false;
     }
 
-    private List<ReglaAutomatizacion> reglas = new()
+    // CU10, pasos 5-8: la búsqueda por nombre y el orden se resuelven en BLLRegla.
+    private async Task CargarReglas()
     {
-        new()
-        {
-            Id = "regla-001",
-            Tipo = "WHATSAPP FLOW",
-            CreadoTexto = "Creado hace 3 días",
-            Activa = true,
-            Pausada = false,
-            CondicionIcono = "⚠️",
-            CondicionTexto = "Riesgo de Abandono: Muy Alto",
-            AccionIcono = "💬",
-            AccionTexto = "Enviar WhatsApp de descuento fidelidad",
-            Ejecuciones = 1245,
-        },
-        new()
-        {
-            Id = "regla-002",
-            Tipo = "EMAIL FOLLOW-UP",
-            CreadoTexto = "Creado hace 12 días",
-            Activa = true,
-            Pausada = false,
-            CondicionIcono = "📊",
-            CondicionTexto = "Actividad < 20% en 15 días",
-            AccionIcono = "🎫",
-            AccionTexto = "Asignar ticket a Soporte VIP",
-            Ejecuciones = 892,
-        },
-        new()
-        {
-            Id = "regla-003",
-            Tipo = "RE-ENGAGEMENT",
-            CreadoTexto = "Pausada hace 2 días",
-            Activa = false,
-            Pausada = true,
-            CondicionIcono = "🔕",
-            CondicionTexto = "Sin login > 30 días",
-            AccionIcono = "📞",
-            AccionTexto = "Programar llamada de Éxito",
-            Ejecuciones = 420,
-            NotaExtra = "Esta regla requiere integración con el CRM actualizado.",
-        },
-    };
+        reglas = string.IsNullOrWhiteSpace(textoBusqueda)
+            ? await BLLRegla.ObtenerReglasOrdenadas(ordenSeleccionado)
+            : await BLLRegla.BuscarReglaPorNombre(textoBusqueda.Trim(), ordenSeleccionado);
+    }
 
-    // Filtrado en memoria por texto de búsqueda (tipo de regla o condición/acción).
-    private IEnumerable<ReglaAutomatizacion> ReglasFiltradas =>
-        reglas.Where(r =>
-            string.IsNullOrWhiteSpace(textoBusqueda) ||
-            r.Tipo.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-            r.CondicionTexto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-            r.AccionTexto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
-
-    private void ToggleActiva(ReglaAutomatizacion r)
+    // Ejecuta el motor a demanda (también se va a ejecutar solo cuando el modelo termine de predecir).
+    private async Task EjecutarAhora()
     {
-        r.Activa = !r.Activa;
-        r.Pausada = !r.Activa;
-        // TODO: persistir el cambio de estado de la regla.
+        if (ejecutando) return;
+
+        ejecutando = true;
+        mensajeEjecucion = "";
+        mensajeErrorEjecucion = "";
+        try
+        {
+            var (enviados, cerrados) = await BLLRegla.EjecutarReglas();
+            mensajeEjecucion = $"Envíos nuevos: {enviados.Count}. Envíos anteriores cerrados con resultado: {cerrados}.";
+            await CargarReglas(); // actualiza el contador de ejecuciones
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorEjecucion = $"No se pudieron ejecutar las reglas: {ex.Message}";
+        }
+        finally
+        {
+            ejecutando = false;
+        }
+    }
+
+    private async Task ToggleActiva(Regla r)
+    {
+        var nuevoEstado = r.Estado == EstadosRegla.Activa ? EstadosRegla.Pausada : EstadosRegla.Activa;
+        await BLLRegla.CambiarEstado(r.IdRegla, nuevoEstado);
+        await CargarReglas();
     }
 
     private void NuevaRegla()
@@ -170,13 +196,36 @@
         Navigation.NavigateTo("/automatizacion/nueva-regla");
     }
 
-    private void EditarRegla(ReglaAutomatizacion r)
+    private void EditarRegla(Regla r)
     {
-        Navigation.NavigateTo($"/automatizacion/editar-regla/{r.Id}");
+        Navigation.NavigateTo($"/automatizacion/editar-regla/{r.IdRegla}");
     }
 
-    private void EliminarRegla(ReglaAutomatizacion r)
+    private async Task EliminarRegla(Regla r)
     {
-        // TODO: confirmar y eliminar la regla r.Id.
+        var confirmado = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar la regla \"{r.Nombre}\"? Esta acción no se puede deshacer.");
+        if (!confirmado) return;
+
+        await BLLRegla.EliminarRegla(r.IdRegla);
+        await CargarReglas();
+    }
+
+    private static string IconoAccion(string canal) => canal switch
+    {
+        "WhatsApp" => "💬",
+        "Email" => "✉️",
+        _ => "📣"
+    };
+
+    private static string TextoRelativo(DateTime fecha, bool pausada)
+    {
+        var dias = (DateTime.Now.Date - fecha.Date).Days;
+        var texto = dias switch
+        {
+            0 => "hoy",
+            1 => "hace 1 día",
+            _ => $"hace {dias} días"
+        };
+        return pausada ? $"Pausada {texto}" : $"Creado {texto}";
     }
 }

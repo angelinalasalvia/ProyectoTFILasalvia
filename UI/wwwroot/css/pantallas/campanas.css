@@ -1,0 +1,286 @@
+﻿/* ==========================================================================
+   Pantalla: Campañas (Pages/Campanas.razor)
+   ========================================================================== */
+
+/* ==========================================================================
+   PANTALLA: CAMPAÑAS (Pages/Campanas.razor)
+   ========================================================================== */
+
+.camp-header {
+    align-items: flex-start;
+}
+
+.camp-title {
+    margin: 0 0 6px 0;
+    font-size: 22px;
+}
+
+.camp-subtitle {
+    color: #8a90a2;
+    font-size: 13px;
+    margin: 0;
+}
+
+.btn-crear-campana {
+    background: #111;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .btn-crear-campana:hover {
+        background: #333;
+    }
+
+/* --- Fila de filtros --- */
+.camp-filtros-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+    .camp-filtros-card .btn-aplicar-filtros {
+        margin-left: auto;
+    }
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.filtro-label {
+    font-size: 12px;
+    color: #555b6a;
+    font-weight: 600;
+}
+
+.filtro-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 30px 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.filtro-rango {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filtro-fecha {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    width: 110px;
+}
+
+.filtro-rango-sep {
+    color: #8a90a2;
+    font-size: 13px;
+}
+
+.btn-limpiar-filtro {
+    background: none;
+    border: none;
+    color: #2f6fed;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 9px 4px;
+    white-space: nowrap;
+    margin-left: 0;
+}
+
+    .btn-limpiar-filtro:hover {
+        text-decoration: underline;
+    }
+
+.filtro-texto {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #1e2432;
+    width: 220px;
+}
+
+.btn-filtro-icon {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+}
+
+/* --- Fila de KPIs --- */
+.camp-kpi-card {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-bottom: 18px;
+}
+
+.camp-kpi-item {
+    border-right: 1px solid #eef0f4;
+    padding-right: 24px;
+}
+
+    .camp-kpi-item:last-child {
+        border-right: none;
+        padding-right: 0;
+    }
+
+.camp-kpi-label {
+    font-size: 13px;
+    color: #555b6a;
+    margin-bottom: 8px;
+}
+
+.camp-kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e2432;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+    .camp-kpi-value.camp-kpi-negativo {
+        color: #d63939;
+    }
+
+    .camp-kpi-value.camp-kpi-canal {
+        font-size: 18px;
+    }
+
+.camp-kpi-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2f9e5c;
+    background: #e3f7ea;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.camp-kpi-sub-inline {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 400;
+}
+
+.camp-kpi-desc {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+    .camp-kpi-desc strong {
+        color: #1e2432;
+    }
+
+.camp-kpi-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.camp-kpi-fill {
+    height: 100%;
+    background: #2f6fed;
+    border-radius: 4px;
+}
+
+/* --- Tabla de campañas --- */
+.camp-table-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.camp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .camp-table th {
+        text-align: left;
+        font-size: 11px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        background: #f6f7fa;
+        padding: 14px 20px;
+        border-bottom: 1px solid #eef0f4;
+    }
+
+    .camp-table td {
+        padding: 16px 20px;
+        font-size: 14px;
+        border-bottom: 1px solid #f4f5f8;
+    }
+
+.camp-nombre {
+    font-weight: 700;
+    color: #1e2432;
+}
+
+.camp-canal-cell {
+    color: #555b6a;
+}
+
+.camp-objetivo {
+    color: #555b6a;
+}
+
+.camp-tasa-badge {
+    background: #eaf1fd;
+    color: #2f6fed;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.camp-acciones-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #8a90a2;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+    .camp-acciones-btn:hover {
+        color: #1e2432;
+    }
+
+.camp-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+}
+
+/* ==========================================================================
+   FIN PANTALLA: CAMPAÑAS
+   ========================================================================== */
+

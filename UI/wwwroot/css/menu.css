@@ -1,0 +1,220 @@
+﻿/* ==========================================================================
+   Estilos del menú lateral (sidebar) y su submenú desplegable de Reportes.
+   Corresponde al componente Components/Layout/NavMenu.razor.
+   ========================================================================== */
+
+/* ==========================================================================
+   SIDEBAR (menú lateral)
+   General: aparece en todas las pantallas porque vive en MainLayout.razor.
+   ========================================================================== */
+.sidebar {
+    width: 240px;
+    background: #ffffff;
+    border-right: 1px solid #e5e8ee;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    transition: width 0.2s ease; /* animación suave al colapsar/expandir */
+}
+
+    /* Estado colapsado: el sidebar se achica y solo se ven los íconos */
+    .sidebar.collapsed {
+        width: 72px;
+    }
+
+        .sidebar.collapsed .nav-text,
+        .sidebar.collapsed .user-info,
+        .sidebar.collapsed .brand-text {
+            display: none; /* ocultamos el texto, dejamos solo íconos */
+        }
+
+        .sidebar.collapsed .nav-link {
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 0 8px;
+        }
+
+        .sidebar.collapsed .sidebar-brand {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 0 16px 0;
+        }
+
+        .sidebar.collapsed .sidebar-footer {
+            justify-content: center;
+            padding: 16px 8px;
+        }
+
+        .sidebar.collapsed .avatar {
+            width: 32px;
+            height: 32px;
+            font-size: 12px;
+        }
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 0 20px 20px 20px;
+    border-bottom: 1px solid #e5e8ee;
+    margin-bottom: 10px;
+}
+
+.sidebar.collapsed .oi-grid-two-up {
+    display: none; /* ocultamos el ícono del logo, dejamos solo el botón */
+}
+
+/* Botón para minimizar/expandir el sidebar */
+.collapse-btn {
+    margin-left: auto;
+    background: #f0f2f6;
+    border: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555b6a;
+    flex-shrink: 0;
+}
+
+    .collapse-btn:hover {
+        background: #e5e8ee;
+    }
+
+.sidebar.collapsed .collapse-btn {
+    margin-left: 0;
+}
+
+.nav-item {
+    padding: 0 12px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin: 2px 0;
+    border-radius: 8px;
+    color: #555b6a;
+    text-decoration: none;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+    .nav-link:hover {
+        background: #f0f2f6;
+    }
+
+    .nav-link.active {
+        background: #eef1f6;
+        color: #111;
+        font-weight: 600;
+    }
+
+.icon {
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e8ee;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #4c6ef5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+/* ==========================================================================
+   SUBMENÚ DE REPORTES (dentro de NavMenu.razor)
+   ========================================================================== */
+.nav-link-parent {
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.nav-chevron {
+    margin-left: auto;
+    font-size: 11px;
+    color: #8a90a2;
+}
+
+.nav-submenu {
+    display: flex;
+    flex-direction: column;
+    padding-left: 32px;
+    margin: 2px 0 4px 0;
+}
+
+.nav-sublink {
+    display: block;
+    padding: 8px 10px;
+    margin: 1px 0;
+    border-radius: 6px;
+    color: #8a90a2;
+    text-decoration: none;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+    .nav-sublink:hover {
+        background: #f0f2f6;
+        color: #555b6a;
+    }
+
+    .nav-sublink.active {
+        background: #eef1f6;
+        color: #111;
+        font-weight: 600;
+    }
+
+.sidebar.collapsed .nav-submenu,
+.sidebar.collapsed .nav-chevron {
+    display: none;
+}
+/* ==========================================================================
+   FIN SUBMENÚ DE REPORTES
+   ========================================================================== */
+
+
+

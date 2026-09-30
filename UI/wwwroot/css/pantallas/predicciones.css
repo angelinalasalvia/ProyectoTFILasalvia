@@ -1,0 +1,382 @@
+﻿/* ==========================================================================
+   Pantalla: Predicciones (Pages/Predicciones.razor)
+   ========================================================================== */
+
+
+
+
+
+/* --- Header con buscador (reemplaza al header simple en esta pantalla) --- */
+.pred-header {
+    margin-bottom: 24px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 8px 14px;
+    width: 320px;
+}
+
+    .search-box input {
+        border: none;
+        outline: none;
+        font-size: 14px;
+        width: 100%;
+        background: transparent;
+    }
+
+.search-icon {
+    color: #8a90a2;
+    font-size: 14px;
+}
+
+/* --- Título + botón exportar --- */
+.pred-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+    .pred-title-row h1 {
+        font-size: 26px;
+        margin: 0 0 8px 0;
+    }
+
+.pred-subtitle {
+    color: #8a90a2;
+    font-size: 14px;
+    max-width: 620px;
+    margin: 0;
+}
+
+.btn-exportar {
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .btn-exportar:hover {
+        background: #f6f7fa;
+    }
+
+/* --- KPIs de Riesgo Alto / Medio / Bajo --- */
+.pred-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.pred-kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.pred-kpi-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+.label-alto {
+    color: #d63939;
+}
+
+.label-medio {
+    color: #2f6fed;
+}
+
+.label-bajo {
+    color: #8a90a2;
+}
+
+.pred-kpi-icon {
+    font-size: 16px;
+}
+
+.pred-kpi-value {
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.pred-kpi-sub {
+    font-size: 13px;
+    color: #8a90a2;
+    margin-bottom: 14px;
+}
+
+.pred-bar {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pred-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.fill-alto {
+    background: #d63939;
+}
+
+.fill-medio {
+    background: #2f6fed;
+}
+
+.fill-bajo {
+    background: #b7bdc9;
+}
+
+/* --- Filtros y ordenamiento sobre la tabla --- */
+.pred-filter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-label {
+    font-size: 12px;
+    color: #8a90a2;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-right: 4px;
+}
+
+.filter-pill {
+    border: 1px solid #e5e8ee;
+    background: #fff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #555b6a;
+}
+
+    .filter-pill:hover {
+        background: #f6f7fa;
+    }
+
+    .filter-pill.active-alto {
+        background: #d63939;
+        color: #fff;
+        border-color: #d63939;
+    }
+
+    .filter-pill.active-medio {
+        background: #2f6fed;
+        color: #fff;
+        border-color: #2f6fed;
+    }
+
+    .filter-pill.active-bajo {
+        background: #8a90a2;
+        color: #fff;
+        border-color: #8a90a2;
+    }
+
+    .filter-pill.active-todos {
+        background: #111;
+        color: #fff;
+        border-color: #111;
+    }
+
+.sort-select {
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 8px 28px 8px 12px; /* más espacio a la derecha para la flecha */
+    font-size: 13px;
+    color: #555b6a;
+    background: #fff;
+    appearance: none; /* sacamos la flecha nativa fea del navegador */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555b6a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+}
+
+/* --- Tabla de predicciones --- */
+.pred-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .pred-table th {
+        text-align: left;
+        font-size: 12px;
+        color: #8a90a2;
+        letter-spacing: .5px;
+        border-bottom: 1px solid #eef0f4;
+        padding: 10px 8px;
+    }
+
+    .pred-table td {
+        padding: 16px 8px;
+        border-bottom: 1px solid #f4f5f8;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+.client-avatar-initials {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #eef0f4;
+    color: #555b6a;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.prob-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 140px;
+}
+
+.prob-percent {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.prob-bar-pred {
+    width: 100%;
+    height: 5px;
+    background: #eef0f4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.prob-fill-pred {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.nivel-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.factor-cell {
+    color: #555b6a;
+}
+
+/* Clases de color compartidas según nivel de riesgo (texto, barra y badge) */
+.nivel-alto {
+    color: #d63939;
+}
+
+.nivel-medio {
+    color: #2f6fed;
+}
+
+.nivel-bajo {
+    color: #8a90a2;
+}
+
+span.nivel-badge.nivel-alto {
+    background: #fdeaea;
+}
+
+span.nivel-badge.nivel-medio {
+    background: #eaf1fd;
+}
+
+span.nivel-badge.nivel-bajo {
+    background: #f0f2f6;
+}
+
+div.prob-fill-pred.nivel-alto {
+    background: #d63939;
+}
+
+div.prob-fill-pred.nivel-medio {
+    background: #2f6fed;
+}
+
+div.prob-fill-pred.nivel-bajo {
+    background: #b7bdc9;
+}
+
+/* --- Paginación --- */
+.pred-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #8a90a2;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-btn {
+    border: 1px solid #e5e8ee;
+    background: #fff;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #555b6a;
+    white-space: nowrap;
+}
+
+    .page-btn.active {
+        background: #111;
+        color: #fff;
+        border-color: #111;
+    }
+
+    .page-btn:hover:not(.active) {
+        background: #f6f7fa;
+    }
+
+/* ==========================================================================
+   FIN PANTALLA: PREDICCIONES
+   ========================================================================== */
+

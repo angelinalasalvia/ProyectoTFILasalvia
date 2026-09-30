@@ -5,10 +5,10 @@ namespace BLL;
 
 public static class FeatureEngineering
 {
-   
+
     public static ChurnInputData Construir(Cliente cliente, List<EventoCliente> eventos, DateTime fechaReferencia, int? diasVentana = null)
     {
-        
+
         var ultimos30 = fechaReferencia.AddDays(-(diasVentana ?? 30));
         var ultimos60 = fechaReferencia.AddDays(-(diasVentana ?? 60));
         var ultimos90 = fechaReferencia.AddDays(-(diasVentana ?? 90));
@@ -80,34 +80,111 @@ public static class FeatureEngineering
         (NombresFactorRiesgo.TendenciaNegativaAsistencia, f => f.TendenciaVisitas, false),
     };
 
-    public static (string NombreFactor, decimal ImpactoPorcentual) DeterminarFactorPrincipal(
-        ChurnInputData features,
-        Dictionary<string, (double Media, double Desvio)> estadisticasPoblacion)
+    // ------------------------------------------------------------------------------------
+    // Columnas numéricas que arma "Features" (BLLModelo.EntrenarModelo), en orden.
+    // ------------------------------------------------------------------------------------
+    // Es la fuente única de verdad: BLLModelo la usa para construir el Concatenate() del
+    // pipeline, y MapearContribuciones la usa para saber a qué variable corresponde cada
+    // posición del vector que devuelve CalculateFeatureContribution (que respeta ese mismo
+    // orden). Después de estas 11 columnas el vector sigue con PlanSocioEncoded, SedeEncoded
+    // y SexoEncoded (variable, según cuántas categorías haya); esas posiciones no se listan acá
+    // a propósito, quedan fuera de los "factores" que ve el usuario (ver conversación: por ahora
+    // no se muestran plan/sede/sexo como factor).
+    //
+    // NombreFactor es null en las columnas que el modelo usa mejorar la predicción pero que no
+    // tienen hoy un factor propio en el catálogo (ReservasUltimos30Dias, PagosRegistradosUltimos60Dias,
+    // AntiguedadDias): su contribución existe pero no se muestra por separado.
+    public static readonly (string NombreColumna, string? NombreFactor)[] ColumnasNumericas =
     {
-        string mejorFactor = IndicadoresDeRiesgo[0].NombreFactor;
-        double mejorZScore = 0;
-        bool encontroFactor = false;
+        (nameof(ChurnInputData.VisitasUltimos30Dias), NombresFactorRiesgo.BajaFrecuenciaAsistencia),
+        (nameof(ChurnInputData.UsoAppUltimos30Dias), NombresFactorRiesgo.BajaInteraccionApp),
+        (nameof(ChurnInputData.ReservasUltimos30Dias), null),
+        (nameof(ChurnInputData.CancelacionesUltimos30Dias), NombresFactorRiesgo.CancelacionesFrecuentes),
+        (nameof(ChurnInputData.DiasDesdeUltimaActividad), NombresFactorRiesgo.InactividadReciente),
+        (nameof(ChurnInputData.PagosVencidosUltimos60Dias), NombresFactorRiesgo.HistorialPagosVencidos),
+        (nameof(ChurnInputData.PagosRegistradosUltimos60Dias), null),
+        (nameof(ChurnInputData.ProporcionPagosVencidos), NombresFactorRiesgo.AltaProporcionPagosVencidos),
+        (nameof(ChurnInputData.ConsultasSoporteUltimos90Dias), NombresFactorRiesgo.AltaConsultaSoporte),
+        (nameof(ChurnInputData.AntiguedadDias), null),
+        (nameof(ChurnInputData.TendenciaVisitas), NombresFactorRiesgo.TendenciaNegativaAsistencia),
+    };
 
-        foreach (var (nombre, selector, altoEsRiesgo) in IndicadoresDeRiesgo)
+    // ------------------------------------------------------------------------------------
+    // Traduce la explicación real del modelo (CalculateFeatureContribution) a la lista de
+    // factores que se guarda en Prediccion_FactorRiesgo.
+    // ------------------------------------------------------------------------------------
+    // 'contribuciones' viene de ChurnPredictionConContribuciones.FeatureContributions: un valor
+    // por cada posición del vector "Features", en el mismo orden que ColumnasNumericas (+ el
+    // one-hot de plan/sede/sexo al final, que acá se ignora).
+    //
+    // El signo ya viene correcto desde ML.NET (no hace falta el truco de "AltoEsRiesgo" que
+    // usaba el z-score viejo): positivo empuja hacia el riesgo, negativo lo reduce. Se
+    // normaliza a -100..100 repartiendo proporcionalmente el "peso" entre los 8 factores
+    // mostrados, para que la barra de la pantalla (que espera un número tipo porcentaje)
+    // siga teniendo sentido.
+    public static List<(string NombreFactor, decimal Impacto, string Descripcion)> MapearContribuciones(
+        float[] contribuciones,
+        ChurnInputData features,
+        Dictionary<string, (double Media, double Desvio)> estadisticasSegmento)
+    {
+        var crudos = new List<(string NombreFactor, double Contribucion)>();
+        for (int i = 0; i < ColumnasNumericas.Length && i < contribuciones.Length; i++)
         {
-            var (media, desvio) = estadisticasPoblacion[nombre];
-            double valor = selector(features);
-
-            if (desvio < 0.0001) continue;
-
-            double zScore = (valor - media) / desvio;
-            if (!altoEsRiesgo) zScore *= -1;
-
-            if (!encontroFactor || zScore > mejorZScore)
-            {
-                mejorZScore = zScore;
-                mejorFactor = nombre;
-                encontroFactor = true;
-            }
+            var nombreFactor = ColumnasNumericas[i].NombreFactor;
+            if (nombreFactor is null) continue;
+            crudos.Add((nombreFactor, contribuciones[i]));
         }
 
-        double impacto = Math.Clamp(50 + mejorZScore * 15, 0, 100);
-        return (mejorFactor, (decimal)Math.Round(impacto, 2));
+        double sumaAbsolutas = crudos.Sum(c => Math.Abs(c.Contribucion));
+
+        var resultado = new List<(string, decimal, string)>();
+        foreach (var (nombreFactor, contribucion) in crudos)
+        {
+            double impactoRelativo = sumaAbsolutas < 0.0001 ? 0 : 100 * contribucion / sumaAbsolutas;
+
+            var selector = IndicadoresDeRiesgo.First(i => i.NombreFactor == nombreFactor).Selector;
+            double valorCliente = selector(features);
+            var (media, _) = estadisticasSegmento[nombreFactor];
+
+            resultado.Add((
+                nombreFactor,
+                (decimal)Math.Round(impactoRelativo, 1),
+                GenerarDescripcion(nombreFactor, valorCliente, media)));
+        }
+
+        // Los que más empujaron hacia el riesgo primero; los factores protectores (impacto
+        // negativo) quedan al final.
+        return resultado.OrderByDescending(f => f.Item2).ToList();
+    }
+
+    // Antes vivía en BLLFactorRiesgo (se calculaba ahí, contra el segmento, cada vez que se
+    // abría la pantalla de detalle). Ahora se llama una sola vez por cliente, en
+    // EntrenarYPredecirAsync, y el resultado queda guardado.
+    public static string GenerarDescripcion(string nombreFactor, double valorCliente, double media)
+    {
+        double v = Math.Round(valorCliente, 1);
+        string Plural(string singular, string plural) => v == 1 ? singular : plural;
+
+        if (nombreFactor == NombresFactorRiesgo.InactividadReciente)
+            return $"{v} días desde la última actividad registrada.";
+        if (nombreFactor == NombresFactorRiesgo.BajaFrecuenciaAsistencia)
+            return $"{v} {Plural("visita", "visitas")} al gimnasio en los últimos 30 días.";
+        if (nombreFactor == NombresFactorRiesgo.BajaInteraccionApp)
+            return $"{v} {Plural("uso", "usos")} de la app en los últimos 30 días.";
+        if (nombreFactor == NombresFactorRiesgo.HistorialPagosVencidos)
+            return $"{v} {Plural("pago vencido", "pagos vencidos")} en los últimos 60 días.";
+        if (nombreFactor == NombresFactorRiesgo.CancelacionesFrecuentes)
+            return $"{v} {Plural("cancelación", "cancelaciones")} de reservas en los últimos 30 días.";
+        if (nombreFactor == NombresFactorRiesgo.AltaConsultaSoporte)
+            return $"{v} {Plural("consulta", "consultas")} a soporte en los últimos 90 días.";
+        if (nombreFactor == NombresFactorRiesgo.AltaProporcionPagosVencidos)
+            return $"{Math.Round(valorCliente * 100, 1)}% de los pagos de los últimos 60 días vencieron.";
+        if (nombreFactor == NombresFactorRiesgo.TendenciaNegativaAsistencia)
+            return v == 0
+                ? "Sin cambios en las visitas: últimos 30 días vs. los 30 días previos."
+                : $"{(v > 0 ? "+" : "")}{v} visitas: últimos 30 días vs. los 30 días previos.";
+
+        return $"{v}.";
     }
 
     public static ChurnInputData ConstruirParaPeriodo(
@@ -188,6 +265,51 @@ public static class FeatureEngineering
             Sexo = cliente.Sexo,
             Abandono = cliente.EstadoRegistro == "Inactivo"
         };
+    }
+    // ------------------------------------------------------------------------------------
+    // Panel de entrenamiento con fecha de corte
+    // ------------------------------------------------------------------------------------
+    // Antes, cada cliente aportaba UNA fila con su estado ACTUAL (Abandono = está inactivo hoy),
+    // así que el modelo aprendía a reconocer a quienes ya se habían ido, no a quienes están por irse
+    // (con esa etiqueta, "días desde la última actividad" separa casi perfectamente a los dos grupos).
+    //
+    // Acá cada cliente aporta VARIAS filas, una por cada corte semanal de su historia. En cada corte
+    // las variables se calculan solo con los eventos anteriores a esa fecha (así no hay fuga de datos
+    // del futuro) y la etiqueta pasa a ser prospectiva: "¿el cliente dejó de venir dentro de los
+    // 'horizonteDias' siguientes a este corte?". El nivel de riesgo y sus umbrales (Alto/Medio/Bajo)
+    // no cambian: lo único que cambia es cómo se entrena el modelo que calcula la probabilidad.
+    //
+    // Proxy de "fecha de baja": no hay una columna con la fecha exacta en que un cliente se dio de
+    // baja, así que se usa su último evento registrado (solo para los clientes hoy Inactivos). Es una
+    // aproximación: el cliente pudo haber dejado de venir unos días antes de ese último evento.
+    public static List<ChurnInputData> ConstruirPanelEntrenamiento(
+        List<Cliente> clientes, DateTime fechaActual, int horizonteDias = 30, int diasEntreCortes = 7, int diasHistoriaMinima = 30)
+    {
+        var filas = new List<ChurnInputData>();
+        var ultimoCorteValido = fechaActual.AddDays(-horizonteDias);
+
+        foreach (var cliente in clientes)
+        {
+            var eventos = cliente.Eventos.OrderBy(e => e.Fecha).ToList();
+            if (eventos.Count == 0) continue;
+
+            var primerEvento = eventos[0].Fecha;
+            var fechaBaja = cliente.EstadoRegistro == "Inactivo" ? eventos[^1].Fecha : (DateTime?)null;
+
+            for (var corte = primerEvento.AddDays(diasHistoriaMinima); corte <= ultimoCorteValido; corte = corte.AddDays(diasEntreCortes))
+            {
+                // Si para este corte ya se había ido, el corte no aporta información nueva: se descarta
+                // (un modelo de churn predice la baja, no confirma una que ya pasó).
+                if (fechaBaja is not null && corte >= fechaBaja.Value) continue;
+
+                var eventosHastaElCorte = eventos.Where(e => e.Fecha <= corte).ToList();
+                var fila = Construir(cliente, eventosHastaElCorte, corte);
+                fila.Abandono = fechaBaja is not null && fechaBaja.Value <= corte.AddDays(horizonteDias);
+                filas.Add(fila);
+            }
+        }
+
+        return filas;
     }
 }
 

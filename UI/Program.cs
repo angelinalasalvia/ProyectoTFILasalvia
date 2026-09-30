@@ -13,17 +13,21 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddDbContext<ChurnDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
-// DAL 
-builder.Services.AddScoped<IDALCliente, DALCliente>();
-builder.Services.AddScoped<IDALFactorRiesgo, DALFactorRiesgo>();
-builder.Services.AddScoped<IDALModelo, DALModelo>();
-builder.Services.AddScoped<IDALPrediccion, DALPrediccion>();
+//DAL
+builder.Services.AddScoped<AccesoDatos>();
 
 // BLL
 builder.Services.AddScoped<BLLPrediccion>();
 builder.Services.AddScoped<BLLModelo>();
 builder.Services.AddScoped<BLLCliente>();
 builder.Services.AddScoped<BLLFactorRiesgo>();
+builder.Services.AddScoped<BLLCampana>();
+builder.Services.AddScoped<BLLHistorialAcciones>();
+builder.Services.AddScoped<BLLIncentivo>();
+builder.Services.AddScoped<BLLCanal>();
+builder.Services.AddScoped<BLLRegla>();
+builder.Services.AddScoped<BLLSede>();
+builder.Services.AddScoped<BLLPlanSocio>();
 
 // UI
 builder.Services.AddScoped<GeneradorPdf>();

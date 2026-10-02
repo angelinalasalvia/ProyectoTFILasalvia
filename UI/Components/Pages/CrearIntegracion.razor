@@ -1,6 +1,8 @@
 ﻿@page "/integraciones/nueva"
 @page "/integraciones/editar/{IntegracionId}"
 @inject NavigationManager Navigation
+@using BE
+@inject BLL.BLLIntegracion BLLIntegracion
 
 <PageTitle>@(EsEdicion ? "Editar Integración" : "Nueva Integración")</PageTitle>
 
@@ -86,41 +88,44 @@
     <div class="card regla-card">
         <p class="integ-paso-titulo">Paso 2: Credenciales de conexión</p>
 
-        <label class="form-label">URL DEL SERVIDOR</label>
-        <input class="campana-select @(errores.Contains("url") ? "input-error" : "")"
-               @bind="urlServidor" @bind:event="oninput"
-               placeholder="https://db.instance.com:5432" />
+        <label class="form-label">NOMBRE DE LA INTEGRACIÓN</label>
+        <input class="integ-input @(errores.Contains("nombre") ? "input-error" : "")"
+               @bind="nombreFuente" @bind:event="oninput" placeholder="Ej: API de socios" />
+
+        <label class="form-label">@EtiquetaUrl</label>
+        <input class="integ-input @(errores.Contains("url") ? "input-error" : "")"
+               @bind="urlServidor" @bind:event="oninput" @bind:after="InvalidarConexion"
+               placeholder="@PlaceholderUrl" />
 
         <div class="integ-cred-row-2">
+            @if (NecesitaUsuario)
+            {
+                <div>
+                    <label class="form-label">@EtiquetaUsuario</label>
+                    <input class="integ-input @(errores.Contains("usuario") ? "input-error" : "")"
+                           @bind="usuario" @bind:event="oninput" @bind:after="InvalidarConexion" />
+                </div>
+            }
             <div>
-                <label class="form-label">USUARIO / CLIENT ID</label>
-                <input class="campana-select @(errores.Contains("usuario") ? "input-error" : "")"
-                       @bind="usuario" @bind:event="oninput"
-                       placeholder="postgres_admin" />
-            </div>
-            <div>
-                <label class="form-label">CONTRASEÑA / API KEY</label>
-                <input type="password"
-                       class="campana-select @(errores.Contains("apiKey") ? "input-error" : "")"
-                       @bind="apiKey" @bind:event="oninput"
-                       placeholder="••••••••••" />
+                <label class="form-label">@EtiquetaSecreto</label>
+                <input type="password" class="integ-input @(errores.Contains("apiKey") ? "input-error" : "")"
+                       @bind="apiKey" @bind:event="oninput" @bind:after="InvalidarConexion" placeholder="••••••••••" />
             </div>
         </div>
 
-        @if (tipoSeleccionado == "Base de Datos")
+        @if (tipoSeleccionado == Integracion.TipoBD)
         {
             <label class="form-label">NOMBRE DE LA BASE DE DATOS</label>
-            <input class="campana-select @(errores.Contains("dbName") ? "input-error" : "")"
-                   @bind="nombreBaseDatos" @bind:event="oninput"
-                   placeholder="production_users_db" />
+            <input class="integ-input @(errores.Contains("dbName") ? "input-error" : "")"
+                   @bind="nombreBaseDatos" @bind:event="oninput" @bind:after="InvalidarConexion" />
         }
 
-        <button class="integ-btn-probar" disabled="@(!camposCredencialesCompletos)" @onclick="ProbarConexion">
-            🔌 Probar conexión
+        <button class="integ-btn-probar" disabled="@(!camposCredencialesCompletos || probandoConexion)" @onclick="ProbarConexion">
+            @(probandoConexion ? "Probando…" : "🔌 Probar conexión")
         </button>
         @if (!camposCredencialesCompletos)
         {
-            <span class="camp-form-error">Completá los campos obligatorios para habilitar "Probar conexión".</span>
+            <span class="camp-form-error">Hay campos obligatorios sin completar.</span>
         }
     </div>
 
@@ -136,26 +141,38 @@
         }
         else
         {
-            @foreach (var m in mapeoCampos)
+            @if (!string.IsNullOrEmpty(errorMapeo))
             {
-                <div class="integ-mapeo-row">
-                    <div class="integ-mapeo-externo">
-                        <span class="integ-mapeo-icono">@m.Icono</span> @m.CampoExterno
-                    </div>
-                    <span class="integ-mapeo-flecha">→</span>
-                    <select class="integ-mapeo-select" @bind="m.CampoPlataforma">
-                        @foreach (var op in camposPlataformaDisponibles)
-                        {
-                            <option value="@op">@op</option>
-                        }
-                    </select>
-                </div>
+                <div class="integ-error-conexion">⚠️ @errorMapeo</div>
             }
 
-            <div class="integ-mapeo-info">
-                ℹ️ Los campos mapeados se utilizarán para alimentar los algoritmos de predicción de Churn.
-                Asegúrese de que los tipos de datos (Fecha, Texto, Número) sean consistentes.
-            </div>
+            @if (esquema.Count == 0)
+            {
+                <div class="integ-mapeo-vacio">La fuente no devolvió campos para mapear.</div>
+            }
+            else
+            {
+                @foreach (var plat in BLL.BLLIntegracion.CamposPlataforma)
+                {
+                    var seleccionado = mapeo.GetValueOrDefault(plat.Key, "");
+                    <div class="integ-mapeo-row">
+                        <select class="integ-mapeo-select" @onchange="e => OnMapeoCambia(e, plat.Key)">
+                            <option value="" selected="@(seleccionado == "")">— Sin mapear —</option>
+                            @foreach (var campo in esquema)
+                            {
+                                <option value="@campo.Key" selected="@(campo.Key == seleccionado)">@campo.Key (@campo.Value)</option>
+                            }
+                        </select>
+                        <span class="integ-mapeo-flecha">→</span>
+                        <div class="integ-mapeo-externo">@plat.Key <small>(@plat.Value)</small></div>
+                    </div>
+                }
+
+                <div class="integ-mapeo-info">
+                    ℹ️ Elegí, para cada dato de la plataforma, qué campo de la fuente lo alimenta.
+                    Los campos de texto aceptan cualquier tipo; Fecha y Número solo aceptan campos del mismo tipo.
+                </div>
+            }
         }
     </div>
 </div>
@@ -165,132 +182,277 @@
     public string? IntegracionId { get; set; }
 
     private bool EsEdicion => !string.IsNullOrWhiteSpace(IntegracionId);
+    private int IdEdicion => int.TryParse(IntegracionId, out var id) ? id : 0;
 
     private string nombreFuente = "";
-    private string tipoSeleccionado = "Base de Datos";
+    private string tipoSeleccionado = Integracion.TipoBD;
     private string urlServidor = "";
     private string usuario = "";
     private string apiKey = "";
     private string nombreBaseDatos = "";
-    private bool conexionProbada = false;
+    private bool conexionProbada;
+    private bool probandoConexion;
     private string mensajeConfirmacion = "";
     private string errorConexion = "";
+    private string errorMapeo = "";
     private HashSet<string> errores = new();
+
+    private Dictionary<string, string> esquema = new();   // campo de la fuente -> tipo
+    private Dictionary<string, string> mapeo = new();     // campo de la plataforma -> campo de la fuente
 
     private record TipoFuente(string Nombre, string Icono, string Descripcion);
 
     private List<TipoFuente> tiposDisponibles = new()
     {
-        new("CRM", "🔗", "Salesforce, HubSpot, Zoho o Microsoft Dynamics."),
-        new("Base de Datos", "🗄️", "PostgreSQL, MySQL, SQL Server o Snowflake."),
-        new("API Personalizada", "🧩", "Endpoints REST/GraphQL para flujos propios."),
+        new(Integracion.TipoCRM, "🔗", "Salesforce (OAuth 2.0, client credentials)."),
+        new(Integracion.TipoBD, "🗄️", "SQL Server (usuario y contraseña)."),
+        new(Integracion.TipoAPI, "🧩", "Endpoint REST que responde JSON."),
     };
 
-    private class MapeoCampo
+    private bool NecesitaUsuario => tipoSeleccionado != Integracion.TipoAPI;
+
+    private string EtiquetaUrl => tipoSeleccionado switch
     {
-        public string Icono { get; set; } = "";
-        public string CampoExterno { get; set; } = "";
-        public string CampoPlataforma { get; set; } = "";
+        Integracion.TipoBD => "SERVIDOR",
+        Integracion.TipoCRM => "URL DE LA ORGANIZACIÓN",
+        _ => "ENDPOINT DE LA API"
+    };
+
+    private string PlaceholderUrl => tipoSeleccionado switch
+    {
+        Integracion.TipoBD => "servidor\\instancia  o  host,1433",
+        Integracion.TipoCRM => "https://miempresa.my.salesforce.com",
+        _ => "https://api.miempresa.com/socios"
+    };
+
+    private string EtiquetaUsuario => tipoSeleccionado == Integracion.TipoCRM ? "CLIENT ID" : "USUARIO";
+
+    private string EtiquetaSecreto => tipoSeleccionado switch
+    {
+        Integracion.TipoBD => "CONTRASEÑA",
+        Integracion.TipoCRM => "CLIENT SECRET",
+        _ => "API KEY"
+    };
+
+    private List<string> CamposFaltantes()
+    {
+        var faltan = new List<string>();
+        if (string.IsNullOrWhiteSpace(nombreFuente)) faltan.Add("nombre");
+        if (string.IsNullOrWhiteSpace(urlServidor)) faltan.Add("url");
+        if (NecesitaUsuario && string.IsNullOrWhiteSpace(usuario)) faltan.Add("usuario");
+        if (string.IsNullOrWhiteSpace(apiKey)) faltan.Add("apiKey");
+        if (tipoSeleccionado == Integracion.TipoBD && string.IsNullOrWhiteSpace(nombreBaseDatos)) faltan.Add("dbName");
+        return faltan;
     }
 
-    private List<MapeoCampo> mapeoCampos = new();
+    // Habilita "Probar conexión" (CU15 paso 6 / CU16 paso 7).
+    private bool camposCredencialesCompletos => CamposFaltantes().Count == 0;
 
-    private List<string> camposPlataformaDisponibles = new()
+    // Diagramas CU15/CU16: RevisarCampos()
+    private bool RevisarCampos()
     {
-        "external_id", "last_login_at", "plan_type", "email", "nombre", "sede_id", "fecha_alta"
-    };
+        errores = CamposFaltantes().ToHashSet();
+        return errores.Count == 0;
+    }
 
-    // Habilita "Probar conexión" (CU15 paso 5 / CU16 paso 6).
-    private bool camposCredencialesCompletos =>
-        !string.IsNullOrWhiteSpace(urlServidor) &&
-        !string.IsNullOrWhiteSpace(usuario) &&
-        !string.IsNullOrWhiteSpace(apiKey) &&
-        (tipoSeleccionado != "Base de Datos" || !string.IsNullOrWhiteSpace(nombreBaseDatos));
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        if (EsEdicion)
+        if (!EsEdicion) return;
+
+        var integracion = await BLLIntegracion.ObtenerIntegracion(IdEdicion);
+        if (integracion is null)
         {
-            CargarIntegracionExistente(IntegracionId!);
+            Navigation.NavigateTo("/integraciones");
+            return;
         }
+        MostrarDatosConfigurados(integracion);
     }
 
-    /// <summary>
-    /// Simula la carga de una integración ya configurada (CU16, pasos 2-4).
-    /// En un escenario real vendría de un servicio / repositorio por IntegracionId.
-    /// La contraseña / API key se muestra enmascarada, sin exponer el valor real.
-    /// </summary>
-    private void CargarIntegracionExistente(string id)
+    // CU16 pasos 3-4. El secreto llega enmascarado y solo se reemplaza si el administrador lo modifica.
+    private void MostrarDatosConfigurados(Integracion i)
     {
-        // TODO: reemplazar por la consulta real a la integración por id.
-        nombreFuente = "PostgreSQL Prod";
-        tipoSeleccionado = "Base de Datos";
-        urlServidor = "https://db.instance.com:5432";
-        usuario = "postgres_admin";
-        apiKey = "••••••••••"; // enmascarada; solo se sobreescribe si el admin la modifica
-        nombreBaseDatos = "production_users_db";
-
-        // El mapeo actual ya se conoce, se muestra precargado (CU16 paso 10).
-        mapeoCampos = new()
-        {
-            new() { Icono = "🆔", CampoExterno = "User ID", CampoPlataforma = "external_id" },
-            new() { Icono = "🕐", CampoExterno = "Last Login", CampoPlataforma = "last_login_at" },
-            new() { Icono = "💳", CampoExterno = "Subscription", CampoPlataforma = "plan_type" },
-        };
-
-        // La integración ya estaba conectada antes, por eso el mapeo se ve de entrada;
-        // igual queda disponible "Probar conexión" para revalidar tras cualquier cambio.
-        conexionProbada = true;
+        nombreFuente = i.Nombre;
+        tipoSeleccionado = i.Tipo;
+        urlServidor = i.Url ?? "";
+        usuario = i.Usuario ?? "";
+        apiKey = i.Secreto ?? "";
+        nombreBaseDatos = i.BaseDatos ?? "";
     }
 
     private void SeleccionarTipo(string tipo)
     {
-        // CU16: el tipo de fuente no puede modificarse en edición.
-        if (EsEdicion) return;
-
+        if (EsEdicion) return;   // CU16: el tipo no se puede modificar
         tipoSeleccionado = tipo;
-        conexionProbada = false;
-        mapeoCampos.Clear();
+        InvalidarConexion();
     }
 
-    private void ProbarConexion()
+    // Cualquier cambio en las credenciales obliga a volver a probar la conexión.
+    private void InvalidarConexion()
     {
-        if (!camposCredencialesCompletos) return;
-
+        conexionProbada = false;
+        esquema = new();
+        mapeo = new();
         errorConexion = "";
+        errorMapeo = "";
+        mensajeConfirmacion = "";
+    }
 
-        // TODO: reemplazar por el intento de conexión real contra la fuente de datos.
-        // Simulación: se considera exitosa siempre que los campos estén completos
-        // (camino alterno 8.1 quedaría acá si la conexión real fallara).
-        conexionProbada = true;
+    private CredencialesIntegracion ConstruirCredenciales(string url, string usuarioId, string clave, string baseDatos) => new()
+    {
+        Nombre = nombreFuente.Trim(),
+        Url = url.Trim(),
+        Usuario = usuarioId.Trim(),
+        Secreto = clave,
+        BaseDatos = string.IsNullOrWhiteSpace(baseDatos) ? null : baseDatos.Trim()
+    };
 
-        if (mapeoCampos.Count == 0)
+    // Diagramas CU15/CU16: TestearConexion(url, usuarioId, apiKey, baseDatos): bool
+    private async Task<bool> TestearConexion(string url, string usuarioId, string clave, string baseDatos)
+    {
+        var resultado = await BLLIntegracion.ProbarConexion(
+            tipoSeleccionado,
+            ConstruirCredenciales(url, usuarioId, clave, baseDatos).Serializar(),
+            EsEdicion ? IdEdicion : null);
+
+        errorConexion = resultado.Exito ? "" : resultado.Mensaje;
+        return resultado.Exito;
+    }
+
+    // Botón "Probar conexión"
+    private async Task ProbarConexion()
+    {
+        if (!RevisarCampos()) return;
+
+        probandoConexion = true;
+        errorConexion = "";
+        errorMapeo = "";
+        mensajeConfirmacion = "";
+        try
         {
-            mapeoCampos = new()
+            if (!await TestearConexion(urlServidor, usuario, apiKey, nombreBaseDatos))
             {
-                new() { Icono = "🆔", CampoExterno = "User ID", CampoPlataforma = "external_id" },
-                new() { Icono = "🕐", CampoExterno = "Last Login", CampoPlataforma = "last_login_at" },
-                new() { Icono = "💳", CampoExterno = "Subscription", CampoPlataforma = "plan_type" },
-            };
+                conexionProbada = false;
+                errorConexion = "Error de conexión: " + errorConexion;
+                return;
+            }
+
+            ConfirmarConexionExitosa();
+            await CargarCamposParaMapeo();
+        }
+        finally
+        {
+            probandoConexion = false;
         }
     }
 
-    private void Guardar()
+    private void ConfirmarConexionExitosa()
     {
-        errores.Clear();
+        conexionProbada = true;
+        mensajeConfirmacion = "Conexión exitosa.";
+    }
 
-        if (string.IsNullOrWhiteSpace(urlServidor)) errores.Add("url");
-        if (string.IsNullOrWhiteSpace(usuario)) errores.Add("usuario");
-        if (string.IsNullOrWhiteSpace(apiKey)) errores.Add("apiKey");
-        if (tipoSeleccionado == "Base de Datos" && string.IsNullOrWhiteSpace(nombreBaseDatos)) errores.Add("dbName");
-
-        if (errores.Count > 0 || !conexionProbada)
+    // CU15: ObtenerEsquemaCampos + MostrarCamposParaMapeo. CU16: además ObtenerMapeoActual + MostrarMapeoActual.
+    private async Task CargarCamposParaMapeo()
+    {
+        try
         {
+            var campos = await BLLIntegracion.ObtenerEsquemaCampos(
+                tipoSeleccionado,
+                ConstruirCredenciales(urlServidor, usuario, apiKey, nombreBaseDatos).Serializar(),
+                EsEdicion ? IdEdicion : null);
+
+            esquema = campos
+                .Select(c => c.Split('|'))
+                .ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "otro");
+            mapeo = new();
+
+            if (EsEdicion)
+            {
+                foreach (var par in await BLLIntegracion.ObtenerMapeoActual(IdEdicion))
+                {
+                    var p = par.Split('=');
+                    if (p.Length == 2 && esquema.ContainsKey(p[0]) && BLL.BLLIntegracion.CamposPlataforma.ContainsKey(p[1]))
+                        mapeo[p[1]] = p[0];
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            conexionProbada = false;
             mensajeConfirmacion = "";
+            errorConexion = "No se pudieron leer los campos de la fuente: " + ex.Message;
+        }
+    }
+
+    private void OnMapeoCambia(ChangeEventArgs e, string campoPlataforma)
+    {
+        var campoExterno = e.Value?.ToString() ?? "";
+        if (EsEdicion) ModificarMapeo(campoExterno, campoPlataforma);
+        else MapearCampos(campoExterno, campoPlataforma);
+    }
+
+    // Diagrama CU15
+    private void MapearCampos(string campoExterno, string campoPlataforma)
+    {
+        errorMapeo = "";
+        mapeo[campoPlataforma] = campoExterno;
+    }
+
+    // Diagrama CU16
+    private void ModificarMapeo(string campoExterno, string campoPlataforma) =>
+        MapearCampos(campoExterno, campoPlataforma);
+
+    // "campoExterno=campoPlataforma;campoExterno=campoPlataforma" (el formato que espera la BLL)
+    private string SerializarMapeo() =>
+        string.Join(";", mapeo.Where(m => !string.IsNullOrEmpty(m.Value)).Select(m => $"{m.Value}={m.Key}"));
+
+    // Diagramas CU15/CU16: ValidarConsistenciaMapeo(mapeo): bool
+    private bool ValidarConsistenciaMapeo(string mapeoSerializado)
+    {
+        foreach (var par in mapeoSerializado.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var partes = par.Split('=');
+            var tipoExterno = esquema.GetValueOrDefault(partes[0], "otro");
+            var tipoPlataforma = BLL.BLLIntegracion.CamposPlataforma[partes[1]];
+
+            // Un campo de texto de la plataforma acepta cualquier tipo; fecha y número exigen el mismo tipo.
+            if (tipoPlataforma != "texto" && tipoExterno != tipoPlataforma) return false;
+        }
+        return true;
+    }
+
+    // Botón "Guardar e integrar" / "Guardar cambios"
+    private async Task Guardar()
+    {
+        if (!RevisarCampos() || !conexionProbada) return;
+
+        var mapeoTexto = SerializarMapeo();
+        if (mapeoTexto.Length == 0)
+        {
+            errorMapeo = "Asociá al menos un campo de la fuente con un campo de la plataforma.";
+            return;
+        }
+        if (!ValidarConsistenciaMapeo(mapeoTexto))
+        {
+            errorMapeo = "Campos con tipos de datos inconsistentes.";
             return;
         }
 
-        // TODO: reemplazar por la persistencia real (crear o actualizar según EsEdicion).
+        try
+        {
+            var credenciales = ConstruirCredenciales(urlServidor, usuario, apiKey, nombreBaseDatos).Serializar();
+
+            if (EsEdicion)
+                await BLLIntegracion.ActualizarConfiguracion(IdEdicion, credenciales, mapeoTexto, Integracion.EstadoActiva);
+            else
+                await BLLIntegracion.RegistrarNuevaIntegracion(tipoSeleccionado, credenciales, mapeoTexto, Integracion.EstadoActiva);
+        }
+        catch (Exception ex)
+        {
+            errorConexion = "No se pudo guardar la integración: " + ex.Message;
+            return;
+        }
+
         mensajeConfirmacion = EsEdicion
             ? "Integración actualizada exitosamente."
             : "Integración creada exitosamente con estado Conexión Activa.";
@@ -305,9 +467,5 @@
         Navigation.NavigateTo("/integraciones");
     }
 
-    private void Cancelar()
-    {
-        // Alterno 13.1: descarta los cambios y vuelve al listado (CU14).
-        Navigation.NavigateTo("/integraciones");
-    }
+    private void Cancelar() => Navigation.NavigateTo("/integraciones");
 }

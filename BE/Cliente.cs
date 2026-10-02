@@ -30,5 +30,6 @@ public class Cliente
     [Required, MaxLength(50)]
     public string Sede { get; set; } = string.Empty;
     public ICollection<EventoCliente> Eventos { get; set; } = new List<EventoCliente>();
+    public string? Telefono { get; set; }
 }
 

@@ -335,6 +335,68 @@
     color: #8a90a2;
     max-width: 220px;
 }
+.integ-btn-eliminar {
+    padding: 8px 12px;
+    border: 1px solid #d63939;
+    background: #fff;
+    color: #d63939;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+    .integ-btn-eliminar:hover {
+        background: #fdecec;
+    }
+
+.integ-toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    max-width: 380px;
+    padding: 14px 16px;
+    background: #fff;
+    border-left: 4px solid #d63939;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    animation: integ-toast-in 0.25s ease-out;
+}
+
+.integ-toast-texto {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2433;
+    line-height: 1.4;
+}
+
+.integ-toast-cerrar {
+    border: none;
+    background: transparent;
+    color: #8a90a2;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+@keyframes integ-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.integ-toast-ok {
+    border-left-color: #2f9e5c;
+}
 /* ==========================================================================
    FIN PANTALLA: GESTIÓN DE INTEGRACIONES
    ========================================================================== */

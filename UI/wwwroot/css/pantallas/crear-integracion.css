@@ -251,6 +251,27 @@
     gap: 8px;
     align-items: flex-start;
 }
+
+/* Campos de texto: mismo aspecto que .campana-select pero sin la flecha de desplegable */
+.integ-input {
+    width: 100%;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+    .integ-input:focus {
+        outline: none;
+        border-color: #2f6fed;
+    }
+
+    .integ-input.input-error {
+        border-color: #d63939;
+    }
 /* ==========================================================================
    FIN PANTALLA: CONFIGURAR / EDITAR INTEGRACIÓN
    ========================================================================== */

@@ -1,5 +1,8 @@
 ﻿@page "/integraciones"
 @inject NavigationManager Navigation
+@using BE
+@inject BLL.BLLIntegracion BLLIntegracion
+@inject IJSRuntime JS
 
 <PageTitle>Gestión de Integraciones</PageTitle>
 
@@ -26,7 +29,7 @@
         <div>
             <div class="integ-kpi-label">ACTIVAS</div>
             <div class="integ-kpi-valor-row">
-                <span class="integ-kpi-valor">@fuentes.Count(f => f.Estado != "Error")</span>
+                <span class="integ-kpi-valor">@activas</span>
                 <span class="integ-kpi-sub">Fuentes</span>
             </div>
         </div>
@@ -36,7 +39,7 @@
         <div>
             <div class="integ-kpi-label">CON ERRORES</div>
             <div class="integ-kpi-valor-row">
-                <span class="integ-kpi-valor integ-kpi-valor-error">@fuentes.Count(f => f.Estado == "Error").ToString("D2")</span>
+                <span class="integ-kpi-valor integ-kpi-valor-error">@errores.ToString("D2")</span>
                 <span class="integ-kpi-sub integ-kpi-sub-error">Falla crítica</span>
             </div>
         </div>
@@ -46,77 +49,73 @@
         <div>
             <div class="integ-kpi-label">PRÓX. SYNC</div>
             <div class="integ-kpi-valor-row">
-                <span class="integ-kpi-valor">15m</span>
+                <span class="integ-kpi-valor">@proxSyncTexto</span>
                 <span class="integ-kpi-sub">en promedio</span>
             </div>
         </div>
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="integ-toast @(mensajeEsError ? "" : "integ-toast-ok")" role="alert">
+        <span class="integ-toast-icono">@(mensajeEsError ? "⚠️" : "✔")</span>
+        <span class="integ-toast-texto">@mensaje</span>
+        <button class="integ-toast-cerrar" @onclick="CerrarMensaje" title="Cerrar">✕</button>
+    </div>
+}
+
 <!-- Listado de fuentes -->
 <div class="integ-grid">
+   
     @foreach (var f in FuentesFiltradas)
     {
-        <div class="card integ-fuente-card @(f.Estado == "Error" ? "integ-fuente-error" : "")">
-            @if (f.Estado == "Error")
+        var enError = f.Estado == Integracion.EstadoError;
+        <div class="card integ-fuente-card @(enError ? "integ-fuente-error" : "")">
+            @if (enError)
             {
                 <div class="integ-error-badge" title="Falla crítica">!</div>
             }
 
             <div class="integ-fuente-header">
-                <div class="integ-fuente-icon @f.IconoBgClase">@f.IconoEmoji</div>
+                <div class="integ-fuente-icon @ClaseIcono(f.Tipo)">@Icono(f.Tipo)</div>
                 <div class="integ-fuente-nombre-wrap">
                     <div class="integ-fuente-nombre">@f.Nombre</div>
                     <div class="integ-fuente-estado">
-                        <span class="integ-estado-dot @(f.Estado == "Error" ? "integ-dot-rojo" : "integ-dot-verde")"></span>
-                        @f.EstadoTexto
+                        <span class="integ-estado-dot @(enError ? "integ-dot-rojo" : "integ-dot-verde")"></span>
+                        @f.Estado
                     </div>
                 </div>
-                @if (f.Estado != "Error")
-                {
-                    <button class="integ-menu-btn" title="Más opciones">⋮</button>
-                }
             </div>
 
             <div class="integ-fuente-datos">
-                @if (f.Estado == "Error")
+                <div class="integ-dato-row"><span>Tipo</span><span>@f.Tipo</span></div>
+                @if (enError)
                 {
                     <div class="integ-dato-row">
-                        <span>Fallo hace @f.FalloHace</span>
+                        <span>@(f.MensajeError ?? "Error de autenticación")</span>
                         <a href="#" class="integ-link-error" @onclick:preventDefault
-                           @onclick="() => EditarCredenciales(f.Id)">Revisar credenciales</a>
+                           @onclick="() => EditarCredenciales(f.IdIntegracion)">Revisar credenciales</a>
                     </div>
-                    <div class="integ-dato-row">
-                        <span>Último éxito</span>
-                        <span>@f.UltimoExito</span>
-                    </div>
+                    <div class="integ-dato-row"><span>Último éxito</span><span>@FormatearFecha(f.UltimaSincronizacion)</span></div>
                 }
                 else
                 {
-                    <div class="integ-dato-row">
-                        <span>Última sincronización</span>
-                        <span>@f.UltimaSync</span>
-                    </div>
-                    <div class="integ-dato-row">
-                        <span>Registros mapeados</span>
-                        <span>@f.Registros?.ToString("N0")</span>
-                    </div>
+                    <div class="integ-dato-row"><span>Última sincronización</span><span>@FormatearFecha(f.UltimaSincronizacion)</span></div>
+                    <div class="integ-dato-row"><span>Registros mapeados</span><span>@(f.CantidadRegistros?.ToString("N0") ?? "—")</span></div>
                 }
             </div>
 
-            <div class="integ-barra-fondo">
-                <div class="integ-barra-fill @(f.Estado == "Error" ? "integ-barra-roja" : "integ-barra-verde")"
-                     style="width:@(f.PctBarra)%"></div>
-            </div>
-
             <div class="integ-fuente-actions">
-                <button class="integ-btn-editar @(f.Estado == "Error" ? "integ-btn-editar-alerta" : "")"
-                        @onclick="() => EditarCredenciales(f.Id)">
+                <button class="integ-btn-editar @(enError ? "integ-btn-editar-alerta" : "")"
+                        @onclick="() => EditarCredenciales(f.IdIntegracion)">
                     Editar credenciales
                 </button>
-                <button class="integ-btn-sync" disabled="@(f.Estado == "Error")" @onclick="() => Sincronizar(f.Id)">
-                    ↻ Sincronizar
+                <button class="integ-btn-sync" disabled="@(enError || sincronizandoId == f.IdIntegracion)"
+                        @onclick="() => Sincronizar(f.IdIntegracion)">
+                    @(sincronizandoId == f.IdIntegracion ? "Sincronizando…" : "↻ Sincronizar")
                 </button>
+                <button class="integ-btn-eliminar" @onclick="() => SolicitarConfirmacion(f)">Eliminar</button>
             </div>
         </div>
     }
@@ -131,74 +130,123 @@
 
 @code {
     private string textoBusqueda = "";
+    private string mensaje = "";
+    private List<Integracion> fuentes = new();
+    private int activas;
+    private int errores;
+    private string proxSyncTexto = "—";
+    private bool mensajeEsError = true;
+    private int? sincronizandoId;
 
-    private class FuenteIntegracion
+    protected override async Task OnInitializedAsync()
     {
-        public string Id { get; set; } = "";
-        public string Nombre { get; set; } = "";
-        public string IconoEmoji { get; set; } = "";
-        public string IconoBgClase { get; set; } = "";
-        public string Estado { get; set; } = "Activa"; // "Activa" | "Error"
-        public string EstadoTexto { get; set; } = "";
-        public string UltimaSync { get; set; } = "";
-        public int? Registros { get; set; }
-        public string FalloHace { get; set; } = "";
-        public string UltimoExito { get; set; } = "";
-        public int PctBarra { get; set; }
+        fuentes = await BLLIntegracion.ObtenerIntegraciones();
+        CalcularMetricasGlobales();
     }
 
-    private List<FuenteIntegracion> fuentes = new()
+    private IEnumerable<Integracion> FuentesFiltradas =>
+        fuentes.Where(f => string.IsNullOrWhiteSpace(textoBusqueda) ||
+                           f.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
+
+    // Diagrama CU14: CalcularMetricasGlobales(activas, errores, proxSync)
+    private void CalcularMetricasGlobales()
     {
-        new()
+        errores = fuentes.Count(f => f.Estado == Integracion.EstadoError);
+        activas = fuentes.Count - errores;
+
+        var minutosRestantes = fuentes
+            .Where(f => f.Estado == Integracion.EstadoActiva && f.UltimaSincronizacion != null)
+            .Select(f => Math.Max(0, (f.UltimaSincronizacion!.Value + BLL.BLLIntegracion.IntervaloSincronizacion - DateTime.Now).TotalMinutes))
+            .ToList();
+        proxSyncTexto = minutosRestantes.Count == 0 ? "—" : $"{Math.Round(minutosRestantes.Average())}m";
+    }
+
+    private void RecalcularMetricas() => CalcularMetricasGlobales();
+
+    private async Task SolicitarConfirmacion(Integracion f)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm",
+            $"¿Eliminar la integración \"{f.Nombre}\"? Esta acción no se puede deshacer.");
+        if (confirmado) await ConfirmarEliminacion(f);
+        else CancelarEliminacion();
+    }
+
+    private async Task ConfirmarEliminacion(Integracion f)
+    {
+        mensaje = "";
+        if (await BLLIntegracion.ValidarDependenciasActivas(f.IdIntegracion))
         {
-            Id = "int-001", Nombre = "Salesforce CRM", IconoEmoji = "🔗", IconoBgClase = "integ-icon-azul",
-            Estado = "Activa", EstadoTexto = "Conexión Activa",
-            UltimaSync = "Hoy, 09:45 AM", Registros = 45202, PctBarra = 100,
-        },
-        new()
+            MostrarMensaje("La integración posee dependencias activas y no se puede eliminar.");
+            return;
+        }
+        await BLLIntegracion.EliminarIntegracion(f.IdIntegracion);
+        EliminarDeLaVista(f);
+        RecalcularMetricas();
+    }
+
+    private void CancelarEliminacion() { }
+
+    private void EliminarDeLaVista(Integracion f) => fuentes.Remove(f);
+
+    private void EditarCredenciales(int id) => Navigation.NavigateTo($"/integraciones/editar/{id}");
+
+    private void AñadirNuevaFuente() => Navigation.NavigateTo("/integraciones/nueva");
+
+    private async Task Sincronizar(int id)
+    {
+        sincronizandoId = id;
+        mensaje = "";
+        try
         {
-            Id = "int-002", Nombre = "HubSpot", IconoEmoji = "🧡", IconoBgClase = "integ-icon-naranja",
-            Estado = "Activa", EstadoTexto = "Conexión Activa",
-            UltimaSync = "Ayer, 11:20 PM", Registros = 12890, PctBarra = 70,
-        },
-        new()
+            var resultado = await BLLIntegracion.ActualizarInformacionIntegracion(id);
+            await ActualizarInformacionIntegracion();
+            MostrarMensaje(resultado.Mensaje, esError: !resultado.Exito);
+        }
+        finally
         {
-            Id = "int-003", Nombre = "PostgreSQL Prod", IconoEmoji = "🗄️", IconoBgClase = "integ-icon-gris",
-            Estado = "Error", EstadoTexto = "Error de Autenticación",
-            FalloHace = "4 horas", UltimoExito = "02 Nov, 04:00 AM", PctBarra = 35,
-        },
-        new()
-        {
-            Id = "int-004", Nombre = "Stripe Billing", IconoEmoji = "💳", IconoBgClase = "integ-icon-morado",
-            Estado = "Activa", EstadoTexto = "Conexión Activa",
-            UltimaSync = "Hoy, 10:15 AM", Registros = 2451, PctBarra = 55,
-        },
-        new()
-        {
-            Id = "int-005", Nombre = "Snowflake DW", IconoEmoji = "❄️", IconoBgClase = "integ-icon-celeste",
-            Estado = "Activa", EstadoTexto = "Conexión Activa",
-            UltimaSync = "Hoy, 00:00 AM", Registros = 1024883, PctBarra = 100,
-        },
+            sincronizandoId = null;
+        }
+    }
+
+    // Diagrama CU14: ActualizarInformacionIntegracion() (autollamada de la pantalla): refresca tarjetas y métricas.
+    private async Task ActualizarInformacionIntegracion()
+    {
+        fuentes = await BLLIntegracion.ObtenerIntegraciones();
+        RecalcularMetricas();
+    }
+
+    private static string FormatearFecha(DateTime? fecha) =>
+        fecha is null ? "Nunca" : fecha.Value.ToString("dd/MM/yyyy HH:mm");
+
+    private static string Icono(string tipo) => tipo switch
+    {
+        Integracion.TipoCRM => "🔗",
+        Integracion.TipoBD => "🗄️",
+        _ => "🧩"
     };
 
-    private IEnumerable<FuenteIntegracion> FuentesFiltradas =>
-        fuentes.Where(f =>
-            string.IsNullOrWhiteSpace(textoBusqueda) ||
-            f.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
-
-    private void EditarCredenciales(string id)
+    private static string ClaseIcono(string tipo) => tipo switch
     {
-        Navigation.NavigateTo($"/integraciones/editar/{id}");
+        Integracion.TipoCRM => "integ-icon-azul",
+        Integracion.TipoBD => "integ-icon-gris",
+        _ => "integ-icon-morado"
+    };
+
+    private void MostrarMensaje(string texto, bool esError = true)
+    {
+        mensaje = texto;
+        mensajeEsError = esError;
+        _ = OcultarMensajeLuego(texto);
     }
 
-    private void Sincronizar(string id)
+    private async Task OcultarMensajeLuego(string texto)
     {
-        // TODO: disparar sincronización real contra la fuente de datos.
+        await Task.Delay(5000);
+        if (mensaje != texto) return;
+        mensaje = "";
+        try { await InvokeAsync(StateHasChanged); }
+        catch (ObjectDisposedException) { }
     }
 
-    private void AñadirNuevaFuente()
-    {
-        Navigation.NavigateTo("/integraciones/nueva");
-    }
+    private void CerrarMensaje() => mensaje = "";
 }
-

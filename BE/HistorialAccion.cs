@@ -28,6 +28,7 @@ public class HistorialAccion
 
 
 
+
     // Valores que usa el motor de reglas (constantes de la clase; no son columnas).
     public const string TipoEnvioAutomatico = "Envío automático";
     public const string EstadoActivo = "Activo";          // envío en observación (sin resultado todavía)
@@ -37,4 +38,6 @@ public class HistorialAccion
     public const string ResultadoRescatado = "Rescatado";
     public const string ResultadoClic = "Clic en enlace";
     public const string ResultadoSinAccion = "Sin acción";
+    public const string EnvioFallido = "Fallido";
+    public const string ResultadoErrorEnvio = "Error de envío";
 }

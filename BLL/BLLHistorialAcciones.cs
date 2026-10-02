@@ -12,7 +12,17 @@ public class BLLHistorialAcciones
     // definen un criterio distinto (por ejemplo, un campo MetaTasaExito).
     private const decimal UmbralKpi = 50m;
 
-    public BLLHistorialAcciones(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+    //public BLLHistorialAcciones(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
+
+    private readonly ServicioEnvio _envio;
+
+    public BLLHistorialAcciones(AccesoDatos accesoDatos, ServicioEnvio envio)
+    {
+        _accesoDatos = accesoDatos;
+        _envio = envio;
+    }
+
+    //Revisar si se usa o no
 
     public Task<MetricasCampana> ObtenerMetricasGlobales(CancellationToken ct = default)
         => ObtenerMetricasGlobalesXPeriodo(DateTime.Now.AddDays(-30), DateTime.Now, ct);
@@ -148,28 +158,62 @@ public class BLLHistorialAcciones
             ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}). Ejecutá el script de datos.");
     }
 
-    // Registra un envío (simulado: todavía no hay API de WhatsApp / Email). Queda "Entregado", en observación
-    // (Estado = Activo, sin Resultado) y actualiza ClientesAlcanzados de la campaña, todo en una transacción.
-    public Task RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
-                                CancellationToken ct = default)
-        => _accesoDatos.Escribir(
-            @"INSERT INTO HistorialAcciones (EstadoEnvio, FechaEnvio, TipoAccion, IdCampaña, IdCliente, IdUsuario, Estado, IdRegla)
-              VALUES (@estadoEnvio, @fechaEnvio, @tipoAccion, @idCampania, @idCliente, @idUsuario, @estado, @idRegla);
+    // Envía el mensaje de la campaña por su canal y registra el resultado, todo en una transacción.
+    //  - Email: envío real (ServicioEnvio).
+    //  - WhatsApp: todavía simulado (queda "Entregado"); se reemplaza en el próximo bloque.
+    // Si el envío falla queda como "Fallido" (Finalizada, resultado "Error de envío") y no suma a ClientesAlcanzados.
+    public async Task RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
+                                      CancellationToken ct = default)
+    {
+        var envio = await EnviarMensajeCampania(idCliente, idCampania, ct);
 
-              UPDATE Campaña SET ClientesAlcanzados =
-                  (SELECT COUNT(DISTINCT h.IdCliente) FROM HistorialAcciones h WHERE h.IdCampaña = @idCampania)
-              WHERE IdCampaña = @idCampania;",
+        await _accesoDatos.Escribir(
+            @"INSERT INTO HistorialAcciones (EstadoEnvio, FechaEnvio, TipoAccion, IdCampaña, IdCliente, IdUsuario, Estado, IdRegla, Resultado)
+          VALUES (@estadoEnvio, @fechaEnvio, @tipoAccion, @idCampania, @idCliente, @idUsuario, @estado, @idRegla, @resultado);
+
+          UPDATE Campaña SET ClientesAlcanzados =
+              (SELECT COUNT(DISTINCT h.IdCliente) FROM HistorialAcciones h
+               WHERE h.IdCampaña = @idCampania AND h.EstadoEnvio <> @fallido)
+          WHERE IdCampaña = @idCampania;",
             new
             {
-                estadoEnvio = HistorialAccion.EnvioEntregado,
+                estadoEnvio = envio.Exito ? HistorialAccion.EnvioEntregado : HistorialAccion.EnvioFallido,
                 fechaEnvio,
                 tipoAccion,
                 idCampania,
                 idCliente,
                 idUsuario,
-                estado = HistorialAccion.EstadoActivo,
-                idRegla
+                estado = envio.Exito ? HistorialAccion.EstadoActivo : HistorialAccion.EstadoFinalizada,
+                idRegla,
+                resultado = envio.Exito ? null : HistorialAccion.ResultadoErrorEnvio,
+                fallido = HistorialAccion.EnvioFallido
             }, ct: ct);
+    }
+
+    private async Task<ResultadoEnvio> EnviarMensajeCampania(int idCliente, int idCampania, CancellationToken ct)
+    {
+        var cliente = (await _accesoDatos.Leer<Cliente>(
+            "SELECT IdCliente, Nombre, Apellido, Email, Telefono FROM Cliente WHERE IdCliente = @idCliente",
+            new { idCliente }, ct: ct)).FirstOrDefault();
+
+        var campania = (await _accesoDatos.Leer<Campana>(
+            @"SELECT camp.IdCampaña AS IdCampania, camp.Asunto AS Nombre, ca.Nombre AS Canal, ca.IdCanal,
+                 camp.AsuntoEmail, camp.Mensaje
+          FROM Campaña camp JOIN Canal ca ON ca.IdCanal = camp.IdCanal
+          WHERE camp.IdCampaña = @idCampania",
+            new { idCampania }, ct: ct)).FirstOrDefault();
+
+        if (cliente is null || campania is null)
+            return new ResultadoEnvio(false, "No se encontró el cliente o la campaña.");
+
+        var texto = campania.Mensaje.Replace("{nombre_cliente}", cliente.Nombre);
+
+        if (campania.Canal == "Email")
+            return await _envio.EnviarEmail(cliente.Email, campania.AsuntoEmail ?? campania.Nombre, texto, ct);
+
+        // WhatsApp: simulado hasta el próximo bloque.
+        return new ResultadoEnvio(true, "Simulado.");
+    }
 
     // Cierra los envíos automáticos cuya ventana de observación (7 días) ya terminó y devuelve cuántos cerró.
     //  - Rescatado: el cliente tuvo una visita o un pago registrado después del envío, dentro de la ventana

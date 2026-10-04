@@ -211,8 +211,10 @@ public class BLLHistorialAcciones
         if (campania.Canal == "Email")
             return await _envio.EnviarEmail(cliente.Email, campania.AsuntoEmail ?? campania.Nombre, texto, ct);
 
-        // WhatsApp: simulado hasta el próximo bloque.
-        return new ResultadoEnvio(true, "Simulado.");
+        if (campania.Canal == "WhatsApp")
+            return await _envio.EnviarWhatsApp(cliente.Telefono ?? string.Empty, texto, ct);
+
+        return new ResultadoEnvio(false, $"Canal no soportado: {campania.Canal}");
     }
 
     // Cierra los envíos automáticos cuya ventana de observación (7 días) ya terminó y devuelve cuántos cerró.

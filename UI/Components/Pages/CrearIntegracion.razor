@@ -1,7 +1,7 @@
 ﻿@page "/integraciones/nueva"
 @page "/integraciones/editar/{IntegracionId}"
-@inject NavigationManager Navigation
 @using BE
+@inject NavigationManager Navigation
 @inject BLL.BLLIntegracion BLLIntegracion
 
 <PageTitle>@(EsEdicion ? "Editar Integración" : "Nueva Integración")</PageTitle>
@@ -83,98 +83,204 @@
     }
 </div>
 
-<div class="integ-main-row">
-    <!-- Paso 2: Credenciales -->
-    <div class="card regla-card">
-        <p class="integ-paso-titulo">Paso 2: Credenciales de conexión</p>
+<!-- Paso 2: Credenciales -->
+<div class="card regla-card">
+    <p class="integ-paso-titulo">Paso 2: Credenciales de conexión</p>
 
-        <label class="form-label">NOMBRE DE LA INTEGRACIÓN</label>
-        <input class="integ-input @(errores.Contains("nombre") ? "input-error" : "")"
-               @bind="nombreFuente" @bind:event="oninput" placeholder="Ej: API de socios" />
+    <label class="form-label">NOMBRE DE LA INTEGRACIÓN</label>
+    <input class="integ-input @(errores.Contains("nombre") ? "input-error" : "")"
+           @bind="nombreFuente" @bind:event="oninput" placeholder="Ej: API de socios" />
 
-        <label class="form-label">@EtiquetaUrl</label>
-        <input class="integ-input @(errores.Contains("url") ? "input-error" : "")"
-               @bind="urlServidor" @bind:event="oninput" @bind:after="InvalidarConexion"
-               placeholder="@PlaceholderUrl" />
+    <label class="form-label">@EtiquetaUrl</label>
+    <input class="integ-input @(errores.Contains("url") ? "input-error" : "")"
+           @bind="urlServidor" @bind:event="oninput" @bind:after="InvalidarConexion"
+           placeholder="@PlaceholderUrl" />
 
-        <div class="integ-cred-row-2">
-            @if (NecesitaUsuario)
-            {
-                <div>
-                    <label class="form-label">@EtiquetaUsuario</label>
-                    <input class="integ-input @(errores.Contains("usuario") ? "input-error" : "")"
-                           @bind="usuario" @bind:event="oninput" @bind:after="InvalidarConexion" />
-                </div>
-            }
+    @if (EsApi)
+    {
+        <label class="form-label">ENDPOINT DE EVENTOS</label>
+        <input class="integ-input @(errores.Contains("urlEventos") ? "input-error" : "")"
+               @bind="urlEventos" @bind:event="oninput" @bind:after="InvalidarConexion"
+               placeholder="https://api.miempresa.com/eventos" />
+    }
+
+    <div class="integ-cred-row-2">
+        @if (NecesitaUsuario)
+        {
             <div>
-                <label class="form-label">@EtiquetaSecreto</label>
-                <input type="password" class="integ-input @(errores.Contains("apiKey") ? "input-error" : "")"
-                       @bind="apiKey" @bind:event="oninput" @bind:after="InvalidarConexion" placeholder="••••••••••" />
+                <label class="form-label">@EtiquetaUsuario</label>
+                <input class="integ-input @(errores.Contains("usuario") ? "input-error" : "")"
+                       @bind="usuario" @bind:event="oninput" @bind:after="InvalidarConexion" />
             </div>
+        }
+        <div>
+            <label class="form-label">@EtiquetaSecreto</label>
+            <input type="password" class="integ-input @(errores.Contains("apiKey") ? "input-error" : "")"
+                   @bind="apiKey" @bind:event="oninput" @bind:after="InvalidarConexion" placeholder="••••••••••" />
         </div>
-
-        @if (tipoSeleccionado == Integracion.TipoBD)
-        {
-            <label class="form-label">NOMBRE DE LA BASE DE DATOS</label>
-            <input class="integ-input @(errores.Contains("dbName") ? "input-error" : "")"
-                   @bind="nombreBaseDatos" @bind:event="oninput" @bind:after="InvalidarConexion" />
-        }
-
-        <button class="integ-btn-probar" disabled="@(!camposCredencialesCompletos || probandoConexion)" @onclick="ProbarConexion">
-            @(probandoConexion ? "Probando…" : "🔌 Probar conexión")
-        </button>
-        @if (!camposCredencialesCompletos)
-        {
-            <span class="camp-form-error">Hay campos obligatorios sin completar.</span>
-        }
     </div>
 
-    <!-- Paso 3: Mapeo de campos -->
-    <div class="card regla-card">
-        <p class="integ-paso-titulo">Paso 3: Mapeo de campos</p>
+    @if (tipoSeleccionado == Integracion.TipoBD)
+    {
+        <label class="form-label">NOMBRE DE LA BASE DE DATOS</label>
+        <input class="integ-input @(errores.Contains("dbName") ? "input-error" : "")"
+               @bind="nombreBaseDatos" @bind:event="oninput" @bind:after="InvalidarConexion" />
+    }
 
-        @if (!conexionProbada)
+    <button class="integ-btn-probar" disabled="@(!camposCredencialesCompletos || probandoConexion)" @onclick="ProbarConexion">
+        @(probandoConexion ? "Probando…" : "🔌 Probar conexión")
+    </button>
+    @if (!camposCredencialesCompletos)
+    {
+        <span class="camp-form-error">Hay campos obligatorios sin completar.</span>
+    }
+</div>
+
+<!-- Paso 3: Mapeo de datos -->
+<div class="card regla-card">
+    <p class="integ-paso-titulo">Paso 3: Mapeo de datos</p>
+
+    @if (!conexionProbada)
+    {
+        <div class="integ-mapeo-vacio">
+            🔌 Probá la conexión para ver los datos disponibles en la fuente.
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(errorMapeo))
         {
-            <div class="integ-mapeo-vacio">
-                🔌 Probá la conexión para ver los campos disponibles en la fuente de datos.
-            </div>
+            <div class="integ-error-conexion">⚠️ @errorMapeo</div>
+        }
+
+        @if (esquema.Count == 0)
+        {
+            <div class="integ-mapeo-vacio">La fuente no devolvió campos para mapear.</div>
         }
         else
         {
-            @if (!string.IsNullOrEmpty(errorMapeo))
-            {
-                <div class="integ-error-conexion">⚠️ @errorMapeo</div>
-            }
+            <!-- ---------------- Clientes ---------------- -->
+            <p class="integ-mapeo-seccion">1. Clientes</p>
 
-            @if (esquema.Count == 0)
-            {
-                <div class="integ-mapeo-vacio">La fuente no devolvió campos para mapear.</div>
-            }
-            else
-            {
-                @foreach (var plat in BLL.BLLIntegracion.CamposPlataforma)
+            <label class="form-label">@EtiquetaOrigen DE LOS CLIENTES</label>
+            <select class="campana-select" @onchange="OnOrigenClientesCambia">
+                <option value="" selected="@(mapeo.OrigenClientes == "")">— Elegir —</option>
+                @foreach (var o in origenes)
                 {
-                    var seleccionado = mapeo.GetValueOrDefault(plat.Key, "");
-                    <div class="integ-mapeo-row">
-                        <select class="integ-mapeo-select" @onchange="e => OnMapeoCambia(e, plat.Key)">
-                            <option value="" selected="@(seleccionado == "")">— Sin mapear —</option>
-                            @foreach (var campo in esquema)
-                            {
-                                <option value="@campo.Key" selected="@(campo.Key == seleccionado)">@campo.Key (@campo.Value)</option>
-                            }
-                        </select>
-                        <span class="integ-mapeo-flecha">→</span>
-                        <div class="integ-mapeo-externo">@plat.Key <small>(@plat.Value)</small></div>
+                    <option value="@o" selected="@(o == mapeo.OrigenClientes)">@o</option>
+                }
+            </select>
+
+            @if (mapeo.OrigenClientes != "")
+            {
+                <label class="form-label">IDENTIFICAR AL CLIENTE POR</label>
+                <select class="campana-select" @onchange="OnClaveCambia">
+                    <option value="@DefinicionMapeo.ClaveEmail" selected="@(mapeo.ClaveCliente == DefinicionMapeo.ClaveEmail)">Email</option>
+                    <option value="@DefinicionMapeo.ClaveIdExterno" selected="@(mapeo.ClaveCliente == DefinicionMapeo.ClaveIdExterno)">ID del cliente en la fuente</option>
+                </select>
+
+                <div class="integ-mapeo-grupo">
+                    @foreach (var campo in DefinicionMapeo.CamposCliente)
+                    {
+                        var clave = $"{DefinicionMapeo.EntidadCliente}.{campo.Nombre}";
+                        var asignado = mapeo.Clientes.GetValueOrDefault(campo.Nombre, "");
+                        <div class="integ-mapeo-row">
+                            <select class="integ-mapeo-select" @onchange="e => OnMapeoCambia(e, clave)">
+                                <option value="" selected="@(asignado == "")">— Sin mapear —</option>
+                                @foreach (var f in CamposDe(mapeo.OrigenClientes))
+                                {
+                                    <option value="@f" selected="@(f == asignado)">@MapeoIntegracion.Campo(f) (@esquema[f])</option>
+                                }
+                            </select>
+                            <span class="integ-mapeo-flecha">→</span>
+                            <div class="integ-mapeo-externo">@campo.Nombre@(campo.Obligatorio ? " *" : "") <small>(@campo.Tipo)</small></div>
+                        </div>
+                    }
+                </div>
+
+                @if (valoresEstadoFuente.Count > 0)
+                {
+                    <p class="integ-mapeo-subtitulo">Traducí cada valor del campo Estado</p>
+                    <div class="integ-mapeo-grupo">
+                        @foreach (var valor in valoresEstadoFuente)
+                        {
+                            <div class="integ-mapeo-row">
+                                <div class="integ-mapeo-externo">@valor</div>
+                                <span class="integ-mapeo-flecha">→</span>
+                                <select class="integ-mapeo-select" @onchange="e => OnValorEstadoCambia(e, valor)">
+                                    <option value="" selected="@(!mapeo.ValoresEstado.ContainsKey(valor))">— Elegir —</option>
+                                    @foreach (var estado in DefinicionMapeo.EstadosCliente)
+                                    {
+                                        <option value="@estado" selected="@(mapeo.ValoresEstado.GetValueOrDefault(valor) == estado)">@estado</option>
+                                    }
+                                </select>
+                            </div>
+                        }
                     </div>
                 }
-
-                <div class="integ-mapeo-info">
-                    ℹ️ Elegí, para cada dato de la plataforma, qué campo de la fuente lo alimenta.
-                    Los campos de texto aceptan cualquier tipo; Fecha y Número solo aceptan campos del mismo tipo.
-                </div>
             }
+
+            <!-- ---------------- Eventos ---------------- -->
+            <p class="integ-mapeo-seccion">2. Eventos de los clientes</p>
+
+            <label class="form-label">@EtiquetaOrigen DE LOS EVENTOS</label>
+            <select class="campana-select" @onchange="OnOrigenEventosCambia">
+                <option value="" selected="@(mapeo.OrigenEventos == "")">— Elegir —</option>
+                @foreach (var o in origenes)
+                {
+                    <option value="@o" selected="@(o == mapeo.OrigenEventos)">@o</option>
+                }
+            </select>
+
+            @if (mapeo.OrigenEventos != "")
+            {
+                <div class="integ-mapeo-grupo">
+                    @foreach (var campo in DefinicionMapeo.CamposEvento)
+                    {
+                        var clave = $"{DefinicionMapeo.EntidadEvento}.{campo.Nombre}";
+                        var asignado = mapeo.Eventos.GetValueOrDefault(campo.Nombre, "");
+                        <div class="integ-mapeo-row">
+                            <select class="integ-mapeo-select" @onchange="e => OnMapeoCambia(e, clave)">
+                                <option value="" selected="@(asignado == "")">— Sin mapear —</option>
+                                @foreach (var f in CamposDe(mapeo.OrigenEventos))
+                                {
+                                    <option value="@f" selected="@(f == asignado)">@MapeoIntegracion.Campo(f) (@esquema[f])</option>
+                                }
+                            </select>
+                            <span class="integ-mapeo-flecha">→</span>
+                            <div class="integ-mapeo-externo">@(campo.Nombre == "Cliente" ? "Cliente (según la clave elegida)" : campo.Nombre) * <small>(@campo.Tipo)</small></div>
+                        </div>
+                    }
+                </div>
+
+                @if (valoresEventoFuente.Count > 0)
+                {
+                    <p class="integ-mapeo-subtitulo">Traducí cada tipo de evento de la fuente a uno que entienda el modelo (los que dejes sin elegir se ignoran)</p>
+                    <div class="integ-mapeo-grupo">
+                        @foreach (var valor in valoresEventoFuente)
+                        {
+                            <div class="integ-mapeo-row">
+                                <div class="integ-mapeo-externo">@valor</div>
+                                <span class="integ-mapeo-flecha">→</span>
+                                <select class="integ-mapeo-select" @onchange="e => OnValorEventoCambia(e, valor)">
+                                    <option value="" selected="@(!mapeo.ValoresEvento.ContainsKey(valor))">— Ignorar —</option>
+                                    @foreach (var tipoEvento in DefinicionMapeo.TiposEvento)
+                                    {
+                                        <option value="@tipoEvento" selected="@(mapeo.ValoresEvento.GetValueOrDefault(valor) == tipoEvento)">@tipoEvento</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+
+            <div class="integ-mapeo-info">
+                ℹ️ El modelo de predicción se alimenta de los clientes y de sus eventos (visitas, pagos, uso de la app...).
+                Los campos con * son obligatorios. Los campos de texto aceptan cualquier tipo; Fecha solo acepta campos de fecha.
+            </div>
         }
-    </div>
+    }
 </div>
 
 @code {
@@ -187,6 +293,7 @@
     private string nombreFuente = "";
     private string tipoSeleccionado = Integracion.TipoBD;
     private string urlServidor = "";
+    private string urlEventos = "";
     private string usuario = "";
     private string apiKey = "";
     private string nombreBaseDatos = "";
@@ -197,8 +304,13 @@
     private string errorMapeo = "";
     private HashSet<string> errores = new();
 
-    private Dictionary<string, string> esquema = new();   // campo de la fuente -> tipo
-    private Dictionary<string, string> mapeo = new();     // campo de la plataforma -> campo de la fuente
+    // Esquema de la fuente: "Origen.Campo" -> tipo (texto | fecha | numero | otro).
+    private Dictionary<string, string> esquema = new();
+    private List<string> origenes = new();
+
+    private MapeoIntegracion mapeo = new();
+    private List<string> valoresEventoFuente = new();
+    private List<string> valoresEstadoFuente = new();
 
     private record TipoFuente(string Nombre, string Icono, string Descripcion);
 
@@ -206,23 +318,24 @@
     {
         new(Integracion.TipoCRM, "🔗", "Salesforce (OAuth 2.0, client credentials)."),
         new(Integracion.TipoBD, "🗄️", "SQL Server (usuario y contraseña)."),
-        new(Integracion.TipoAPI, "🧩", "Endpoint REST que responde JSON."),
+        new(Integracion.TipoAPI, "🧩", "Dos endpoints REST que responden JSON: clientes y eventos."),
     };
 
+    private bool EsApi => tipoSeleccionado == Integracion.TipoAPI;
     private bool NecesitaUsuario => tipoSeleccionado != Integracion.TipoAPI;
 
     private string EtiquetaUrl => tipoSeleccionado switch
     {
         Integracion.TipoBD => "SERVIDOR",
         Integracion.TipoCRM => "URL DE LA ORGANIZACIÓN",
-        _ => "ENDPOINT DE LA API"
+        _ => "ENDPOINT DE CLIENTES"
     };
 
     private string PlaceholderUrl => tipoSeleccionado switch
     {
         Integracion.TipoBD => "servidor\\instancia  o  host,1433",
         Integracion.TipoCRM => "https://miempresa.my.salesforce.com",
-        _ => "https://api.miempresa.com/socios"
+        _ => "https://api.miempresa.com/clientes"
     };
 
     private string EtiquetaUsuario => tipoSeleccionado == Integracion.TipoCRM ? "CLIENT ID" : "USUARIO";
@@ -234,11 +347,19 @@
         _ => "API KEY"
     };
 
+    private string EtiquetaOrigen => tipoSeleccionado switch
+    {
+        Integracion.TipoBD => "TABLA",
+        Integracion.TipoCRM => "OBJETO",
+        _ => "ENDPOINT"
+    };
+
     private List<string> CamposFaltantes()
     {
         var faltan = new List<string>();
         if (string.IsNullOrWhiteSpace(nombreFuente)) faltan.Add("nombre");
         if (string.IsNullOrWhiteSpace(urlServidor)) faltan.Add("url");
+        if (EsApi && string.IsNullOrWhiteSpace(urlEventos)) faltan.Add("urlEventos");
         if (NecesitaUsuario && string.IsNullOrWhiteSpace(usuario)) faltan.Add("usuario");
         if (string.IsNullOrWhiteSpace(apiKey)) faltan.Add("apiKey");
         if (tipoSeleccionado == Integracion.TipoBD && string.IsNullOrWhiteSpace(nombreBaseDatos)) faltan.Add("dbName");
@@ -254,6 +375,9 @@
         errores = CamposFaltantes().ToHashSet();
         return errores.Count == 0;
     }
+
+    private IEnumerable<string> CamposDe(string origen) =>
+        esquema.Keys.Where(k => MapeoIntegracion.Origen(k) == origen);
 
     protected override async Task OnInitializedAsync()
     {
@@ -274,6 +398,7 @@
         nombreFuente = i.Nombre;
         tipoSeleccionado = i.Tipo;
         urlServidor = i.Url ?? "";
+        urlEventos = i.UrlEventos ?? "";
         usuario = i.Usuario ?? "";
         apiKey = i.Secreto ?? "";
         nombreBaseDatos = i.BaseDatos ?? "";
@@ -291,7 +416,10 @@
     {
         conexionProbada = false;
         esquema = new();
+        origenes = new();
         mapeo = new();
+        valoresEventoFuente = new();
+        valoresEstadoFuente = new();
         errorConexion = "";
         errorMapeo = "";
         mensajeConfirmacion = "";
@@ -301,10 +429,14 @@
     {
         Nombre = nombreFuente.Trim(),
         Url = url.Trim(),
+        UrlEventos = EsApi ? urlEventos.Trim() : null,
         Usuario = usuarioId.Trim(),
         Secreto = clave,
         BaseDatos = string.IsNullOrWhiteSpace(baseDatos) ? null : baseDatos.Trim()
     };
+
+    private string CredencialesSerializadas() =>
+        ConstruirCredenciales(urlServidor, usuario, apiKey, nombreBaseDatos).Serializar();
 
     // Diagramas CU15/CU16: TestearConexion(url, usuarioId, apiKey, baseDatos): bool
     private async Task<bool> TestearConexion(string url, string usuarioId, string clave, string baseDatos)
@@ -357,67 +489,251 @@
         try
         {
             var campos = await BLLIntegracion.ObtenerEsquemaCampos(
-                tipoSeleccionado,
-                ConstruirCredenciales(urlServidor, usuario, apiKey, nombreBaseDatos).Serializar(),
-                EsEdicion ? IdEdicion : null);
+                tipoSeleccionado, CredencialesSerializadas(), EsEdicion ? IdEdicion : null);
 
-            esquema = campos
-                .Select(c => c.Split('|'))
-                .ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "otro");
-            mapeo = new();
+            esquema = new();
+            foreach (var campo in campos)
+            {
+                var partes = campo.Split('|');
+                esquema[partes[0]] = partes.Length > 1 ? partes[1] : "otro";
+            }
+            origenes = esquema.Keys.Select(MapeoIntegracion.Origen).Distinct().ToList();
+            valoresEventoFuente = new();
+            valoresEstadoFuente = new();
 
             if (EsEdicion)
             {
-                foreach (var par in await BLLIntegracion.ObtenerMapeoActual(IdEdicion))
-                {
-                    var p = par.Split('=');
-                    if (p.Length == 2 && esquema.ContainsKey(p[0]) && BLL.BLLIntegracion.CamposPlataforma.ContainsKey(p[1]))
-                        mapeo[p[1]] = p[0];
-                }
+                mapeo = await BLLIntegracion.ObtenerMapeoActual(IdEdicion);
+                DepurarMapeo();
+                await CargarValoresEstado();
+                await CargarValoresEvento();
+            }
+            else
+            {
+                mapeo = new MapeoIntegracion();
+                await SugerirOrigenes();
             }
         }
         catch (Exception ex)
         {
             conexionProbada = false;
             mensajeConfirmacion = "";
-            errorConexion = "No se pudieron leer los campos de la fuente: " + ex.Message;
+            errorConexion = "No se pudieron leer los datos de la fuente: " + ex.Message;
         }
     }
 
-    private void OnMapeoCambia(ChangeEventArgs e, string campoPlataforma)
+    // Si la fuente cambió desde que se guardó el mapeo, se descartan las asignaciones que ya no existen.
+    private void DepurarMapeo()
+    {
+        if (!origenes.Contains(mapeo.OrigenClientes)) { mapeo.OrigenClientes = ""; mapeo.Clientes = new(); }
+        if (!origenes.Contains(mapeo.OrigenEventos)) { mapeo.OrigenEventos = ""; mapeo.Eventos = new(); }
+
+        mapeo.Clientes = mapeo.Clientes.Where(m => esquema.ContainsKey(m.Value)).ToDictionary(m => m.Key, m => m.Value);
+        mapeo.Eventos = mapeo.Eventos.Where(m => esquema.ContainsKey(m.Value)).ToDictionary(m => m.Key, m => m.Value);
+    }
+
+    // Propone el origen de clientes y el de eventos según el nombre (se puede cambiar).
+    private async Task SugerirOrigenes()
+    {
+        var clientes = origenes.FirstOrDefault(o =>
+            new[] { "cliente", "socio", "contact" }.Any(p => o.Contains(p, StringComparison.OrdinalIgnoreCase))
+            && !o.Contains("evento", StringComparison.OrdinalIgnoreCase));
+
+        var eventos = origenes.FirstOrDefault(o =>
+            new[] { "evento", "actividad", "accion", "acción", "task" }.Any(p => o.Contains(p, StringComparison.OrdinalIgnoreCase)));
+
+        if (clientes is not null) SeleccionarOrigenClientes(clientes);
+        if (eventos is not null) SeleccionarOrigenEventos(eventos);
+
+        await CargarValoresEstado();
+        await CargarValoresEvento();
+    }
+
+    private async Task OnOrigenClientesCambia(ChangeEventArgs e)
+    {
+        SeleccionarOrigenClientes(e.Value?.ToString() ?? "");
+        await CargarValoresEstado();
+    }
+
+    private async Task OnOrigenEventosCambia(ChangeEventArgs e)
+    {
+        SeleccionarOrigenEventos(e.Value?.ToString() ?? "");
+        await CargarValoresEvento();
+    }
+
+    private void SeleccionarOrigenClientes(string origen)
+    {
+        errorMapeo = "";
+        mapeo.OrigenClientes = origen;
+        mapeo.Clientes = new();
+        mapeo.ValoresEstado = new();
+        valoresEstadoFuente = new();
+        foreach (var campo in DefinicionMapeo.CamposCliente) AutoMapear(mapeo.Clientes, campo.Nombre, origen);
+    }
+
+    private void SeleccionarOrigenEventos(string origen)
+    {
+        errorMapeo = "";
+        mapeo.OrigenEventos = origen;
+        mapeo.Eventos = new();
+        mapeo.ValoresEvento = new();
+        valoresEventoFuente = new();
+        foreach (var campo in DefinicionMapeo.CamposEvento) AutoMapear(mapeo.Eventos, campo.Nombre, origen);
+    }
+
+    // Si la fuente tiene un campo con el mismo nombre que el de la plataforma, se asigna solo.
+    private void AutoMapear(Dictionary<string, string> destino, string nombrePlataforma, string origen)
+    {
+        var coincidencia = CamposDe(origen)
+            .FirstOrDefault(k => MapeoIntegracion.Campo(k).Equals(nombrePlataforma, StringComparison.OrdinalIgnoreCase));
+        if (coincidencia is not null) destino[nombrePlataforma] = coincidencia;
+    }
+
+    private void OnClaveCambia(ChangeEventArgs e)
+    {
+        errorMapeo = "";
+        mapeo.ClaveCliente = e.Value?.ToString() ?? DefinicionMapeo.ClaveEmail;
+    }
+
+    // "campoPlataforma" llega calificado con la entidad: "Cliente.Nombre" / "Evento.Fecha".
+    private async Task OnMapeoCambia(ChangeEventArgs e, string campoPlataforma)
     {
         var campoExterno = e.Value?.ToString() ?? "";
         if (EsEdicion) ModificarMapeo(campoExterno, campoPlataforma);
         else MapearCampos(campoExterno, campoPlataforma);
+
+        // Al cambiar el campo del tipo de evento (o del estado) hay que volver a leer sus valores.
+        if (campoPlataforma == $"{DefinicionMapeo.EntidadEvento}.Evento")
+        {
+            mapeo.ValoresEvento = new();
+            await CargarValoresEvento();
+        }
+        else if (campoPlataforma == $"{DefinicionMapeo.EntidadCliente}.Estado")
+        {
+            mapeo.ValoresEstado = new();
+            await CargarValoresEstado();
+        }
     }
 
     // Diagrama CU15
     private void MapearCampos(string campoExterno, string campoPlataforma)
     {
         errorMapeo = "";
-        mapeo[campoPlataforma] = campoExterno;
+        var destino = MapeoIntegracion.Origen(campoPlataforma) == DefinicionMapeo.EntidadEvento ? mapeo.Eventos : mapeo.Clientes;
+        var campo = MapeoIntegracion.Campo(campoPlataforma);
+
+        if (string.IsNullOrEmpty(campoExterno)) destino.Remove(campo);
+        else destino[campo] = campoExterno;
     }
 
     // Diagrama CU16
     private void ModificarMapeo(string campoExterno, string campoPlataforma) =>
         MapearCampos(campoExterno, campoPlataforma);
 
-    // "campoExterno=campoPlataforma;campoExterno=campoPlataforma" (el formato que espera la BLL)
-    private string SerializarMapeo() =>
-        string.Join(";", mapeo.Where(m => !string.IsNullOrEmpty(m.Value)).Select(m => $"{m.Value}={m.Key}"));
+    private void OnValorEventoCambia(ChangeEventArgs e, string valor)
+    {
+        errorMapeo = "";
+        var tipoEvento = e.Value?.ToString() ?? "";
+        if (string.IsNullOrEmpty(tipoEvento)) mapeo.ValoresEvento.Remove(valor);
+        else mapeo.ValoresEvento[valor] = tipoEvento;
+    }
 
-    // Diagramas CU15/CU16: ValidarConsistenciaMapeo(mapeo): bool
+    private void OnValorEstadoCambia(ChangeEventArgs e, string valor)
+    {
+        errorMapeo = "";
+        var estado = e.Value?.ToString() ?? "";
+        if (string.IsNullOrEmpty(estado)) mapeo.ValoresEstado.Remove(valor);
+        else mapeo.ValoresEstado[valor] = estado;
+    }
+
+    private async Task CargarValoresEvento()
+    {
+        mapeo.Eventos.TryGetValue("Evento", out var campoExterno);
+        valoresEventoFuente = await ObtenerValores(campoExterno, mapeo.ValoresEvento.Keys);
+
+        // Si el valor de la fuente se llama igual que un tipo del modelo, se asigna solo.
+        foreach (var valor in valoresEventoFuente.Where(v => !mapeo.ValoresEvento.ContainsKey(v)))
+        {
+            var coincidencia = DefinicionMapeo.TiposEvento.FirstOrDefault(t => t.Equals(valor, StringComparison.OrdinalIgnoreCase));
+            if (coincidencia is not null) mapeo.ValoresEvento[valor] = coincidencia;
+        }
+    }
+
+    private async Task CargarValoresEstado()
+    {
+        mapeo.Clientes.TryGetValue("Estado", out var campoExterno);
+        valoresEstadoFuente = await ObtenerValores(campoExterno, mapeo.ValoresEstado.Keys);
+
+        foreach (var valor in valoresEstadoFuente.Where(v => !mapeo.ValoresEstado.ContainsKey(v)))
+        {
+            var v = valor.Trim().ToLowerInvariant();
+            if (v is "socio activo" or "activo" or "active") mapeo.ValoresEstado[valor] = "Socio Activo";
+            else if (v is "inactivo" or "baja" or "inactive") mapeo.ValoresEstado[valor] = "Inactivo";
+        }
+    }
+
+    private async Task<List<string>> ObtenerValores(string? campoExterno, IEnumerable<string> yaAsignados)
+    {
+        if (string.IsNullOrEmpty(campoExterno)) return new List<string>();
+        try
+        {
+            var valores = await BLLIntegracion.ObtenerValoresDistintos(
+                tipoSeleccionado, CredencialesSerializadas(), campoExterno, EsEdicion ? IdEdicion : null);
+            return valores.Union(yaAsignados).OrderBy(v => v).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMapeo = "No se pudieron leer los valores del campo: " + ex.Message;
+            return new List<string>();
+        }
+    }
+
+    // Diagramas CU15/CU16: ValidarConsistenciaMapeo(mapeo): bool. Deja el motivo en errorMapeo.
     private bool ValidarConsistenciaMapeo(string mapeoSerializado)
     {
-        foreach (var par in mapeoSerializado.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var partes = par.Split('=');
-            var tipoExterno = esquema.GetValueOrDefault(partes[0], "otro");
-            var tipoPlataforma = BLL.BLLIntegracion.CamposPlataforma[partes[1]];
+        var m = MapeoIntegracion.Deserializar(mapeoSerializado);
 
-            // Un campo de texto de la plataforma acepta cualquier tipo; fecha y número exigen el mismo tipo.
-            if (tipoPlataforma != "texto" && tipoExterno != tipoPlataforma) return false;
+        var faltantes = DefinicionMapeo.CamposCliente
+            .Where(c => c.Obligatorio && !m.Clientes.ContainsKey(c.Nombre)).Select(c => $"Cliente: {c.Nombre}")
+            .Concat(DefinicionMapeo.CamposEvento
+                .Where(c => c.Obligatorio && !m.Eventos.ContainsKey(c.Nombre)).Select(c => $"Evento: {c.Nombre}"))
+            .ToList();
+        if (m.ClaveCliente == DefinicionMapeo.ClaveIdExterno && !m.Clientes.ContainsKey("IdExterno"))
+            faltantes.Add("Cliente: IdExterno (es la clave elegida)");
+
+        if (faltantes.Count > 0)
+        {
+            errorMapeo = "Faltan campos obligatorios en el mapeo: " + string.Join(", ", faltantes) + ".";
+            return false;
         }
+
+        // Un campo de texto de la plataforma acepta cualquier tipo; los demás exigen el mismo tipo.
+        foreach (var (campos, asignados) in new[] { (DefinicionMapeo.CamposCliente, m.Clientes), (DefinicionMapeo.CamposEvento, m.Eventos) })
+        {
+            foreach (var campo in campos)
+            {
+                if (asignados.TryGetValue(campo.Nombre, out var externo)
+                    && campo.Tipo != "texto"
+                    && esquema.GetValueOrDefault(externo, "otro") != campo.Tipo)
+                {
+                    errorMapeo = "Campos con tipos de datos inconsistentes.";
+                    return false;
+                }
+            }
+        }
+
+        if (!m.ValoresEvento.Values.Any(v => !string.IsNullOrEmpty(v)))
+        {
+            errorMapeo = "Asigná al menos un tipo de evento de la fuente a un tipo del modelo.";
+            return false;
+        }
+
+        if (m.Clientes.ContainsKey("Estado") && valoresEstadoFuente.Any(v => !m.ValoresEstado.ContainsKey(v)))
+        {
+            errorMapeo = "Asigná un estado a cada valor del campo Estado.";
+            return false;
+        }
+
         return true;
     }
 
@@ -426,21 +742,12 @@
     {
         if (!RevisarCampos() || !conexionProbada) return;
 
-        var mapeoTexto = SerializarMapeo();
-        if (mapeoTexto.Length == 0)
-        {
-            errorMapeo = "Asociá al menos un campo de la fuente con un campo de la plataforma.";
-            return;
-        }
-        if (!ValidarConsistenciaMapeo(mapeoTexto))
-        {
-            errorMapeo = "Campos con tipos de datos inconsistentes.";
-            return;
-        }
+        var mapeoTexto = mapeo.Serializar();
+        if (!ValidarConsistenciaMapeo(mapeoTexto)) return;
 
         try
         {
-            var credenciales = ConstruirCredenciales(urlServidor, usuario, apiKey, nombreBaseDatos).Serializar();
+            var credenciales = CredencialesSerializadas();
 
             if (EsEdicion)
                 await BLLIntegracion.ActualizarConfiguracion(IdEdicion, credenciales, mapeoTexto, Integracion.EstadoActiva);

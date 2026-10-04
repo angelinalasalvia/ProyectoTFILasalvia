@@ -23,6 +23,7 @@ public class Integracion
     public string? Usuario { get; set; }
     public string? Secreto { get; set; }
     public string? BaseDatos { get; set; }
+    public string? UrlEventos { get; set; }            // solo API: segundo endpoint, el de los eventos de los clientes
 
     // Valores que se guardan en la columna Tipo (coinciden con los de la pantalla de alta).
     public const string TipoCRM = "CRM";
@@ -43,6 +44,7 @@ public class CredencialesIntegracion
     public string Usuario { get; set; } = string.Empty;    // BD: usuario | CRM: Client ID | API: no aplica
     public string Secreto { get; set; } = string.Empty;    // BD: contraseña | API: API Key | CRM: Client Secret
     public string? BaseDatos { get; set; }                 // solo BD
+    public string? UrlEventos { get; set; }                // solo API: endpoint de eventos (el de Url devuelve los clientes)
 
     public string Serializar() => JsonSerializer.Serialize(this);
 

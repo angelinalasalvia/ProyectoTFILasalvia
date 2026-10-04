@@ -1,41 +1,31 @@
-﻿using BE;
+﻿using System.Security.Cryptography;
+using BE;
 using DAL;
 using Microsoft.AspNetCore.DataProtection;
-using System.Security.Cryptography;
 
 namespace BLL;
 
 // Casos de uso CU14 (gestión), CU15 (nueva integración) y CU16 (editar credenciales).
 // Los nombres de los métodos públicos son los de los diagramas de secuencia.
-// Quedan para el próximo bloque: ObtenerEsquemaCampos y ActualizarInformacionIntegracion (necesitan los conectores reales).
 public class BLLIntegracion
 {
     public const string SecretoEnmascarado = "••••••••••";
 
     // Cada cuánto debería sincronizarse una integración activa (lo usa la métrica "próxima sincronización").
     public static readonly TimeSpan IntervaloSincronizacion = TimeSpan.FromMinutes(15);
-    public static readonly IReadOnlyDictionary<string, string> CamposPlataforma = new Dictionary<string, string>
-    {
-        ["Nombre"] = "texto",
-        ["Apellido"] = "texto",
-        ["Email"] = "texto",
-        ["Telefono"] = "texto",
-        ["Plan"] = "texto",
-        ["Sede"] = "texto",
-        ["Estado"] = "texto",
-        ["FechaInicio"] = "fecha"
-    };
 
     private const string PrefijoCifrado = "enc:";
     private const string EmailUsuarioSistema = "sistema@mailtest.com";
 
     private readonly AccesoDatos _accesoDatos;
     private readonly IDataProtector _protector;
+    private readonly ImportadorDatos _importador;
 
     public BLLIntegracion(AccesoDatos accesoDatos, IDataProtectionProvider proveedorProteccion)
     {
         _accesoDatos = accesoDatos;
         _protector = proveedorProteccion.CreateProtector("TFI.Integraciones.Credenciales");
+        _importador = new ImportadorDatos(accesoDatos);
     }
 
     // Filas auxiliares para leer resultados de conteo con AccesoDatos.Leer<T>.
@@ -69,20 +59,21 @@ public class BLLIntegracion
         return integracion;
     }
 
-    // CU16 paso 10: mapeo actual, un elemento por campo con el formato "externo=plataforma".
-    public async Task<List<string>> ObtenerMapeoActual(int idIntegracion, CancellationToken ct = default)
+    // CU16 paso 10: el mapeo guardado (clientes, eventos y valores). Si no hay, o tiene un formato anterior, viene vacío.
+    public async Task<MapeoIntegracion> ObtenerMapeoActual(int idIntegracion, CancellationToken ct = default)
     {
         var filas = await _accesoDatos.Leer<Integracion>(
             "SELECT Mapeo FROM Integracion WHERE IdIntegracion = @idIntegracion",
             new { idIntegracion }, ct: ct);
 
-        var mapeo = filas.FirstOrDefault()?.Mapeo;
-        return string.IsNullOrWhiteSpace(mapeo)
-            ? new List<string>()
-            : mapeo.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+        return MapeoIntegracion.Deserializar(filas.FirstOrDefault()?.Mapeo);
     }
 
-    // Lo usa TestearConexion de la pantalla (CU15 paso 7 / CU16 paso 8).
+    // ------------------------------------------------------------------------------------
+    // Conexión con la fuente (CU15 pasos 7 y 9 / CU16 pasos 8 y 10)
+    // ------------------------------------------------------------------------------------
+
+    // Lo usa TestearConexion de la pantalla.
     public async Task<ResultadoConexion> ProbarConexion(string tipo, string credenciales,
         int? idIntegracion = null, CancellationToken ct = default)
     {
@@ -97,7 +88,7 @@ public class BLLIntegracion
         }
     }
 
-    // CU15 paso 9. Devuelve "nombre|tipo" por campo, donde tipo es texto, fecha, numero u otro.
+    // Devuelve "Origen.Campo|tipo" por campo, donde el origen es la tabla, el objeto o el endpoint y tipo es texto, fecha, numero u otro.
     public async Task<List<string>> ObtenerEsquemaCampos(string tipo, string credenciales,
         int? idIntegracion = null, CancellationToken ct = default)
     {
@@ -106,23 +97,20 @@ public class BLLIntegracion
         return campos.Select(f => $"{f.Nombre}|{f.Tipo}").ToList();
     }
 
-    // En edición el secreto llega enmascarado: se usa el que está guardado (descifrado).
-    private async Task<CredencialesIntegracion> ResolverCredenciales(string credenciales, int? idIntegracion, CancellationToken ct)
+    // Valores distintos de un campo de la fuente ("Origen.Campo"), hasta 100. Sirve para traducir, por ejemplo,
+    // los tipos de evento de la fuente a los que entiende el modelo.
+    public async Task<List<string>> ObtenerValoresDistintos(string tipo, string credenciales, string campoExterno,
+        int? idIntegracion = null, CancellationToken ct = default)
     {
-        var c = CredencialesIntegracion.Deserializar(credenciales);
-        if (idIntegracion is not null && (string.IsNullOrEmpty(c.Secreto) || c.Secreto == SecretoEnmascarado))
-        {
-            var guardada = await LeerCompleta(idIntegracion.Value, ct);
-            c.Secreto = string.IsNullOrEmpty(guardada?.Secreto) ? "" : Descifrar(guardada.Secreto);
-        }
-        return c;
+        var c = await ResolverCredenciales(credenciales, idIntegracion, ct);
+        return await ConectorFuente.ObtenerValoresDistintos(tipo, c, campoExterno, ct);
     }
 
     // ------------------------------------------------------------------------------------
-    // CU15 paso 14. 'credenciales' es un CredencialesIntegracion serializado (incluye el nombre).
-    // 'mapeo' llega como "externo=plataforma;externo=plataforma". Se guarda todo en una sola
-    // transacción (AccesoDatos.Escribir ya la abre). 'idUsuario' es opcional mientras no haya
-    // sesión: si no se informa se usa el usuario del sistema, igual que el motor de reglas.
+    // CU15 paso 14. 'credenciales' es un CredencialesIntegracion serializado (incluye el nombre) y
+    // 'mapeo' es un MapeoIntegracion serializado. Se guarda todo en una sola transacción
+    // (AccesoDatos.Escribir ya la abre). 'idUsuario' es opcional mientras no haya sesión: si no se
+    // informa se usa el usuario del sistema, igual que el motor de reglas.
     // ------------------------------------------------------------------------------------
     public async Task<int> RegistrarNuevaIntegracion(string tipo, string credenciales, string mapeo, string estado,
         int? idUsuario = null, CancellationToken ct = default)
@@ -147,6 +135,7 @@ public class BLLIntegracion
                 idUsuario = idCreador,
                 mapeo,
                 url = c.Url,
+                urlEventos = c.UrlEventos,
                 servidor,
                 puerto,
                 usuario = c.Usuario,
@@ -185,6 +174,7 @@ public class BLLIntegracion
                 estado,
                 mapeo,
                 url = c.Url,
+                urlEventos = c.UrlEventos,
                 servidor,
                 puerto,
                 usuario = c.Usuario,
@@ -210,29 +200,44 @@ public class BLLIntegracion
     }
 
     // CU14 paso 12: borra las credenciales del tipo y la integración, todo en una transacción.
+    // Los clientes que se hayan importado desde esta fuente se conservan (solo pierden el vínculo).
     public Task<int> EliminarIntegracion(int idIntegracion, CancellationToken ct = default)
         => _accesoDatos.Eliminar(
-            @"DELETE FROM IntegracionBD  WHERE IntegracionID = @idIntegracion;
+            @"UPDATE Cliente SET IdIntegracion = NULL WHERE IdIntegracion = @idIntegracion;
+              DELETE FROM IntegracionBD  WHERE IntegracionID = @idIntegracion;
               DELETE FROM IntegracionAPI WHERE IntegracionID = @idIntegracion;
               DELETE FROM IntegracionCRM WHERE IntegracionID = @idIntegracion;
               DELETE FROM Integracion    WHERE IdIntegracion = @idIntegracion;",
             new { idIntegracion }, ct: ct);
 
-    // CU14 paso 8 (diagrama: ActualizarInformacionIntegracion(): resultadoSincronizacion).
-    // Reconecta con la fuente, cuenta los registros mapeados y actualiza la integración.
-    // Si falla, la integración queda en "Error de Autenticación" con el motivo guardado
-    // (la última sincronización exitosa se conserva).
+    // ------------------------------------------------------------------------------------
+    // Sincronización (CU14 paso 8). Diagrama: ActualizarInformacionIntegracion(): resultadoSincronizacion.
+    //  1) Reconecta con la fuente y lee los clientes y los eventos mapeados.
+    //  2) Los traduce según el mapeo y los importa a Cliente y EventosCliente (sin duplicar).
+    //  3) Guarda la fecha, la cantidad de registros leídos y el estado de la integración.
+    // Si falla la conexión o la lectura de la fuente, la integración queda en "Error de Autenticación" con
+    // el motivo (la última sincronización exitosa se conserva). Si falla el guardado en la base de la
+    // plataforma, se informa pero el estado de la integración no cambia: la fuente no es la culpable.
+    // ------------------------------------------------------------------------------------
     public async Task<ResultadoSincronizacion> ActualizarInformacionIntegracion(int idIntegracion, CancellationToken ct = default)
     {
         var integracion = await LeerCompleta(idIntegracion, ct)
             ?? throw new InvalidOperationException($"No existe la integración {idIntegracion}.");
 
+        var mapeo = MapeoIntegracion.Deserializar(integracion.Mapeo);
+        if (string.IsNullOrEmpty(mapeo.OrigenClientes) || string.IsNullOrEmpty(mapeo.OrigenEventos))
+            return new ResultadoSincronizacion(false,
+                "No fue posible completar la sincronización: la integración no tiene mapeo de clientes y eventos. Editala y guardá el mapeo.", 0);
+
+        // ---- 1) lectura de la fuente
+        List<Dictionary<string, string?>> filasClientes, filasEventos;
         try
         {
             var c = new CredencialesIntegracion
             {
                 Nombre = integracion.Nombre,
                 Url = integracion.Url ?? "",
+                UrlEventos = integracion.UrlEventos,
                 Usuario = integracion.Usuario ?? "",
                 Secreto = string.IsNullOrEmpty(integracion.Secreto) ? "" : Descifrar(integracion.Secreto),
                 BaseDatos = integracion.BaseDatos
@@ -241,21 +246,8 @@ public class BLLIntegracion
             var prueba = await ConectorFuente.Probar(integracion.Tipo, c, ct);
             if (!prueba.Exito) return await RegistrarFalloSincronizacion(idIntegracion, prueba.Mensaje, ct);
 
-            var camposMapeados = (integracion.Mapeo ?? "")
-                .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                .Select(par => par.Split('=')[0])
-                .ToList();
-
-            var registros = await ConectorFuente.ContarRegistros(integracion.Tipo, c, camposMapeados, ct);
-
-            await _accesoDatos.Modificar(
-                @"UPDATE Integracion
-                 SET UltimaSincronizacion = GETDATE(), CantidadRegistros = @registros,
-                     Estado = @activa, MensajeError = NULL
-               WHERE IdIntegracion = @idIntegracion",
-                new { idIntegracion, registros, activa = Integracion.EstadoActiva }, ct: ct);
-
-            return new ResultadoSincronizacion(true, "Sincronización finalizada con éxito.", registros);
+            filasClientes = await ConectorFuente.LeerFilas(integracion.Tipo, c, mapeo.OrigenClientes, mapeo.Clientes.Values.ToList(), ct);
+            filasEventos = await ConectorFuente.LeerFilas(integracion.Tipo, c, mapeo.OrigenEventos, mapeo.Eventos.Values.ToList(), ct);
         }
         catch (CryptographicException)
         {
@@ -264,6 +256,34 @@ public class BLLIntegracion
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             return await RegistrarFalloSincronizacion(idIntegracion, ConectorFuente.Describir(ex), ct);
+        }
+
+        // ---- 2) traducción e importación
+        try
+        {
+            var datos = TransformadorMapeo.Normalizar(mapeo, filasClientes, filasEventos);
+            var importado = await _importador.Importar(idIntegracion, mapeo, datos, ct);
+
+            // ---- 3) estado de la integración
+            var registros = filasClientes.Count + filasEventos.Count;
+            await _accesoDatos.Modificar(
+                @"UPDATE Integracion
+                     SET UltimaSincronizacion = GETDATE(), CantidadRegistros = @registros,
+                         Estado = @activa, MensajeError = NULL
+                   WHERE IdIntegracion = @idIntegracion",
+                new { idIntegracion, registros, activa = Integracion.EstadoActiva }, ct: ct);
+
+            var descartados = datos.EventosInvalidos + importado.EventosSinCliente;
+            var mensaje = $"Sincronización finalizada con éxito. Clientes: {importado.ClientesNuevos} nuevos, " +
+                          $"{importado.ClientesActualizados} actualizados. Eventos: {importado.EventosNuevos} nuevos" +
+                          (descartados > 0 ? $" ({descartados} descartados por no tener cliente o una fecha válida)." : ".");
+
+            return new ResultadoSincronizacion(true, mensaje, registros);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            return new ResultadoSincronizacion(false,
+                "No fue posible completar la sincronización: no se pudieron guardar los datos importados. " + ex.Message, 0);
         }
     }
 
@@ -290,6 +310,7 @@ public class BLLIntegracion
 
         return new ResultadoSincronizacion(false, "No fue posible completar la sincronización: " + motivo, 0);
     }
+
     // ------------------------------------------------------------------------------------
     // Internos
     // ------------------------------------------------------------------------------------
@@ -300,6 +321,7 @@ public class BLLIntegracion
                      i.UltimaSincronizacion, i.CantidadRegistros, i.Mapeo, i.MensajeError,
                      COALESCE(bd.Servidor + CASE WHEN bd.Puerto IS NULL OR bd.Puerto = '' THEN '' ELSE ',' + bd.Puerto END,
                               api.Endpoint, crm.UrlServidor) AS Url,
+                     api.EndpointEventos AS UrlEventos,
                      COALESCE(bd.Usuario, crm.ClienteID) AS Usuario,
                      COALESCE(bd.[Password], api.ApiKey, crm.ClientSecret) AS Secreto,
                      bd.BaseDatos AS BaseDatos
@@ -312,12 +334,24 @@ public class BLLIntegracion
         return filas.FirstOrDefault();
     }
 
+    // En edición el secreto llega enmascarado: se usa el que está guardado (descifrado).
+    private async Task<CredencialesIntegracion> ResolverCredenciales(string credenciales, int? idIntegracion, CancellationToken ct)
+    {
+        var c = CredencialesIntegracion.Deserializar(credenciales);
+        if (idIntegracion is not null && (string.IsNullOrEmpty(c.Secreto) || c.Secreto == SecretoEnmascarado))
+        {
+            var guardada = await LeerCompleta(idIntegracion.Value, ct);
+            c.Secreto = string.IsNullOrEmpty(guardada?.Secreto) ? "" : Descifrar(guardada.Secreto);
+        }
+        return c;
+    }
+
     private static string SqlAltaCredenciales(string tipo) => tipo switch
     {
         Integracion.TipoBD =>
             "INSERT INTO IntegracionBD (BaseDatos, Puerto, Servidor, Usuario, IntegracionID, [Password]) VALUES (@baseDatos, @puerto, @servidor, @usuario, @id, @secreto);",
         Integracion.TipoAPI =>
-            "INSERT INTO IntegracionAPI (ApiKey, IntegracionID, Endpoint) VALUES (@secreto, @id, @url);",
+            "INSERT INTO IntegracionAPI (ApiKey, IntegracionID, Endpoint, EndpointEventos) VALUES (@secreto, @id, @url, @urlEventos);",
         Integracion.TipoCRM =>
             "INSERT INTO IntegracionCRM (ClienteID, ClientSecret, IntegracionID, UrlServidor) VALUES (@usuario, @secreto, @id, @url);",
         _ => throw new ArgumentException($"Tipo de integración desconocido: {tipo}")
@@ -329,7 +363,7 @@ public class BLLIntegracion
         Integracion.TipoBD =>
             "UPDATE IntegracionBD SET BaseDatos = @baseDatos, Puerto = @puerto, Servidor = @servidor, Usuario = @usuario, [Password] = COALESCE(@secreto, [Password]) WHERE IntegracionID = @id;",
         Integracion.TipoAPI =>
-            "UPDATE IntegracionAPI SET Endpoint = @url, ApiKey = COALESCE(@secreto, ApiKey) WHERE IntegracionID = @id;",
+            "UPDATE IntegracionAPI SET Endpoint = @url, EndpointEventos = @urlEventos, ApiKey = COALESCE(@secreto, ApiKey) WHERE IntegracionID = @id;",
         Integracion.TipoCRM =>
             "UPDATE IntegracionCRM SET UrlServidor = @url, ClienteID = @usuario, ClientSecret = COALESCE(@secreto, ClientSecret) WHERE IntegracionID = @id;",
         _ => throw new ArgumentException($"Tipo de integración desconocido: {tipo}")

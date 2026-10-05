@@ -22,6 +22,10 @@ public record ResultadoEnvio(bool Exito, string Mensaje);
 // Configuración "Twilio" (AccountSid y AuthToken van en user-secrets):
 //   AccountSid, AuthToken, NumeroOrigen (ej: whatsapp:+14155238886),
 //   DestinatarioPrueba  (si tiene valor, TODOS los WhatsApp se redirigen a ese número)
+//   ContentSid          (opcional, "HX..."). Si tiene valor se envía esa plantilla en lugar del texto libre.
+//                       Es obligatorio en la cuenta de prueba (trial) de Twilio, que solo permite las plantillas
+//                       que ofrece la pantalla "Try out WhatsApp". Con una cuenta/sender aprobado se puede dejar vacío.
+//   ContentVariables    (opcional) JSON con los valores de la plantilla, ej: {"1":"22 de octubre","2":"15:15"}
 public class ServicioEnvio
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
@@ -114,15 +118,30 @@ public class ServicioEnvio
 
         if (modoPrueba) mensaje += $"\n\n[Modo prueba] Destinatario original: {telefono}";
 
+        var campos = new Dictionary<string, string>
+        {
+            ["From"] = origen.StartsWith("whatsapp:") ? origen : "whatsapp:" + origen,
+            ["To"] = "whatsapp:" + destino
+        };
+
+        // Con ContentSid se envía una plantilla (el texto lo define la plantilla, no 'mensaje'); sin él, texto libre.
+        var contentSid = _config["Twilio:ContentSid"];
+        var usaPlantilla = !string.IsNullOrWhiteSpace(contentSid);
+        if (usaPlantilla)
+        {
+            campos["ContentSid"] = contentSid!.Trim();
+            var variables = _config["Twilio:ContentVariables"];
+            if (!string.IsNullOrWhiteSpace(variables)) campos["ContentVariables"] = variables;
+        }
+        else
+        {
+            campos["Body"] = mensaje;
+        }
+
         using var req = new HttpRequestMessage(HttpMethod.Post,
             $"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json")
         {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["From"] = origen.StartsWith("whatsapp:") ? origen : "whatsapp:" + origen,
-                ["To"] = "whatsapp:" + destino,
-                ["Body"] = mensaje
-            })
+            Content = new FormUrlEncodedContent(campos)
         };
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic",
             Convert.ToBase64String(Encoding.ASCII.GetBytes($"{sid}:{token}")));
@@ -133,7 +152,7 @@ public class ServicioEnvio
             var json = await resp.Content.ReadAsStringAsync(ct);
 
             return resp.IsSuccessStatusCode
-                ? new ResultadoEnvio(true, "WhatsApp enviado.")
+                ? new ResultadoEnvio(true, usaPlantilla ? "WhatsApp enviado (con plantilla)." : "WhatsApp enviado.")
                 : Fallo($"Twilio rechazó el mensaje: {ExtraerErrorTwilio(json)}");
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)

@@ -55,6 +55,11 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         return Results.Text(r.Mensaje);
     });
 }*/
+app.MapGet("/dev/probar-whatsapp", async (ServicioEnvio envio) =>
+{
+    var r = await envio.EnviarWhatsApp("+5491121694073", "Hola, este es un WhatsApp de prueba del TFI.");
+    return Results.Text(r.Mensaje);
+});
 
 
 app.Run();

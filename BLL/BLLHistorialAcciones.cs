@@ -7,11 +7,6 @@ public class BLLHistorialAcciones
 {
     private readonly AccesoDatos _accesoDatos;
 
-    // Umbral asumido para considerar que una campaña "alcanzó su KPI objetivo".
-    // La tabla Campaña no tiene un campo de meta numérica explícito; ajustar si
-    // definen un criterio distinto (por ejemplo, un campo MetaTasaExito).
-    private const decimal UmbralKpi = 50m;
-
     //public BLLHistorialAcciones(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
     private readonly ServicioEnvio _envio;
@@ -22,39 +17,44 @@ public class BLLHistorialAcciones
         _envio = envio;
     }
 
-    //Revisar si se usa o no
-
-    public Task<MetricasCampana> ObtenerMetricasGlobales(CancellationToken ct = default)
-        => ObtenerMetricasGlobalesXPeriodo(DateTime.Now.AddDays(-30), DateTime.Now, ct);
-
+    // CU04 - Métricas globales de las campañas con acciones enviadas dentro del período [desde, hasta].
+    // El rango es inclusivo por día: se consulta hasta el final del día "hasta" (si no, un "hasta" elegido
+    // desde un selector de fecha, que llega a las 00:00, dejaría afuera todas las acciones de ese día).
+    // - Éxito global y canal más efectivo se calculan sobre las campañas que ya tienen TasaExito.
+    // - KPI objetivo: una campaña lo alcanza cuando ClientesAlcanzados >= Meta (solo cuenta las que tienen Meta).
     public async Task<MetricasCampana> ObtenerMetricasGlobalesXPeriodo(DateTime desde, DateTime hasta, CancellationToken ct = default)
     {
-        var campanasDelPeriodo = await _accesoDatos.Leer<CampanaConCanal>(
-            @"SELECT DISTINCT camp.IdCampaña AS IdCampania, camp.TasaExito, ca.Nombre AS Canal
+        var desdeInclusive = desde.Date;
+        var hastaExclusive = hasta.Date.AddDays(1);
+
+        var campanasDelPeriodo = (await _accesoDatos.Leer<CampanaConCanal>(
+            @"SELECT DISTINCT camp.IdCampaña AS IdCampania, camp.TasaExito, camp.ClientesAlcanzados, camp.Meta, ca.Nombre AS Canal
               FROM Campaña camp
               JOIN Canal ca ON ca.IdCanal = camp.IdCanal
               JOIN HistorialAcciones ha ON ha.IdCampaña = camp.IdCampaña
-              WHERE ha.FechaEnvio BETWEEN @desde AND @hasta",
-            new { desde, hasta }, ct: ct);
+              WHERE ha.FechaEnvio >= @desdeInclusive AND ha.FechaEnvio < @hastaExclusive",
+            new { desdeInclusive, hastaExclusive }, ct: ct)).ToList();
 
-        var lista = campanasDelPeriodo.Where(c => c.TasaExito.HasValue).ToList();
+        if (campanasDelPeriodo.Count == 0)
+            return new MetricasCampana { HayCampanasEnPeriodo = false };
 
-        if (lista.Count == 0)
+        var conMeta = campanasDelPeriodo.Where(c => c.Meta is > 0).ToList();
+        var porcentajeKpi = conMeta.Count == 0
+            ? 0m
+            : Math.Round((decimal)conMeta.Count(c => (c.ClientesAlcanzados ?? 0) >= c.Meta!.Value) / conMeta.Count * 100, 1);
+
+        var conTasa = campanasDelPeriodo.Where(c => c.TasaExito.HasValue).ToList();
+        if (conTasa.Count == 0)
         {
+            // Hubo campañas, pero todavía ninguna tiene tasa de éxito calculada.
             return new MetricasCampana
             {
-                ExitoGlobal = 0,
-                PorcentajeCampanasConKpiAlcanzado = 0,
-                CanalMasEfectivo = "Sin datos",
-                TasaCanalMasEfectivo = 0,
-                ImpactoReduccionChurn = 0
+                HayCampanasEnPeriodo = true,
+                PorcentajeCampanasConKpiAlcanzado = porcentajeKpi
             };
         }
 
-        var exitoGlobal = Math.Round(lista.Average(c => c.TasaExito!.Value), 1);
-        var porcentajeKpi = Math.Round((decimal)lista.Count(c => c.TasaExito!.Value >= UmbralKpi) / lista.Count * 100, 1);
-
-        var mejorCanal = lista
+        var mejorCanal = conTasa
             .GroupBy(c => c.Canal)
             .Select(g => new { Canal = g.Key, Tasa = g.Average(x => x.TasaExito!.Value) })
             .OrderByDescending(g => g.Tasa)
@@ -62,12 +62,11 @@ public class BLLHistorialAcciones
 
         return new MetricasCampana
         {
-            ExitoGlobal = exitoGlobal,
+            HayCampanasEnPeriodo = true,
+            ExitoGlobal = Math.Round(conTasa.Average(c => c.TasaExito!.Value), 1),
             PorcentajeCampanasConKpiAlcanzado = porcentajeKpi,
             CanalMasEfectivo = mejorCanal.Canal,
-            TasaCanalMasEfectivo = Math.Round(mejorCanal.Tasa, 1),
-            // Ver nota en BE.MetricasCampana: no hay historial de Prediccion para calcular esto todavía.
-            ImpactoReduccionChurn = 0
+            TasaCanalMasEfectivo = Math.Round(mejorCanal.Tasa, 1)
         };
     }
 
@@ -75,6 +74,8 @@ public class BLLHistorialAcciones
     {
         public int IdCampania { get; set; }
         public decimal? TasaExito { get; set; }
+        public int? ClientesAlcanzados { get; set; }
+        public int? Meta { get; set; }
         public string Canal { get; set; } = string.Empty;
     }
 

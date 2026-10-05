@@ -57,11 +57,6 @@ else
             <div class="camp-kpi-value camp-kpi-canal">@metricas.CanalMasEfectivo</div>
             <div class="camp-kpi-desc">Tasa de conversión <strong>@metricas.TasaCanalMasEfectivo%</strong></div>
         </div>
-        <div class="camp-kpi-item">
-            <div class="camp-kpi-label">Impacto Reducción Churn</div>
-            <div class="camp-kpi-value">@metricas.ImpactoReduccionChurn%</div>
-            <div class="camp-kpi-desc">Sin campañas ejecutadas todavía en el período</div>
-        </div>
     </div>
 }
 
@@ -77,9 +72,9 @@ else
         <div class="filtro-grupo">
             <label class="filtro-label">Canal</label>
             <select class="filtro-select" @bind="canalSeleccionado">
-                <option>Todos los canales</option>
-                <option>Email</option>
-                <option>WhatsApp</option>
+                <option value="">Todos los canales</option>
+                <option value="Email">Email</option>
+                <option value="WhatsApp">WhatsApp</option>
             </select>
         </div>
         <div class="filtro-grupo">
@@ -170,7 +165,7 @@ else
     private string? errorAccion;
     private int? menuAbiertoId;
 
-    private string canalSeleccionado = "Todos los canales";
+    private string canalSeleccionado = string.Empty;
     private string nombreFiltro = string.Empty;
 
     private int paginaActual = 1;
@@ -200,7 +195,7 @@ else
 
     private async Task AplicarPeriodoMetricas()
     {
-        if (fechaDesdeMetricas > fechaHastaMetricas)
+        if (!RangoFechasValido(fechaDesdeMetricas, fechaHastaMetricas))
         {
             errorPeriodoMetricas = "El rango de fechas seleccionado no es válido.";
             return;
@@ -209,11 +204,16 @@ else
         errorPeriodoMetricas = null;
         await CargarMetricas(fechaDesdeMetricas, fechaHastaMetricas);
 
-        if (metricas!.CanalMasEfectivo == "Sin datos")
+        if (!metricas!.HayCampanasEnPeriodo)
         {
             errorPeriodoMetricas = "No existen campañas para el período seleccionado.";
         }
     }
+
+    // Fechas vacías (default) o anteriores a 1753 no son válidas (SQL Server no las admite en datetime);
+    // además "desde" no puede ser posterior a "hasta".
+    private static bool RangoFechasValido(DateTime desde, DateTime hasta)
+        => desde.Year >= 1753 && hasta.Year >= 1753 && desde.Date <= hasta.Date;
 
     private async Task LimpiarPeriodoMetricas()
     {
@@ -225,7 +225,9 @@ else
 
     private async Task AplicarFiltroCampanas()
     {
-        var resultado = await BLLCampana.ObtenerCampanasXFiltro(canalSeleccionado, nombreFiltro);
+        var resultado = await BLLCampana.ObtenerCampanasXFiltro(
+            string.IsNullOrWhiteSpace(canalSeleccionado) ? null : canalSeleccionado,
+            string.IsNullOrWhiteSpace(nombreFiltro) ? null : nombreFiltro);
         campanas = resultado;
         mensajeFiltroSinResultados = resultado.Count == 0
             ? "No existen campañas para los criterios seleccionados."
@@ -235,7 +237,7 @@ else
 
     private async Task LimpiarFiltroCampanas()
     {
-        canalSeleccionado = "Todos los canales";
+        canalSeleccionado = string.Empty;
         nombreFiltro = string.Empty;
         await CargarCampanas();
     }

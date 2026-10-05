@@ -26,7 +26,7 @@ public class BLLCampana
         var condiciones = new List<string>();
         var parametros = new Dictionary<string, object?>();
 
-        if (!string.IsNullOrWhiteSpace(canal) && canal != "Todos los canales")
+        if (!string.IsNullOrWhiteSpace(canal))
         {
             condiciones.Add("ca.Nombre = @canal");
             parametros["canal"] = canal;

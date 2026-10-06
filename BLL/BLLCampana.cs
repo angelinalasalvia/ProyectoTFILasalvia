@@ -61,13 +61,18 @@ public class BLLCampana
         string nombre, int idCanal, string mensaje, int idIncentivo, int metaClientes,
         string objetivoDescripcion, string? asuntoEmail, CancellationToken ct = default)
     {
-        var insertados = await _accesoDatos.Leer<IdSolamente>(
+        return await _accesoDatos.Escribir(
             @"INSERT INTO Campaña (Asunto, Objetivo, IdCanal, IdIncentivo, Mensaje, AsuntoEmail, Meta)
-              OUTPUT INSERTED.IdCampaña AS Id
               VALUES (@nombre, @objetivoDescripcion, @idCanal, @idIncentivo, @mensaje, @asuntoEmail, @metaClientes)",
             new { nombre, objetivoDescripcion, idCanal, idIncentivo, mensaje, asuntoEmail, metaClientes }, ct: ct);
+    }
 
-        return insertados.First().Id;
+    public async Task<bool> ExisteCampanaConNombre(string nombre, CancellationToken ct = default)
+    {
+        var resultado = await _accesoDatos.Leer<IdSolamente>(
+            "SELECT IdCampaña AS Id FROM Campaña WHERE LTRIM(RTRIM(Asunto)) = @nombre",
+            new { nombre = nombre.Trim() }, ct: ct);
+        return resultado.Any();
     }
 
     // CU07 - ModificarCampaña(int id, int idcanal, string mensaje, int idincentivo, int objetivo): int

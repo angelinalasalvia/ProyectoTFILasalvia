@@ -15,8 +15,6 @@ public class BLLRegla
         _historial = historial;
     }
 
-    // VecesEjecutada: acciones de HistorialAcciones generadas por esta regla (IdRegla).
-    // Las acciones anteriores al motor no tienen IdRegla, por eso no se cuentan.
     private const string SelectBase = @"
         SELECT r.IdRegla, r.Estado, r.FechaCreacion, r.IdCampaña AS IdCampania, r.Nombre, r.Prioridad,
                r.IdSede, r.IdPlan,
@@ -29,14 +27,13 @@ public class BLLRegla
         LEFT JOIN Sede sede ON sede.IdSede = r.IdSede
         LEFT JOIN [Plan] pl ON pl.IdPlan = r.IdPlan";
 
-    // CU10, pasos 2-3: listado completo de reglas, más recientes primero.
+    
     public async Task<List<Regla>> ObtenerReglas(CancellationToken ct = default)
     {
         var reglas = (await _accesoDatos.Leer<Regla>($"{SelectBase} ORDER BY r.FechaCreacion DESC", ct: ct)).ToList();
         return await CompletarCondiciones(reglas, ct);
     }
 
-    // CU10, pasos 5-6: búsqueda por nombre. Respeta el criterio de orden elegido en "Filtrar por".
     public async Task<List<Regla>> BuscarReglaPorNombre(string nombre, string criterio = "Más recientes", CancellationToken ct = default)
     {
         var reglas = (await _accesoDatos.Leer<Regla>(
@@ -45,7 +42,6 @@ public class BLLRegla
         return await CompletarCondiciones(reglas, ct);
     }
 
-    // CU10, pasos 7-8: "Filtrar por" (Más recientes / Más ejecutadas / Alfabético).
     public async Task<List<Regla>> ObtenerReglasOrdenadas(string criterio, CancellationToken ct = default)
     {
         var reglas = (await _accesoDatos.Leer<Regla>($"{SelectBase} ORDER BY {OrdenSql(criterio)}", ct: ct)).ToList();
@@ -60,23 +56,16 @@ public class BLLRegla
         _ => "r.FechaCreacion DESC" // "Más recientes"
     };
 
-    // CU10, paso 4: la UI puede marcar una regla como "requiere acción
-    // adicional" (ej: falta configurar la integración del canal). Por ahora
-    // no tenemos ese backend (Integraciones sigue mockeado), así que queda
-    // en false. Cuando se conecte Integraciones, acá se valida el canal
-    // real de la campaña asociada.
-    public bool RequiereAccionAdicional(Regla regla) => false;
+    
+    //public bool RequiereAccionAdicional(Regla regla) => false;
 
-    // CU10, alternos 11.1 / 11.2: pausar / activar.
+    
     public Task CambiarEstado(int idRegla, string nuevoEstado, CancellationToken ct = default)
         => _accesoDatos.Modificar(
             "UPDATE Regla SET Estado = @nuevoEstado WHERE IdRegla = @idRegla",
             new { nuevoEstado, idRegla }, ct: ct);
 
-    // CU10, alterno 11.3: eliminar. Borra primero el vínculo Regla_Condicion y después la Regla y
-    // sus Condicion propias, porque la base no tiene ON DELETE CASCADE. Las acciones ya registradas
-    // en HistorialAcciones se conservan (FK con ON DELETE SET NULL). Todo en un solo Eliminar()
-    // para que quede dentro de la misma transacción.
+    
     public Task EliminarRegla(int idRegla, CancellationToken ct = default)
         => _accesoDatos.Eliminar(
             @"DECLARE @condiciones TABLE (IdCondicion INT);
@@ -86,8 +75,6 @@ public class BLLRegla
               DELETE FROM Condicion WHERE IdCondicion IN (SELECT IdCondicion FROM @condiciones);",
             new { idRegla }, ct: ct);
 
-    // Convención de Condicion.Operador: conector (Y/O) de esa condición con la SIGUIENTE.
-    // La última siempre lleva "Y". Los valores múltiples de una condición van separados por '|'.
     public Task CrearRegla(string nombre, int idCampania, List<Condicion> condiciones, int? idSede = null, int? idPlan = null,
                            int prioridad = Regla.PrioridadPorDefecto, CancellationToken ct = default)
     {
@@ -116,9 +103,6 @@ public class BLLRegla
         return _accesoDatos.Escribir(sql.ToString(), parametros, ct: ct);
     }
 
-    // Para CrearRegla.razor en modo edición: actualiza nombre, campaña, sede/plan y prioridad, y reemplaza
-    // todas las condiciones (se borran las viejas y se insertan las nuevas). Todo en un solo Escribir()
-    // para que sea una sola transacción.
     public Task ModificarRegla(int idRegla, string nombre, int idCampania, List<Condicion> condiciones, int? idSede = null, int? idPlan = null,
                                int prioridad = Regla.PrioridadPorDefecto, CancellationToken ct = default)
     {
@@ -149,8 +133,6 @@ public class BLLRegla
         return _accesoDatos.Escribir(sql.ToString(), parametros, ct: ct);
     }
 
-    // Para CrearRegla.razor en modo edición (/automatizacion/editar-regla/{id}):
-    // trae nombre, campaña, prioridad y condiciones actuales para precargar el formulario.
     public async Task<Regla?> ObtenerReglaPorId(int idRegla, CancellationToken ct = default)
     {
         var reglas = await _accesoDatos.Leer<Regla>($"{SelectBase} WHERE r.IdRegla = @idRegla", new { idRegla }, ct: ct);
@@ -162,10 +144,107 @@ public class BLLRegla
         return regla;
     }
 
-    // Texto legible de las condiciones. El Y se evalúa antes que el O, y los grupos unidos por O
-    // que tienen más de una condición se muestran entre paréntesis:
-    //   Inactividad > 14 días Y Nivel de Riesgo es Medio O Historial de Pagos es Vencido
-    //   => (Inactividad > 14 días Y Nivel de Riesgo es Medio) O Historial de Pagos es Vencido
+    // CU11, pasos 6 y 9 (y 5.1/5.2): estimación en tiempo real de la cantidad de socios activos con predicción
+    // que cumplen hoy las condiciones y la segmentación (plan / sede), con la misma evaluación (CumpleRegla)
+    // que usa el motor. No aplica los topes de frecuencia del motor (30 días entre envíos, bloqueo post-rescate,
+    // máximo 3 intentos): responde "quién califica", no "a quién se le enviaría hoy".
+    // Devuelve null si la configuración está incompleta (todavía no se puede estimar).
+    public async Task<int?> EstimarClientes(List<Condicion> condiciones, int? idSede = null, int? idPlan = null, CancellationToken ct = default)
+    {
+        List<Condicion> filas;
+        try { filas = ValidarYNormalizarCondiciones(condiciones); }
+        catch (ArgumentException) { return null; }
+
+        var ahora = DateTime.Now;
+
+        string? nombrePlan = null;
+        string? nombreSede = null;
+        if (idPlan is not null)
+            nombrePlan = (await _accesoDatos.Leer<NombreSolamente>(
+                "SELECT Nombre FROM [Plan] WHERE IdPlan = @idPlan", new { idPlan }, ct: ct)).FirstOrDefault()?.Nombre;
+        if (idSede is not null)
+            nombreSede = (await _accesoDatos.Leer<NombreSolamente>(
+                "SELECT Nombre FROM Sede WHERE IdSede = @idSede", new { idSede }, ct: ct)).FirstOrDefault()?.Nombre;
+
+        var regla = new Regla { Condiciones = filas, NombrePlan = nombrePlan, NombreSede = nombreSede };
+
+        var predicciones = (await _accesoDatos.Leer<Prediccion>(
+            @"SELECT p.IdCliente, p.NivelRiesgo
+              FROM Prediccion p
+              JOIN Cliente c ON c.IdCliente = p.IdCliente
+              WHERE c.EstadoRegistro = N'Socio Activo'", ct: ct)).ToList();
+
+        var clientes = (await _accesoDatos.Leer<Cliente>(
+            "SELECT IdCliente, PlanSocio, Sede FROM Cliente WHERE EstadoRegistro = N'Socio Activo'", ct: ct))
+            .ToDictionary(c => c.IdCliente);
+
+        var ultimaVisita = await UltimaFechaPorCliente(TipoEvento.VisitaGimnasio, null, ct);
+        var ultimoPagoVencido = await UltimaFechaPorCliente(TipoEvento.PagoVencido, ahora.AddDays(-(DiasPagoVencidoVigente + 2)), ct);
+        var ultimoPago = await UltimaFechaPorCliente(TipoEvento.PagoRegistrado, null, ct);
+
+        var usaActividad = filas.Any(c => c.Atributo == Condicion.Actividad);
+        var visitas60 = usaActividad
+            ? (await _accesoDatos.Leer<EventoCliente>(
+                "SELECT IdCliente, Fecha FROM EventosCliente WHERE Evento = @evento AND Fecha >= @desde",
+                new { evento = TipoEvento.VisitaGimnasio, desde = ahora.AddDays(-60) }, ct: ct))
+                .ToLookup(v => v.IdCliente, v => v.Fecha)
+            : null;
+
+        var usaIntentos = filas.Any(c => c.Atributo == Condicion.IntentosPrevios);
+        var acciones = usaIntentos
+            ? (await _accesoDatos.Leer<HistorialAccion>(
+                "SELECT IdCliente, FechaEnvio, Resultado FROM HistorialAcciones", ct: ct))
+                .ToLookup(a => a.IdCliente)
+            : null;
+
+        var total = 0;
+        foreach (var prediccion in predicciones)
+        {
+            if (!clientes.TryGetValue(prediccion.IdCliente, out var cliente)) continue;
+
+            var inactividad = ultimaVisita.TryGetValue(prediccion.IdCliente, out var fechaVisita) ? (ahora - fechaVisita).Days : 9999;
+
+            var vencido = ultimoPagoVencido.TryGetValue(prediccion.IdCliente, out var fechaVencido)
+                          && (ahora - fechaVencido).Days <= DiasPagoVencidoVigente
+                          && !(ultimoPago.TryGetValue(prediccion.IdCliente, out var fechaPago) && fechaPago > fechaVencido);
+
+            var caidaActividad = 0;
+            if (visitas60 is not null)
+            {
+                var fechas = visitas60[prediccion.IdCliente].ToList();
+                var recientes = fechas.Count(f => f >= ahora.AddDays(-30));
+                var anteriores = fechas.Count - recientes;
+                caidaActividad = anteriores > 0 ? (int)Math.Round(100.0 * (anteriores - recientes) / anteriores) : 0;
+            }
+
+            var textoIntentos = "Ninguno";
+            if (acciones is not null)
+            {
+                var historial = acciones[prediccion.IdCliente].OrderBy(a => a.FechaEnvio).ToList();
+                var ultimoRescate = historial.LastOrDefault(a => a.Resultado == HistorialAccion.ResultadoRescatado);
+                var intentos = historial.Count(a => ultimoRescate is null || a.FechaEnvio > ultimoRescate.FechaEnvio);
+                textoIntentos = intentos switch { 0 => "Ninguno", 1 => "Uno", _ => "Dos" };
+            }
+
+            if (CumpleRegla(regla, cliente, prediccion.NivelRiesgo, inactividad, vencido, caidaActividad, textoIntentos))
+                total++;
+        }
+
+        return total;
+    }
+
+    // CU11, paso 11: el nombre de la regla no puede repetirse (se ignoran espacios en los extremos).
+    public async Task<bool> ExisteReglaConNombre(string nombre, CancellationToken ct = default)
+    {
+        var resultado = await _accesoDatos.Leer<IdSolamente>(
+            "SELECT IdRegla AS Id FROM Regla WHERE LTRIM(RTRIM(Nombre)) = @nombre",
+            new { nombre = nombre.Trim() }, ct: ct);
+        return resultado.Any();
+    }
+
+    private class IdSolamente { public int Id { get; set; } }
+    private class NombreSolamente { public string Nombre { get; set; } = string.Empty; }
+
     public static string ArmarResumen(List<Condicion> condiciones)
     {
         if (condiciones.Count == 0) return string.Empty;

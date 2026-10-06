@@ -47,6 +47,10 @@
     {
         <span class="camp-form-error">El nombre de la regla es obligatorio.</span>
     }
+    @if (errores.Contains("nombreDuplicado"))
+    {
+        <span class="camp-form-error">Ya existe una regla con ese nombre.</span>
+    }
 
     <label class="form-label regla-label-prioridad">PRIORIDAD (1 = MÁS ALTA)</label>
     <input type="number" class="campana-select @(errores.Contains("prioridad") ? "input-error" : "")"
@@ -87,7 +91,7 @@
         <div class="regla-cond-box @(errores.Contains($"condicion-{idx}") ? "input-error" : "")">
             <span class="regla-cond-label">@(idx == 0 ? "SI EL SOCIO TIENE..." : $"{condiciones[idx - 1].Operador} ADEMÁS...")</span>
             <div class="regla-cond-fields">
-                <select class="regla-cond-select-atributo" @bind="c.Atributo" @bind:after="() => AlCambiarAtributo(c)">
+                <select class="regla-cond-select-atributo" @bind="c.Atributo" @bind:after="() => CambiarAtributo(c)">
                     @foreach (var a in BE.Condicion.Atributos)
                     {
                         <option value="@a.Nombre">@a.Nombre</option>
@@ -97,7 +101,7 @@
                 @if (atrDef.EsNumerico)
                 {
                     <span class="regla-cond-texto">es mayor a</span>
-                    <input type="number" min="1" class="regla-cond-input-num" @bind="c.Valor" />
+                    <input type="number" min="1" class="regla-cond-input-num" @bind="c.Valor" @bind:after="ActualizarEstimacion" />
                     <span class="regla-cond-texto">@atrDef.Unidad</span>
                 }
                 else if (atrDef.PermiteMultiples)
@@ -116,7 +120,7 @@
                 else
                 {
                     <span class="regla-cond-texto">es igual a</span>
-                    <select class="regla-cond-select-valor" @bind="c.Valor">
+                    <select class="regla-cond-select-valor" @bind="c.Valor" @bind:after="ActualizarEstimacion">
                         @foreach (var op in atrDef.Opciones)
                         {
                             <option value="@op">@op</option>
@@ -133,7 +137,7 @@
     </button>
 
     <div class="regla-estimacion-box">
-        📊 <strong>≈ @EstimacionClientes().ToString("N0") clientes</strong> cumplen esta configuración
+        📊 <strong>≈ @(estimacion is int cantidad ? cantidad.ToString("N0") : "—") clientes</strong> cumplen esta configuración
     </div>
 
     <p class="camp-form-sublabel regla-resumen-logico">
@@ -216,7 +220,7 @@
     <div class="regla-segmentacion-row">
         <div>
             <label class="camp-form-sublabel">TIPO DE PLAN</label>
-            <select class="campana-select" @bind="planSeleccionadoId">
+            <select class="campana-select" @bind="planSeleccionadoId" @bind:after="ActualizarEstimacion">
                 <option value="">Todos los planes</option>
                 @foreach (var plan in planesDisponibles)
                 {
@@ -226,7 +230,7 @@
         </div>
         <div>
             <label class="camp-form-sublabel">SEDE / UBICACIÓN</label>
-            <select class="campana-select" @bind="sedeSeleccionadaId">
+            <select class="campana-select" @bind="sedeSeleccionadaId" @bind:after="ActualizarEstimacion">
                 <option value="">Todas las sedes</option>
                 @foreach (var sede in sedesDisponibles)
                 {
@@ -257,6 +261,8 @@
     private List<BE.PlanSocio> planesDisponibles = new();
     private int? sedeSeleccionadaId;
     private int? planSeleccionadoId;
+
+    private int? estimacion;
 
     // --- Condiciones: se editan directamente como BE.Condicion (mismo formato que la BD) ---
     // Operador = conector de la condición con la SIGUIENTE. El botón Y/O que se ve entre dos
@@ -295,7 +301,7 @@
         {
             await CargarReglaExistente();
         }
-
+        await ActualizarEstimacion();
         cargando = false;
     }
 
@@ -327,26 +333,56 @@
         }
     }
 
-    private void AgregarCondicion()
+    private async Task AgregarCondicion()
     {
         condiciones[^1].Operador = BE.Condicion.Y; // conector con la nueva condición (por defecto Y)
         condiciones.Add(new BE.Condicion { Atributo = BE.Condicion.Inactividad, Valor = "15" });
+        await ActualizarEstimacion();
     }
 
-    private void EliminarCondicion(BE.Condicion c)
+    private async Task EliminarCondicion(BE.Condicion c)
     {
         // Siempre debe quedar al menos una condición.
         if (condiciones.Count > 1)
         {
             condiciones.Remove(c);
             condiciones[^1].Operador = BE.Condicion.Y; // la última no conecta con nada
+            await ActualizarEstimacion();
         }
     }
 
-    // 'previa' es la condición que está arriba del botón: su Operador es el conector con la de abajo.
-    private void AlternarLogica(BE.Condicion previa)
+    private async Task AlternarLogica(BE.Condicion previa)
     {
         previa.Operador = previa.Operador == BE.Condicion.Y ? BE.Condicion.O : BE.Condicion.Y;
+        await ActualizarEstimacion();
+    }
+
+    private async Task AlternarValor(BE.Condicion c, string valor)
+    {
+        var def = AtributoDef(c.Atributo);
+        var elegidos = BE.Condicion.SepararValores(c.Valor).ToHashSet();
+        if (!elegidos.Remove(valor)) elegidos.Add(valor);
+        c.Valor = BE.Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); // siempre en el orden de las opciones
+        await ActualizarEstimacion();
+    }
+
+    private async Task CambiarAtributo(BE.Condicion c)
+    {
+        AlCambiarAtributo(c);
+        await ActualizarEstimacion();
+    }
+
+    // CU11, pasos 6, 5.1, 5.2 y 8.1: estimación real calculada en la BLL.
+    private async Task ActualizarEstimacion()
+    {
+        try
+        {
+            estimacion = await BLLRegla.EstimarClientes(condiciones, sedeSeleccionadaId, planSeleccionadoId);
+        }
+        catch
+        {
+            estimacion = null;
+        }
     }
 
     // Al cambiar el atributo se descarta el valor del anterior (evita guardar un valor
@@ -362,35 +398,13 @@
     private static bool EstaElegido(BE.Condicion c, string valor) =>
         BE.Condicion.SepararValores(c.Valor).Contains(valor);
 
-    private void AlternarValor(BE.Condicion c, string valor)
-    {
-        var def = AtributoDef(c.Atributo);
-        var elegidos = BE.Condicion.SepararValores(c.Valor).ToHashSet();
-        if (!elegidos.Remove(valor)) elegidos.Add(valor);
-        c.Valor = BE.Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); // siempre en el orden de las opciones
-    }
+        
 
     /// <summary>
     /// Estimación en tiempo real de clientes impactados (CU11, pasos 4, 7 y 9).
     /// Cálculo simulado: en un escenario real vendría del backend / modelo de IA.
     /// </summary>
-    private int EstimacionClientes()
-    {
-        int baseClientes = 3421;
-        double factor = 1.0;
-
-        foreach (var c in condiciones)
-        {
-            factor *= AtributoDef(c.Atributo).EsNumerico ? 0.35 : 0.25;
-        }
-
-        if (CampañaSeleccionada is not null) factor *= 0.9;
-        if (planSeleccionadoId is not null) factor *= 0.35;
-        if (sedeSeleccionadaId is not null) factor *= 0.4;
-
-        return Math.Max(1, (int)(baseClientes * factor));
-    }
-
+    
     private bool Validar()
     {
         errores.Clear();
@@ -439,6 +453,15 @@
         guardando = true;
         try
         {
+            // CU11, 11.2: el nombre no puede repetirse (en edición el nombre no se modifica).
+            if (!EsEdicion && await BLLRegla.ExisteReglaConNombre(nombreRegla))
+            {
+                errores.Add("nombreDuplicado");
+                mensajeConfirmacion = "";
+                guardando = false;
+                return;
+            }
+
             if (EsEdicion)
             {
                 await BLLRegla.ModificarRegla(IdRegla!.Value, nombreRegla.Trim(), campañaSeleccionadaId!.Value, condiciones,
@@ -452,11 +475,19 @@
                 mensajeConfirmacion = "Regla creada exitosamente con estado Activa.";
             }
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            // Mensajes de validación de la BLL (ya están redactados para el usuario).
+            guardando = false;
+            mensajeConfirmacion = "";
+            mensajeError = ex.Message;
+            return;
+        }
+        catch (Exception)
         {
             guardando = false;
             mensajeConfirmacion = "";
-            mensajeError = $"No se pudo guardar la regla: {ex.Message}";
+            mensajeError = "No fue posible guardar la regla. Intentá nuevamente.";
             return;
         }
 

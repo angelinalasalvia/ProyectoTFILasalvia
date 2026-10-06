@@ -32,13 +32,18 @@
 
         <div class="card camp-form-card">
             <label class="form-label">NOMBRE DE LA CAMPAÑA</label>
-            <input class="camp-text-input camp-form-input @(errores.Contains("nombre") ? "input-error" : "")"
+            <input class="camp-text-input camp-form-input @(errores.Contains("nombre") || errores.Contains("nombreDuplicado") ? "input-error" : "")"
                    @bind="nombreCampana" @bind:event="oninput"
+                   maxlength="255"
                    disabled="@EsEdicion"
                    placeholder="Ej: Campaña de Retención Premium" />
             @if (errores.Contains("nombre"))
             {
                 <span class="camp-form-error">El nombre de la campaña es obligatorio.</span>
+            }
+            @if (errores.Contains("nombreDuplicado"))
+            {
+                <span class="camp-form-error">Ya existe una campaña con ese nombre.</span>
             }
         </div>
 
@@ -324,21 +329,17 @@
         try
         {
             var asuntoAGuardar = CanalActual == "Email" ? asuntoEmail : null;
-
-            if (EsEdicion)
+            // CU06: el nombre no puede repetirse (en edición el nombre no se modifica).
+            if (!EsEdicion && await BLLCampana.ExisteCampanaConNombre(nombreCampana))
             {
-                // ModificarCampaña(int id, int idcanal, string mensaje, int idincentivo, int objetivo)
-                await BLLCampana.ModificarCampana(
-                    idCampaniaActual, idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value,
-                    metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
-                mensajeConfirmacion = "Campaña actualizada exitosamente.";
-            }
+                errores.Add("nombreDuplicado");
+                mensajeConfirmacion = "";
+                return;
+            }            
             else
             {
                 // GuardarCampaña(string nombre, int idcanal, string mensaje, int idincentivo, int objetivo)
-                await BLLCampana.GuardarCampana(
-                    nombreCampana, idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value,
-                    metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
+                await BLLCampana.GuardarCampana(nombreCampana.Trim(), idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value, metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
                 mensajeConfirmacion = "Campaña creada exitosamente.";
             }
 

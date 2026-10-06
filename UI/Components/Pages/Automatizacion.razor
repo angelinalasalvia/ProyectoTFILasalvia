@@ -113,11 +113,6 @@ else
                     </div>
                 </div>
 
-                @if (BLLRegla.RequiereAccionAdicional(r))
-                {
-                    <div class="auto-regla-nota">ℹ️ Esta regla requiere revisar la integración del canal.</div>
-                }
-
                 <div class="auto-regla-actions">
                     <button class="auto-icon-btn" title="Editar regla" @onclick="() => EditarRegla(r)">✏️</button>
                     <button class="auto-icon-btn" title="Eliminar regla" @onclick="() => EliminarRegla(r)">🗑️</button>

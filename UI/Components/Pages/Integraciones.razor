@@ -67,7 +67,15 @@
 
 <!-- Listado de fuentes -->
 <div class="integ-grid">
-   
+
+    @if (!fuentes.Any())
+    {
+        <p class="pred-sin-resultados">No hay integraciones configuradas.</p>
+    }
+    else if (!FuentesFiltradas.Any())
+    {
+        <p class="pred-sin-resultados">No hay integraciones que coincidan con el texto ingresado.</p>
+    }
     @foreach (var f in FuentesFiltradas)
     {
         var enError = f.Estado == Integracion.EstadoError;
@@ -199,13 +207,25 @@
         try
         {
             var resultado = await BLLIntegracion.ActualizarInformacionIntegracion(id);
-            await ActualizarInformacionIntegracion();
+            await RefrescarIntegraciones();
             MostrarMensaje(resultado.Mensaje, esError: !resultado.Exito);
+        }
+        catch (Exception)
+        {
+            MostrarMensaje("No fue posible completar la sincronización.");
+            await RefrescarIntegraciones();
         }
         finally
         {
             sincronizandoId = null;
         }
+    }
+
+    // Diagrama CU14: RefrescarIntegraciones() (autollamada de la pantalla): refresca tarjetas y métricas.
+    private async Task RefrescarIntegraciones()
+    {
+        fuentes = await BLLIntegracion.ObtenerIntegraciones();
+        RecalcularMetricas();
     }
 
     // Diagrama CU14: ActualizarInformacionIntegracion() (autollamada de la pantalla): refresca tarjetas y métricas.

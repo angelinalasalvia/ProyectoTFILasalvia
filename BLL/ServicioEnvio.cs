@@ -94,6 +94,11 @@ public class ServicioEnvio
         {
             return Fallo($"No se pudo enviar el email: {ex.Message}");
         }
+        finally
+        {
+            if (int.TryParse(_config["Email:PausaEntreEnviosMs"], out var pausa) && pausa > 0)
+                await Task.Delay(pausa, CancellationToken.None);
+        }
     }
 
 

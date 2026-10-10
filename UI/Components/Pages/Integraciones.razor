@@ -22,7 +22,6 @@
 <h1 class="detalle-title">Gestión de Integraciones</h1>
 <p class="camp-subtitle">Conecta tus herramientas de CRM y bases de datos para potenciar el análisis predictivo.</p>
 
-<!-- KPIs -->
 <div class="integ-kpi-row">
     <div class="card integ-kpi-card">
         <div class="integ-kpi-icon integ-kpi-icon-ok">✅</div>
@@ -44,16 +43,6 @@
             </div>
         </div>
     </div>
-    <div class="card integ-kpi-card">
-        <div class="integ-kpi-icon integ-kpi-icon-sync">🕐</div>
-        <div>
-            <div class="integ-kpi-label">PRÓX. SYNC</div>
-            <div class="integ-kpi-valor-row">
-                <span class="integ-kpi-valor">@proxSyncTexto</span>
-                <span class="integ-kpi-sub">en promedio</span>
-            </div>
-        </div>
-    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(mensaje))
@@ -65,7 +54,6 @@
     </div>
 }
 
-<!-- Listado de fuentes -->
 <div class="integ-grid">
 
     @if (!fuentes.Any())
@@ -123,12 +111,14 @@
                         @onclick="() => Sincronizar(f.IdIntegracion)">
                     @(sincronizandoId == f.IdIntegracion ? "Sincronizando…" : "↻ Sincronizar")
                 </button>
-                <button class="integ-btn-eliminar" @onclick="() => SolicitarConfirmacion(f)">Eliminar</button>
+                @if (enError)
+                {
+                    <button class="integ-btn-eliminar" @onclick="() => SolicitarConfirmacion(f)">Eliminar</button>
+                }
             </div>
         </div>
     }
 
-    <!-- Card para añadir nueva fuente -->
     <div class="card integ-add-card" @onclick="AñadirNuevaFuente">
         <div class="integ-add-icon">+</div>
         <div class="integ-add-titulo">Añadir nueva fuente</div>
@@ -156,17 +146,10 @@
         fuentes.Where(f => string.IsNullOrWhiteSpace(textoBusqueda) ||
                            f.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase));
 
-    // Diagrama CU14: CalcularMetricasGlobales(activas, errores, proxSync)
     private void CalcularMetricasGlobales()
     {
         errores = fuentes.Count(f => f.Estado == Integracion.EstadoError);
         activas = fuentes.Count - errores;
-
-        var minutosRestantes = fuentes
-            .Where(f => f.Estado == Integracion.EstadoActiva && f.UltimaSincronizacion != null)
-            .Select(f => Math.Max(0, (f.UltimaSincronizacion!.Value + BLL.BLLIntegracion.IntervaloSincronizacion - DateTime.Now).TotalMinutes))
-            .ToList();
-        proxSyncTexto = minutosRestantes.Count == 0 ? "—" : $"{Math.Round(minutosRestantes.Average())}m";
     }
 
     private void RecalcularMetricas() => CalcularMetricasGlobales();
@@ -182,11 +165,7 @@
     private async Task ConfirmarEliminacion(Integracion f)
     {
         mensaje = "";
-        if (await BLLIntegracion.ValidarDependenciasActivas(f.IdIntegracion))
-        {
-            MostrarMensaje("La integración posee dependencias activas y no se puede eliminar.");
-            return;
-        }
+        
         await BLLIntegracion.EliminarIntegracion(f.IdIntegracion);
         EliminarDeLaVista(f);
         RecalcularMetricas();
@@ -221,15 +200,7 @@
         }
     }
 
-    // Diagrama CU14: RefrescarIntegraciones() (autollamada de la pantalla): refresca tarjetas y métricas.
     private async Task RefrescarIntegraciones()
-    {
-        fuentes = await BLLIntegracion.ObtenerIntegraciones();
-        RecalcularMetricas();
-    }
-
-    // Diagrama CU14: ActualizarInformacionIntegracion() (autollamada de la pantalla): refresca tarjetas y métricas.
-    private async Task ActualizarInformacionIntegracion()
     {
         fuentes = await BLLIntegracion.ObtenerIntegraciones();
         RecalcularMetricas();

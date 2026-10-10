@@ -1,13 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Detalle de Cliente (Pages/ClienteDetalle.razor)
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: DETALLE DE CLIENTE 
-   ========================================================================== */
-
-/* --- Card de perfil --- */
-.detcli-perfil-card {
+﻿.detcli-perfil-card {
     display: flex;
     align-items: center;
     gap: 18px;
@@ -61,7 +52,7 @@
     font-size: 13px;
     color: #555b6a;
 }
-/* --- Fila principal: asistencia + línea de tiempo --- */
+
 .detcli-main-row {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -82,7 +73,7 @@
     color: #8a90a2;
     margin: 4px 0 0 0;
 }
-/* --- Gráfico de barras de asistencia --- */
+
 .detcli-chart {
     display: flex;
     align-items: flex-end;
@@ -115,7 +106,7 @@
     letter-spacing: .5px;
     margin-top: 10px;
 }
-/* --- Línea de tiempo --- */
+
 .detcli-timeline {
     list-style: none;
     margin: 0;
@@ -193,7 +184,7 @@
     color: #1e2432;
     margin-top: 4px;
 }
-/* --- KPIs inferiores --- */
+
 .detcli-kpi-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -231,6 +222,4 @@
     font-weight: 400;
     color: #8a90a2;
 }
-/* ==========================================================================
-   FIN PANTALLA: DETALLE DE CLIENTE
-   ========================================================================== */
+

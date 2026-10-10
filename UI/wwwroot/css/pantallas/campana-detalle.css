@@ -1,14 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Detalle de Campaña (Pages/CampanaDetalle.razor)
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: DETALLE DE CAMPAÑA (Pages/CampanaDetalle.razor)
-   Por ahora hardcodeada para "50% Descuento". Cuando se programe la lógica
-   real esto se va a convertir en una ruta con parámetro (ej: /campana/{id}).
-   ========================================================================== */
-
-.camp-nombre-link {
+﻿.camp-nombre-link {
     color: #1e2432;
     text-decoration: none;
     cursor: pointer;
@@ -36,7 +26,6 @@
     color: #8a90a2;
 }
 
-/* --- KPIs superiores --- */
 .camp-detalle-kpi-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -78,7 +67,6 @@
     color: #8a90a2;
 }
 
-/* --- Card de rendimiento temporal (gráfico de barras) --- */
 .camp-rendimiento-card {
     margin-bottom: 18px;
 }
@@ -163,7 +151,6 @@
     color: #8a90a2;
 }
 
-/* --- Card de socios impactados --- */
 .camp-socios-card {
     padding: 0;
     overflow: hidden;
@@ -286,7 +273,4 @@
     padding: 16px 20px;
 }
 
-/* ==========================================================================
-   FIN PANTALLA: DETALLE DE CAMPAÑA
-   ========================================================================== */
 

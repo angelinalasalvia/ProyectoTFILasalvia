@@ -1,19 +1,10 @@
-﻿/* ==========================================================================
-   Pantalla: Gestión de Integraciones (Pages/Integraciones.razor)
-   Reutiliza clases de: base.css, retencion-cliente.css, campana-detalle.css
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: GESTIÓN DE INTEGRACIONES (Pages/Integraciones.razor)
-   Reutiliza: .search-box, .breadcrumb, .detalle-title, .camp-subtitle.
-   ========================================================================== */
-.integ-search-box {
+﻿.integ-search-box {
     width: 320px;
 }
 /* --- KPIs --- */
 .integ-kpi-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
     margin: 22px 0;
 }
@@ -79,7 +70,7 @@
 .integ-kpi-sub-error {
     color: #d63939;
 }
-/* --- Grilla de fuentes --- */
+
 .integ-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

@@ -37,8 +37,6 @@ builder.Services.AddScoped<ServicioEnvio>();
 
 builder.Services.AddHostedService<PrediccionBackgroundService>();
 
-builder.Services.AddHostedService<IntegracionSyncBackgroundService>();
-
 builder.Services.AddDataProtection().SetApplicationName("TFILasalvia");
 
 var app = builder.Build();
@@ -55,11 +53,12 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         return Results.Text(r.Mensaje);
     });
 }*/
-app.MapGet("/dev/probar-whatsapp", async (ServicioEnvio envio) =>
+
+/*app.MapGet("/dev/probar-telegram", async (ServicioEnvio envio) =>
 {
-    var r = await envio.EnviarWhatsApp("+5491121694073", "Hola, este es un WhatsApp de prueba del TFI.");
+    var r = await envio.EnviarTelegram(null, "Hola, este es un Telegram de prueba del TFI.");
     return Results.Text(r.Mensaje);
-});
+});*/
 
 
 app.Run();

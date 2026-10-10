@@ -1,12 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Crear / Editar Campaña (Pages/CrearCampana.razor)
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: CREAR / EDITAR CAMPAÑA (Pages/CampanaForm.razor)
-   Un solo componente cubre CU06 (Crear Campaña) y CU07 (Editar Campaña).
-   ========================================================================== */
-.camp-form-title {
+﻿.camp-form-title {
     margin-bottom: 4px;
 }
 
@@ -277,8 +269,8 @@
     .camp-form-preview-footer a {
         color: #2f6fed;
     }
-/* --- Vista previa WhatsApp --- */
-.camp-form-preview-whatsapp {
+
+.camp-form-preview-telegram {
     background: #e5ded6;
     padding: 20px;
     min-height: 320px;
@@ -310,7 +302,6 @@
     margin-top: 6px;
 }
 
-/* --- Menú desplegable de acciones (⋮) en la tabla de Campañas --- */
 .camp-acciones-cell {
     position: relative;
     text-align: right;
@@ -348,7 +339,7 @@
         background: #f6f7fa;
     }
 
-}
+
 
 .form-label {
     display: block;
@@ -385,6 +376,3 @@
     appearance: none;
     -webkit-appearance: none;
 }
-/* ==========================================================================
-   FIN PANTALLA: CREAR / EDITAR CAMPAÑA
-   ========================================================================== */

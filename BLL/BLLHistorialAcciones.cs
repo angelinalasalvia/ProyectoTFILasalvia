@@ -159,10 +159,6 @@ public class BLLHistorialAcciones
             ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}). Ejecutá el script de datos.");
     }
 
-    // Envía el mensaje de la campaña por su canal y registra el resultado, todo en una transacción.
-    //  - Email: envío real (ServicioEnvio).
-    //  - WhatsApp: todavía simulado (queda "Entregado"); se reemplaza en el próximo bloque.
-    // Si el envío falla queda como "Fallido" (Finalizada, resultado "Error de envío") y no suma a ClientesAlcanzados.
     public async Task RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
                                       CancellationToken ct = default)
     {
@@ -212,8 +208,8 @@ public class BLLHistorialAcciones
         if (campania.Canal == "Email")
             return await _envio.EnviarEmail(cliente.Email, campania.AsuntoEmail ?? campania.Nombre, texto, ct);
 
-        if (campania.Canal == "WhatsApp")
-            return await _envio.EnviarWhatsApp(cliente.Telefono ?? string.Empty, texto, ct);
+        if (campania.Canal == "Telegram")
+            return await _envio.EnviarTelegram(null, texto, ct);
 
         return new ResultadoEnvio(false, $"Canal no soportado: {campania.Canal}");
     }

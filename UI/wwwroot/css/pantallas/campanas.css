@@ -1,7 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Campañas (Pages/Campanas.razor)
-   ========================================================================== */
-.camp-header {
+﻿.camp-header {
     align-items: flex-start;
 }
 
@@ -33,7 +30,6 @@
         background: #333;
     }
 
-/* --- Fila de filtros --- */
 .camp-filtros-card {
     display: flex;
     align-items: flex-start;
@@ -126,7 +122,6 @@
     border: 1px solid #e5e8ee;
 }
 
-/* --- Fila de KPIs --- */
 .camp-kpi-card {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -206,7 +201,6 @@
     border-radius: 4px;
 }
 
-/* --- Tabla de campañas --- */
 .camp-table-card {
     padding: 0;
     overflow: hidden;
@@ -274,7 +268,4 @@
     align-items: center;
     padding: 16px 20px;
 }
-/* ==========================================================================
-   FIN PANTALLA: CAMPAÑAS
-   ========================================================================== */
 

@@ -10,22 +10,6 @@ namespace BLL;
 
 public record ResultadoEnvio(bool Exito, string Mensaje);
 
-// Envío real de mensajes:
-//  - Email por SMTP (Mailtrap en desarrollo; para otro proveedor solo cambia la configuración).
-//  - WhatsApp por la API REST de Twilio (sandbox en desarrollo).
-//
-// Configuración "Email" (appsettings.json; Usuario y Clave van en user-secrets):
-//   Host, Puerto, Usuario, Clave, Remitente, NombreRemitente,
-//   DestinatarioPrueba  (si tiene valor, TODOS los mails se redirigen a esa casilla),
-//   PausaEntreEnviosMs  (espera después de cada envío, para respetar el límite de velocidad del proveedor)
-//
-// Configuración "Twilio" (AccountSid y AuthToken van en user-secrets):
-//   AccountSid, AuthToken, NumeroOrigen (ej: whatsapp:+14155238886),
-//   DestinatarioPrueba  (si tiene valor, TODOS los WhatsApp se redirigen a ese número)
-//   ContentSid          (opcional, "HX..."). Si tiene valor se envía esa plantilla en lugar del texto libre.
-//                       Es obligatorio en la cuenta de prueba (trial) de Twilio, que solo permite las plantillas
-//                       que ofrece la pantalla "Try out WhatsApp". Con una cuenta/sender aprobado se puede dejar vacío.
-//   ContentVariables    (opcional) JSON con los valores de la plantilla, ej: {"1":"22 de octubre","2":"15:15"}
 public class ServicioEnvio
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
@@ -94,18 +78,168 @@ public class ServicioEnvio
         {
             return Fallo($"No se pudo enviar el email: {ex.Message}");
         }
-        finally
-        {
-            if (int.TryParse(_config["Email:PausaEntreEnviosMs"], out var pausa) && pausa > 0)
-                await Task.Delay(pausa, CancellationToken.None);
-        }
     }
 
 
-    // ------------------------------------------------------------------ WhatsApp (Twilio)
-    // 'telefono' en formato internacional (+5491112345678). Twilio acepta el mensaje (201) y lo entrega después:
-    // acá "Exito" significa "Twilio lo aceptó"; la entrega/lectura reales requieren webhooks (fuera del MVP).
-    public async Task<ResultadoEnvio> EnviarWhatsApp(string telefono, string mensaje, CancellationToken ct = default)
+    // ------------------------------------------------------------------ Telegram (Bot API)
+    // Sin plantillas ni aprobaciones: acepta cualquier texto. Configuración "Telegram":
+    //   BotToken            (va en user-secrets; lo entrega @BotFather al crear el bot)
+    //   DestinatarioPrueba  (chat_id numérico; si tiene valor, TODOS los mensajes se redirigen a ese chat)
+    // Un bot no puede escribirle a alguien por su teléfono: la persona tiene que haberle escrito antes al bot.
+    // 'chatIdCliente' es el chat_id de ese cliente (null mientras no esté guardado en la base).
+    public async Task<ResultadoEnvio> EnviarTelegram(string? chatIdCliente, string mensaje, CancellationToken ct = default)
+    {
+        var token = _config["Telegram:BotToken"];
+        if (string.IsNullOrWhiteSpace(token))
+            return Fallo("El envío de Telegram no está configurado (falta BotToken).");
+
+        var chatPrueba = _config["Telegram:DestinatarioPrueba"];
+        var modoPrueba = !string.IsNullOrWhiteSpace(chatPrueba);
+        var chatId = modoPrueba ? chatPrueba!.Trim() : chatIdCliente?.Trim();
+        if (string.IsNullOrWhiteSpace(chatId))
+            return Fallo("El cliente no tiene Telegram vinculado (falta su chat_id).");
+
+        if (mensaje.Length > 4096) mensaje = mensaje[..4096]; // límite de Telegram
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"https://api.telegram.org/bot{token}/sendMessage")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { chat_id = chatId, text = mensaje }),
+                Encoding.UTF8, "application/json")
+        };
+
+        try
+        {
+            using var resp = await Http.SendAsync(req, ct);
+            var json = await resp.Content.ReadAsStringAsync(ct);
+
+            return resp.IsSuccessStatusCode
+                ? new ResultadoEnvio(true, "Telegram enviado.")
+                : Fallo($"Telegram rechazó el mensaje: {ExtraerErrorTelegram(json)}");
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            return Fallo($"No se pudo contactar a Telegram: {ex.GetType().Name}");
+        }
+    }
+
+    private static string ExtraerErrorTelegram(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var d = doc.RootElement.TryGetProperty("description", out var x) ? x.GetString() : null;
+            if (!string.IsNullOrWhiteSpace(d)) return d;
+        }
+        catch (JsonException) { }
+
+        return json.Length > 200 ? json[..200] : json;
+    }
+    /*
+    public Task<ResultadoEnvio> EnviarWhatsApp(string telefono, string mensaje, CancellationToken ct = default) =>
+        string.Equals(_config["WhatsApp:Proveedor"], "Twilio", StringComparison.OrdinalIgnoreCase)
+            ? EnviarWhatsAppTwilio(telefono, mensaje, ct)
+            : EnviarWhatsAppMeta(telefono, mensaje, ct);
+
+    private async Task<ResultadoEnvio> EnviarWhatsAppMeta(string telefono, string mensaje, CancellationToken ct)
+    {
+        var token = _config["Meta:AccessToken"];
+        var phoneId = _config["Meta:PhoneNumberId"];
+        var version = _config["Meta:ApiVersion"] ?? "v21.0";
+
+        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(phoneId))
+            return Fallo("El envío de WhatsApp (Meta) no está configurado (faltan AccessToken o PhoneNumberId).");
+
+        var telefonoPrueba = _config["Meta:DestinatarioPrueba"];
+        var modoPrueba = !string.IsNullOrWhiteSpace(telefonoPrueba);
+        var destino = NormalizarTelefono(modoPrueba ? telefonoPrueba! : telefono);
+        if (destino is null)
+            return Fallo("El cliente no tiene un teléfono válido (formato internacional, ej: +5491112345678).");
+
+        if (modoPrueba) mensaje += $"\n\n[Modo prueba] Destinatario original: {telefono}";
+
+        var nombrePlantilla = _config["Meta:PlantillaNombre"];
+        var usaPlantilla = !string.IsNullOrWhiteSpace(nombrePlantilla);
+
+        object payload;
+        if (usaPlantilla)
+        {
+            var template = new Dictionary<string, object>
+            {
+                ["name"] = nombrePlantilla!.Trim(),
+                ["language"] = new { code = _config["Meta:PlantillaIdioma"] ?? "es_AR" }
+            };
+            if (bool.TryParse(_config["Meta:PlantillaUsaTexto"], out var usaTexto) && usaTexto)
+            {
+                template["components"] = new[]
+                {
+                    new
+                    {
+                        type = "body",
+                        parameters = new[] { new { type = "text", text = AplanarParaPlantilla(mensaje) } }
+                    }
+                };
+            }
+
+            payload = new Dictionary<string, object>
+            {
+                ["messaging_product"] = "whatsapp",
+                ["to"] = destino.TrimStart('+'),
+                ["type"] = "template",
+                ["template"] = template
+            };
+        }
+        else
+        {
+            payload = new
+            {
+                messaging_product = "whatsapp",
+                to = destino.TrimStart('+'),
+                type = "text",
+                text = new { body = mensaje }
+            };
+        }
+    
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"https://graph.facebook.com/{version}/{phoneId}/messages")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            using var resp = await Http.SendAsync(req, ct);
+            var json = await resp.Content.ReadAsStringAsync(ct);
+
+            return resp.IsSuccessStatusCode
+                ? new ResultadoEnvio(true, usaPlantilla ? "WhatsApp enviado (con plantilla)." : "WhatsApp enviado.")
+                : Fallo($"Meta rechazó el mensaje: {ExtraerErrorMeta(json)}");
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            return Fallo($"No se pudo contactar a Meta: {ex.Message}");
+        }
+    }*/
+    /*
+    private static string ExtraerErrorMeta(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("error", out var e))
+            {
+                var mensaje = e.TryGetProperty("message", out var m) ? m.GetString() : null;
+                var codigo = e.TryGetProperty("code", out var c) ? c.ToString() : null;
+                var detalle = e.TryGetProperty("error_data", out var d) && d.TryGetProperty("details", out var dt) ? dt.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(mensaje))
+                    return $"{mensaje}{(detalle is null ? "" : " - " + detalle)}{(codigo is null ? "" : $" (código {codigo})")}";
+            }
+        }
+        catch (JsonException) { }
+
+        return json.Length > 300 ? json[..300] : json;
+    }*/
+    /*
+    private async Task<ResultadoEnvio> EnviarWhatsAppTwilio(string telefono, string mensaje, CancellationToken ct)
     {
         var sid = _config["Twilio:AccountSid"];
         var token = _config["Twilio:AuthToken"];
@@ -135,8 +269,13 @@ public class ServicioEnvio
         if (usaPlantilla)
         {
             campos["ContentSid"] = contentSid!.Trim();
+
+            // Si hay ContentVariables fijas en la configuración se usan tal cual (plantilla con valores fijos).
+            // Si no, el texto de la campaña viaja en la variable {{1}}: sirve una plantilla genérica cuyo cuerpo sea "{{1}}".
             var variables = _config["Twilio:ContentVariables"];
-            if (!string.IsNullOrWhiteSpace(variables)) campos["ContentVariables"] = variables;
+            campos["ContentVariables"] = !string.IsNullOrWhiteSpace(variables)
+                ? variables
+                : JsonSerializer.Serialize(new Dictionary<string, string> { ["1"] = AplanarParaPlantilla(mensaje) });
         }
         else
         {
@@ -151,6 +290,8 @@ public class ServicioEnvio
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic",
             Convert.ToBase64String(Encoding.ASCII.GetBytes($"{sid}:{token}")));
 
+        _logger.LogInformation("Twilio WhatsApp -> campos enviados: {Campos}", string.Join(", ", campos.Keys));
+
         try
         {
             using var resp = await Http.SendAsync(req, ct);
@@ -164,10 +305,13 @@ public class ServicioEnvio
         {
             return Fallo($"No se pudo contactar a Twilio: {ex.Message}");
         }
-    }
+    }*/
 
-    // Deja solo "+" y dígitos. Acepta "+54 9 11 1234-5678" y también "5491112345678" (ya con código de país).
-    // No adivina el código de país: un número local sin él (ej. 1112345678) se considera inválido.
+    /*
+    private static string AplanarParaPlantilla(string texto) =>
+        System.Text.RegularExpressions.Regex.Replace(texto.Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), " {2,}", " ").Trim();
+
+    
     private static string? NormalizarTelefono(string? telefono)
     {
         if (string.IsNullOrWhiteSpace(telefono)) return null;
@@ -190,7 +334,7 @@ public class ServicioEnvio
         catch (JsonException) { }
 
         return json.Length > 200 ? json[..200] : json;
-    }
+    }*/
 
     private ResultadoEnvio Fallo(string motivo)
     {

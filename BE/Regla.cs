@@ -2,12 +2,12 @@
 public class Regla
 {
     public int IdRegla { get; set; }
-    public string Estado { get; set; } = string.Empty; // Ver BE.EstadosRegla
+    public string Estado { get; set; } = string.Empty; 
     public DateTime FechaCreacion { get; set; }
     public int IdCampania { get; set; }
     public string Nombre { get; set; } = string.Empty;
-    public int Prioridad { get; set; } = PrioridadPorDefecto; // 1 = la más alta. Si un cliente cumple varias reglas se ejecuta la de menor número.
-    public string Canal { get; set; } = string.Empty; // Nombre del canal de la campaña asociada (Email / WhatsApp)
+    public int Prioridad { get; set; } = PrioridadPorDefecto; 
+    public string Canal { get; set; } = string.Empty; 
     public string NombreCampania { get; set; } = string.Empty;
     public int? IdSede { get; set; }
     public string? NombreSede { get; set; }
@@ -20,7 +20,7 @@ public class Regla
     public const int PrioridadMinima = 1;
     public const int PrioridadMaxima = 999;
     public const int PrioridadPorDefecto = 100;
-    public const int LargoMaximoNombre = 50; // Regla.Nombre es nvarchar(50)
+    public const int LargoMaximoNombre = 50; 
 }
 
 public static class EstadosRegla

@@ -1,20 +1,10 @@
-﻿/* ==========================================================================
-   Pantalla: Reporte de Efectividad (Pages/ReporteEfectividad.razor)
-   Reutiliza clases de: base.css, retencion-cliente.css
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: REPORTE DE EFECTIVIDAD (Pages/ReporteEfectividad.razor)
-   Reutiliza: .breadcrumb, .retencion-header-row, .retencion-actions,
-   .btn-cancelar, .btn-confirmar, .card-subtitle-dark.
-   ========================================================================== */
-.rep-icons-row {
+﻿.rep-icons-row {
     display: flex;
     justify-content: flex-end;
     gap: 14px;
     margin-bottom: 16px;
 }
-/* --- KPIs --- */
+
 .rep-kpi-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -84,7 +74,7 @@
     font-size: 12px;
     color: #8a90a2;
 }
-/* --- Fila principal: canal + incentivos --- */
+
 .rep-main-row {
     display: grid;
     grid-template-columns: 1.6fr 1fr;
@@ -165,7 +155,7 @@
 .rep-barra-verde-claro {
     background: #9fd9b8;
 }
-/* --- Mejores incentivos --- */
+
 .rep-incentivos-list {
     list-style: none;
     margin: 18px 0 0 0;
@@ -204,7 +194,7 @@
     background: #111;
     border-radius: 999px;
 }
-/* --- ROI de retención --- */
+
 .rep-roi-card {
     display: grid;
     grid-template-columns: 1fr 1.3fr auto;
@@ -324,7 +314,5 @@
     letter-spacing: .4px;
     color: #8a90a2;
 }
-/* ==========================================================================
-   FIN PANTALLA: REPORTE DE EFECTIVIDAD
-   ========================================================================== */
+
 

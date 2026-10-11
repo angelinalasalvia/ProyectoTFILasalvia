@@ -93,32 +93,54 @@ else
                 <div class="factores-header">
                     <div>
                         <h4 class="card-subtitle-dark">Factores que influyen en el riesgo</h4>
-                        <p class="card-hint">Muestra cuánto pesó cada variable del socio en la predicción del modelo. Los porcentajes suman 100% entre todos los factores. <span class="leyenda-riesgo">Rojo: aumenta el riesgo</span> · <span class="leyenda-protector">Verde: lo reduce</span>.</p>
-                    </div>                    
+                        <p class="card-hint">Parte del riesgo que el modelo le asigna a un socio típico de su mismo plan y suma o resta puntos según cómo se aparta este socio de lo típico en cada indicador, hasta llegar a su probabilidad. <span class="leyenda-riesgo">Rojo: aumenta el riesgo</span> · <span class="leyenda-protector">Verde: lo reduce</span>.</p>
+                    </div>
                 </div>
                 <div class="factores-content">
                     <div class="factores-lista">
-                        @foreach (var f in factores)
+                        <div class="factor-item">
+                            <div class="factor-top">
+                                <span class="factor-nombre">Riesgo de un socio típico de su plan</span>
+                                <span class="factor-valor">@riesgoBase.ToString("0.0")%</span>
+                            </div>
+                        </div>
+
+                        @foreach (var f in factoresVisibles.Where(x => Math.Abs(x.Impacto ?? 0) >= 0.05m).Concat(otros is null ? Array.Empty<FactorRiesgo>() : new[] { otros }))
                         {
+                            var pts = f.Impacto ?? 0;
                             <div class="factor-item">
                                 <div class="factor-top">
                                     <span class="factor-nombre">@f.Nombre</span>
-                                    <span class="factor-valor @((f.Impacto ?? 0) >= 0 ? "factor-positivo" : "factor-negativo")">
-                                        @((f.Impacto ?? 0) >= 0 ? "Aumenta el riesgo" : "Reduce el riesgo"): @(Math.Abs(f.Impacto ?? 0).ToString("0.0"))%
+                                    <span class="factor-valor @(pts >= 0 ? "factor-positivo" : "factor-negativo")">
+                                        @(pts >= 0 ? "+" : "−")@Math.Abs(pts).ToString("0.0") pts
                                     </span>
                                 </div>
                                 <div class="factor-bar">
-                                    <div class="factor-fill @((f.Impacto ?? 0) >= 0 ? "fill-positivo" : "fill-negativo")" style="width:@(Math.Abs(f.Impacto ?? 0))%"></div>
+                                    <div class="factor-fill @(pts >= 0 ? "fill-positivo" : "fill-negativo")" style="width:@(Ancho(pts))%"></div>
                                 </div>
                                 <div class="factor-desc">@f.Descripcion</div>
                             </div>
                         }
+                        @{
+                            var sinEfecto = factoresVisibles.Where(x => Math.Abs(x.Impacto ?? 0) < 0.05m).Select(x => x.Nombre).ToList();
+                        }
+                        @if (sinEfecto.Count > 0)
+                        {
+                            <p class="card-hint">Sin influencia en esta predicción: @string.Join(", ", sinEfecto).</p>
+                        }
+
+                        <div class="factor-item">
+                            <div class="factor-top">
+                                <span class="factor-nombre"><strong>= Probabilidad de abandono</strong></span>
+                                <span class="factor-valor"><strong>@prediccion?.ProbabilidadAbandono.ToString("0.0")%</strong></span>
+                            </div>
+                        </div>
                     </div>
 
 
                     <div class="radar-container">
                         <svg viewBox="0 0 260 260" class="radar-svg">
-                            @for (int i = 0; i < factores.Count; i++)
+                            @for (int i = 0; i < factoresVisibles.Count; i++)
                             {
                                 var (ejeX, ejeY) = RadarPosicion(i, factores.Count, 1.0);
                                 <line x1="130" y1="130" x2="@ejeX.ToString(CultureInfo.InvariantCulture)" y2="@ejeY.ToString(CultureInfo.InvariantCulture)"
@@ -129,12 +151,12 @@ else
                             <text x="130" y="127" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">Modelo:</text>
                             <text x="130" y="137" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">@nombreModelo</text>
                             <text x="130" y="112" text-anchor="middle" font-size="14">🎯</text>
-                            @for (int i = 0; i < factores.Count; i++)
+                            @for (int i = 0; i < factoresVisibles.Count; i++)
                             {
-                                var (labelX, labelY) = RadarPosicion(i, factores.Count);
+                                var (labelX, labelY) = RadarPosicion(i, factoresVisibles.Count);
                                 <g>
                                     <text x="@labelX.ToString(CultureInfo.InvariantCulture)" y="@labelY.ToString(CultureInfo.InvariantCulture)"
-                                          text-anchor="middle" font-size="7" fill="#555b6a">@TruncarNombre(factores[i].Nombre)</text>
+                                          text-anchor="middle" font-size="7" fill="#555b6a">@TruncarNombre(factoresVisibles[i].Nombre)</text>
                                 </g>
                             }
                         </svg>
@@ -232,11 +254,11 @@ else
         factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente);
         if (prediccion != null)
             nombreModelo = await BLLModelo.ObtenerNombreModelo(prediccion.IdModelo);
+        PrepararFactores();
         VerificarAnomalias();
         GenerarGraficoEngagement(cliente);
     }
-
-
+        
     private void VerificarAnomalias()
     {
         const double umbral = -umbralAnomalia;
@@ -276,15 +298,15 @@ else
 
     private string RadarPuntos()
     {
-        if (factores.Count == 0) return "";
-        double maxImpacto = factores.Max(f => (double)Math.Abs(f.Impacto ?? 0));
+        if (factoresVisibles.Count == 0) return "";
+        double maxImpacto = factoresVisibles.Max(f => (double)Math.Abs(f.Impacto ?? 0));
         if (maxImpacto == 0) maxImpacto = 1;
 
         var puntos = new List<string>();
-        for (int i = 0; i < factores.Count; i++)
+        for (int i = 0; i < factoresVisibles.Count; i++)
         {
-            double magnitud = (double)Math.Abs(factores[i].Impacto ?? 0) / maxImpacto;
-            var (x, y) = PuntoEnAngulo(i, factores.Count, magnitud * RadarRadioMax);
+            double magnitud = (double)Math.Abs(factoresVisibles[i].Impacto ?? 0) / maxImpacto;
+            var (x, y) = PuntoEnAngulo(i, factoresVisibles.Count, magnitud * RadarRadioMax);
             puntos.Add($"{x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)}");
         }
         return string.Join(" ", puntos);
@@ -379,4 +401,20 @@ else
         }
         return string.Join(" ", partes);
     }
+    private List<FactorRiesgo> factoresVisibles = new();
+    private FactorRiesgo? otros;
+    private double riesgoBase, maxPuntos = 1;
+
+    private void PrepararFactores()
+    {
+        otros = factores.FirstOrDefault(f => f.Nombre == NombresFactorRiesgo.OtrosFactores);
+        factoresVisibles = factores.Where(f => f.Nombre != NombresFactorRiesgo.OtrosFactores)
+                                   .OrderByDescending(f => f.Impacto ?? 0).ToList();
+
+        riesgoBase = (double)(prediccion?.ProbabilidadAbandono ?? 0) - factores.Sum(f => (double)(f.Impacto ?? 0));
+        maxPuntos = Math.Max(1, factores.Max(f => Math.Abs((double)(f.Impacto ?? 0))));
+    }
+
+    private string Ancho(decimal? pts) =>
+        Math.Min(100, Math.Abs((double)(pts ?? 0)) / maxPuntos * 100).ToString(CultureInfo.InvariantCulture);
 }

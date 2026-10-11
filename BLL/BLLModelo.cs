@@ -69,45 +69,61 @@ public class BLLModelo
             return;
         }
 
-        var (modeloConContribuciones, metrica) = EntrenarModelo(panelEntrenamiento);
+        var (modeloEntrenado, metrica) = EntrenarModelo(panelEntrenamiento);
         _logger.LogInformation(
             "Modelo entrenado con panel histórico: {Filas} filas ({Positivos} abandonos, {Tasa:P1}). AUC: {AUC:P1} | Accuracy: {Acc:P1} | F1Score: {F1:P1}",
             panelEntrenamiento.Count, panelEntrenamiento.Count(f => f.Abandono),
             (double)panelEntrenamiento.Count(f => f.Abandono) / panelEntrenamiento.Count,
             metrica.AreaUnderRocCurve, metrica.Accuracy, metrica.F1Score);
 
-        // Estadísticas por segmento (plan), no por toda la población: son las que se usan para
-        // redactar la descripción de cada factor ("X vs Y en el segmento"), igual que antes.
         var clientesPorId = clientes.ToDictionary(c => c.IdCliente);
-        var estadisticasPorSegmento = todasLasFeatures
-            .GroupBy(x => clientesPorId[x.IdCliente].PlanSocio)
-            .ToDictionary(g => g.Key, g => CalcularEstadisticasPoblacion(g.Select(x => x.Features)));
 
         var clientesActivos = todasLasFeatures
             .Where(x => clientesPorId[x.IdCliente].EstadoRegistro == "Socio Activo")
             .ToList();
 
-        // Prediction engine "explicada": además de Probability/Score, trae FeatureContributions,
-        // la contribución real que el modelo (ya entrenado con el 100% de los datos) le asignó a
-        // cada variable para este cliente puntual. Es la pieza que reemplaza al z-score heurístico.
-        var predictionEngine = _mlContext.Model
-            .CreatePredictionEngine<ChurnInputData, ChurnPredictionConContribuciones>(modeloConContribuciones);
+        // Valor "típico" (mediana) de cada indicador por plan, calculado sobre los socios ACTIVOS
+        // (igual que la tarjeta "vs. media del segmento" de la pantalla de detalle). Es el punto de
+        // comparación para explicar la predicción de cada socio: ver FeatureEngineering.MapearFactores.
+        var referenciaPorPlan = clientesActivos
+            .GroupBy(x => clientesPorId[x.IdCliente].PlanSocio)
+            .ToDictionary(g => g.Key, g => CalcularReferenciaSegmento(g.Select(x => x.Features)));
+
+        // Devuelve la probabilidad (0..1) que da el modelo para cada fila. MapearFactores la usa para
+        // probar el modelo con distintas combinaciones de valores del mismo socio.
+        float[] PredecirProbabilidades(IReadOnlyList<ChurnInputData> filas)
+        {
+            var vista = _mlContext.Data.LoadFromEnumerable(filas);
+            var salida = modeloEntrenado.Transform(vista);
+            return _mlContext.Data
+                .CreateEnumerable<ChurnPredictionResult>(salida, reuseRowObject: false)
+                .Select(r => r.Probability)
+                .ToArray();
+        }
 
         var resultados = new List<(int IdCliente, decimal Probabilidad, string NivelRiesgo,
             List<(string NombreFactor, decimal Impacto, string Descripcion)> Factores)>();
+        var riesgosDePartida = new List<double>();
 
         foreach (var item in clientesActivos)
         {
-            var prediccion = predictionEngine.Predict(item.Features);
-            decimal probabilidad = (decimal)Math.Round(prediccion.Probability * 100, 2);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var referencia = referenciaPorPlan[clientesPorId[item.IdCliente].PlanSocio];
+            var (probabilidadFinal, probabilidadBase, factores) =
+                FeatureEngineering.MapearFactores(item.Features, referencia, PredecirProbabilidades);
+
+            decimal probabilidad = (decimal)Math.Round(probabilidadFinal * 100, 2);
             string nivel = NivelesRiesgo.Clasificar(probabilidad);
 
-            var estadisticasSegmento = estadisticasPorSegmento[clientesPorId[item.IdCliente].PlanSocio];
-            var factores = FeatureEngineering.MapearContribuciones(
-                prediccion.FeatureContributions, item.Features, estadisticasSegmento);
-
+            riesgosDePartida.Add(probabilidadBase);
             resultados.Add((item.IdCliente, probabilidad, nivel, factores));
         }
+
+        if (riesgosDePartida.Count > 0)
+            _logger.LogInformation(
+                "Riesgo de partida (socio típico de su plan): mín {Min:P1} / prom {Avg:P1} / máx {Max:P1}",
+                riesgosDePartida.Min(), riesgosDePartida.Average(), riesgosDePartida.Max());
 
         await GuardarResultadosAsync(resultados, cancellationToken);
         _logger.LogInformation("Ciclo completado. {Count} clientes activos re-evaluados.", resultados.Count);
@@ -128,26 +144,22 @@ public class BLLModelo
         }
     }
 
-    // Devuelve el modelo YA envuelto con el calculador de contribuciones (ITransformer que,
-    // al transformar, agrega la columna FeatureContributions), listo para crear la prediction
-    // engine "explicada" que se usa en EntrenarYPredecirAsync.
-  
-    private (ITransformer ModeloConContribuciones, BinaryClassificationMetrics Metricas) EntrenarModelo(IEnumerable<ChurnInputData> datos)
+    // Entrena el modelo (FastForest + calibración Platt) y devuelve el modelo final, entrenado con
+    // el 100% de los datos, junto con las métricas de evaluación (sobre el 20% de prueba).
+    // La explicación de cada predicción ya no sale del modelo en sí, sino de probarlo con
+    // distintas combinaciones de valores: ver FeatureEngineering.MapearFactores.
+    private (ITransformer Modelo, BinaryClassificationMetrics Metricas) EntrenarModelo(IEnumerable<ChurnInputData> datos)
     {
         var dataView = _mlContext.Data.LoadFromEnumerable(datos);
         var split = _mlContext.Data.TrainTestSplit(dataView, testFraction: 0.2, seed: 42);
 
-        // Columnas numéricas centralizadas en FeatureEngineering.ColumnasNumericas:
-        // es el mismo orden que usa MapearContribuciones para interpretar el vector.
+        // Columnas numéricas centralizadas en FeatureEngineering.ColumnasNumericas.
         var columnasFeatures = FeatureEngineering.ColumnasNumericas
             .Select(c => c.NombreColumna)
             .Concat(new[] { "PlanSocioEncoded", "SedeEncoded", "SexoEncoded" })
             .ToArray();
 
         // Pipeline base: transformación + FastForest.
-        // Separamos el FastForest del calibrador Platt porque
-        // CalculateFeatureContribution necesita recibir el transformer
-        // del modelo que soporta contribuciones.
         var pipelineBase = _mlContext.Transforms.Categorical.OneHotEncoding(new[]
             {
             new InputOutputColumnPair(
@@ -190,45 +202,22 @@ public class BLLModelo
         // Modelo final entrenado con el 100% de los datos.
         var modeloFinal = pipeline.Fit(dataView);
 
-        // ------------------------------------------------------------
-        // CONTRIBUCIONES DE FEATURES
-        // ------------------------------------------------------------
-        // Entrenamos también el pipeline SIN Platt para obtener
-        // directamente el transformer FastForest.
-        var modeloBase = pipelineBase.Fit(dataView);
-
-        // El LastTransformer de modeloBase ahora sí es FastForest,
-        // no el PlattCalibrator.
-        var transformerFastForest = modeloBase.LastTransformer;
-
-        // Fila de referencia ya transformada por el modelo base.
-        var filaDeReferencia = modeloBase.Transform(
-            _mlContext.Data.TakeRows(dataView, 1));
-
-        // Calculador nativo de contribuciones de ML.NET.
-        var calculadoraContribuciones = _mlContext.Transforms
-            .CalculateFeatureContribution(
-                transformerFastForest,
-                normalize: false)
-            .Fit(filaDeReferencia);
-
-        // Agregamos las contribuciones al modelo final,
-        // que sigue conservando la calibración Platt.
-        var modeloConContribuciones =
-            modeloFinal.Append(calculadoraContribuciones);
-
-        return (modeloConContribuciones, metricas);
+        return (modeloFinal, metricas);
     }
-    private Dictionary<string, (double Media, double Desvio)> CalcularEstadisticasPoblacion(IEnumerable<ChurnInputData> datos)
+
+    // Valor "típico" (mediana) de cada indicador de riesgo dentro de un segmento (plan).
+    // Se usa como punto de comparación en FeatureEngineering.MapearFactores.
+    private static Dictionary<string, float> CalcularReferenciaSegmento(IEnumerable<ChurnInputData> datos)
     {
         var lista = datos.ToList();
-        var resultado = new Dictionary<string, (double, double)>();
+        var resultado = new Dictionary<string, float>();
         foreach (var (nombre, selector, _) in FeatureEngineering.IndicadoresDeRiesgo)
         {
-            var valores = lista.Select(d => (double)selector(d)).ToList();
-            double media = valores.Average();
-            double desvio = Math.Sqrt(valores.Sum(v => Math.Pow(v - media, 2)) / Math.Max(1, valores.Count - 1));
-            resultado[nombre] = (media, desvio);
+            var valores = lista.Select(selector).OrderBy(x => x).ToList();
+            int m = valores.Count / 2;
+            resultado[nombre] = valores.Count % 2 == 1
+                ? valores[m]
+                : (valores[m - 1] + valores[m]) / 2f;
         }
         return resultado;
     }
@@ -243,7 +232,7 @@ public class BLLModelo
         var modelo = await ObtenerOCrearModeloAsync(NombresModelo.RandomForestChurn, ct);
 
         // El factor principal (la "insignia" del listado, Prediccion.IdFactorRiesgo) es
-        // simplemente el primero de la lista: MapearContribuciones ya la deja ordenada por
+        // simplemente el primero de la lista: MapearFactores ya la deja ordenada por
         // impacto descendente, así que es el que más empujó hacia el riesgo para ese cliente.
         var nuevasPredicciones = resultados.Select(r => new Prediccion
         {
@@ -265,7 +254,7 @@ public class BLLModelo
     }
 
     // Guarda, para cada predicción recién insertada, la lista completa de factores calculados
-    // por MapearContribuciones. Antes esto se recalculaba al vuelo cada vez que alguien abría
+    // por MapearFactores. Antes esto se recalculaba al vuelo cada vez que alguien abría
     // el detalle del cliente (BLLFactorRiesgo.ObtenerFactorRiesgo); ahora esa pantalla pasa a
     // ser un SELECT contra Prediccion_FactorRiesgo.
     private async Task GuardarFactoresRiesgoAsync(

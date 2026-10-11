@@ -130,7 +130,7 @@ public class BLLRegla
             DELETE FROM Condicion WHERE IdCondicion IN (SELECT IdCondicion FROM @condiciones);");
 
         AgregarInsertsCondicion(sql, parametros, filas, "@idRegla");
-        return _accesoDatos.Escribir(sql.ToString(), parametros, ct: ct);
+        return _accesoDatos.Modificar(sql.ToString(), parametros, ct: ct);
     }
 
     public async Task<Regla?> ObtenerReglaPorId(int idRegla, CancellationToken ct = default)

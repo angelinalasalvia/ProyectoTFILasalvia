@@ -1,5 +1,6 @@
 ﻿using BLL;
 using BE;
+using System.Numerics;
 
 namespace BLL;
 
@@ -84,16 +85,12 @@ public static class FeatureEngineering
     // Columnas numéricas que arma "Features" (BLLModelo.EntrenarModelo), en orden.
     // ------------------------------------------------------------------------------------
     // Es la fuente única de verdad: BLLModelo la usa para construir el Concatenate() del
-    // pipeline, y MapearContribuciones la usa para saber a qué variable corresponde cada
-    // posición del vector que devuelve CalculateFeatureContribution (que respeta ese mismo
-    // orden). Después de estas 11 columnas el vector sigue con PlanSocioEncoded, SedeEncoded
-    // y SexoEncoded (variable, según cuántas categorías haya); esas posiciones no se listan acá
-    // a propósito, quedan fuera de los "factores" que ve el usuario (ver conversación: por ahora
-    // no se muestran plan/sede/sexo como factor).
+    // pipeline. Después de estas 11 columnas el vector sigue con PlanSocioEncoded, SedeEncoded
+    // y SexoEncoded (variable, según cuántas categorías haya).
     //
-    // NombreFactor es null en las columnas que el modelo usa mejorar la predicción pero que no
+    // NombreFactor es null en las columnas que el modelo usa para mejorar la predicción pero que no
     // tienen hoy un factor propio en el catálogo (ReservasUltimos30Dias, PagosRegistradosUltimos60Dias,
-    // AntiguedadDias): su contribución existe pero no se muestra por separado.
+    // AntiguedadDias): influyen en la predicción pero no se muestran como factor.
     public static readonly (string NombreColumna, string? NombreFactor)[] ColumnasNumericas =
     {
         (nameof(ChurnInputData.VisitasUltimos30Dias), NombresFactorRiesgo.BajaFrecuenciaAsistencia),
@@ -110,52 +107,122 @@ public static class FeatureEngineering
     };
 
     // ------------------------------------------------------------------------------------
-    // Traduce la explicación real del modelo (CalculateFeatureContribution) a la lista de
-    // factores que se guarda en Prediccion_FactorRiesgo.
+    // Explicación de la predicción: cuántos puntos de probabilidad aporta cada factor
     // ------------------------------------------------------------------------------------
-    // 'contribuciones' viene de ChurnPredictionConContribuciones.FeatureContributions: un valor
-    // por cada posición del vector "Features", en el mismo orden que ColumnasNumericas (+ el
-    // one-hot de plan/sede/sexo al final, que acá se ignora).
+    // La explicación se calcula con el PROPIO modelo (método de Shapley), sin depender de las
+    // contribuciones internas de ML.NET:
     //
-    // El signo ya viene correcto desde ML.NET (no hace falta el truco de "AltoEsRiesgo" que
-    // usaba el z-score viejo): positivo empuja hacia el riesgo, negativo lo reduce. Se
-    // normaliza a -100..100 repartiendo proporcionalmente el "peso" entre los 8 factores
-    // mostrados, para que la barra de la pantalla (que espera un número tipo porcentaje)
-    // siga teniendo sentido.
-    public static List<(string NombreFactor, decimal Impacto, string Descripcion)> MapearContribuciones(
-        float[] contribuciones,
-        ChurnInputData features,
-        Dictionary<string, (double Media, double Desvio)> estadisticasSegmento)
+    //  1) "Referencia" es el valor típico de cada indicador en el segmento (plan) del socio.
+    //  2) Para cada combinación de los 8 indicadores (2^8 = 256) se arma una copia del socio con el
+    //     valor REAL en los indicadores elegidos y el valor TÍPICO en el resto, y se le pide la
+    //     probabilidad al modelo.
+    //  3) El impacto de un factor es cuánto cambia, en promedio, la probabilidad al pasar ese
+    //     indicador del valor típico al valor real del socio (promediando sobre todas las
+    //     combinaciones de los otros indicadores, con los pesos de Shapley).
+    //
+    // Resultado: la suma de los impactos es EXACTAMENTE
+    //     probabilidad final (todo real) - probabilidad de partida (todo típico).
+    // La pantalla muestra: riesgo de partida + puntos de cada factor = probabilidad de abandono.
+    //
+    // Lo que no es uno de los 8 indicadores (plan, sede, sexo, reservas, pagos registrados y
+    // antigüedad) queda con los valores reales del socio en todas las combinaciones: no se explica
+    // por separado, pero forma parte tanto del riesgo de partida como del final.
+    //
+    // Impacto: puntos de probabilidad con signo (positivo = empuja hacia el riesgo, negativo = lo
+    // reduce). Cabe en Prediccion_FactorRiesgo.Impacto (decimal(18,2)).
+    //
+    // 'predecirProbabilidades' recibe una lista de socios y devuelve, en el mismo orden, la
+    // probabilidad (0..1) que da el modelo para cada uno.
+    public static (double ProbabilidadFinal, double ProbabilidadBase,
+                   List<(string NombreFactor, decimal Impacto, string Descripcion)> Factores)
+        MapearFactores(
+            ChurnInputData cliente,
+            Dictionary<string, float> referencia,
+            Func<IReadOnlyList<ChurnInputData>, float[]> predecirProbabilidades)
     {
-        var crudos = new List<(string NombreFactor, double Contribucion)>();
-        for (int i = 0; i < ColumnasNumericas.Length && i < contribuciones.Length; i++)
+        var nombres = IndicadoresDeRiesgo.Select(i => i.NombreFactor).ToArray();
+        int n = nombres.Length;
+        int combinaciones = 1 << n;
+
+        // Cada número 'mask' representa una combinación: el bit i encendido = el indicador i
+        // vale lo que tiene el socio; apagado = vale lo típico del segmento.
+        var filas = new List<ChurnInputData>(combinaciones);
+        for (int mask = 0; mask < combinaciones; mask++)
         {
-            var nombreFactor = ColumnasNumericas[i].NombreFactor;
-            if (nombreFactor is null) continue;
-            crudos.Add((nombreFactor, contribuciones[i]));
+            var fila = Copiar(cliente);
+            for (int i = 0; i < n; i++)
+                if ((mask & (1 << i)) == 0)
+                    Asignadores[nombres[i]](fila, referencia[nombres[i]]);
+            filas.Add(fila);
         }
 
-        double sumaAbsolutas = crudos.Sum(c => Math.Abs(c.Contribucion));
+        // v[mask] = probabilidad del modelo para esa combinación.
+        // v[0] = todo típico (riesgo de partida); v[combinaciones - 1] = todo real (predicción final).
+        float[] v = predecirProbabilidades(filas);
 
-        var resultado = new List<(string, decimal, string)>();
-        foreach (var (nombreFactor, contribucion) in crudos)
+        // Peso de Shapley para una combinación de tamaño s: s! * (n - s - 1)! / n!
+        static double Fact(int k) { double r = 1; for (int j = 2; j <= k; j++) r *= j; return r; }
+        var peso = new double[n];
+        for (int s = 0; s < n; s++) peso[s] = Fact(s) * Fact(n - s - 1) / Fact(n);
+
+        var resultado = new List<(string NombreFactor, decimal Impacto, string Descripcion)>();
+        for (int i = 0; i < n; i++)
         {
-            double impactoRelativo = sumaAbsolutas < 0.0001 ? 0 : 100 * contribucion / sumaAbsolutas;
+            // Aporte promedio del factor i: diferencia de probabilidad al "encenderlo", sobre todas
+            // las combinaciones que no lo incluyen.
+            double aporte = 0;
+            for (int mask = 0; mask < combinaciones; mask++)
+            {
+                if ((mask & (1 << i)) != 0) continue;
+                int s = BitOperations.PopCount((uint)mask);
+                aporte += peso[s] * (v[mask | (1 << i)] - v[mask]);
+            }
 
-            var selector = IndicadoresDeRiesgo.First(i => i.NombreFactor == nombreFactor).Selector;
-            double valorCliente = selector(features);
-            var (media, _) = estadisticasSegmento[nombreFactor];
-
+            var indicador = IndicadoresDeRiesgo.First(x => x.NombreFactor == nombres[i]);
             resultado.Add((
-                nombreFactor,
-                (decimal)Math.Round(impactoRelativo, 1),
-                GenerarDescripcion(nombreFactor, valorCliente, media)));
+                nombres[i],
+                (decimal)Math.Round(aporte * 100, 2),
+                GenerarDescripcion(nombres[i], indicador.Selector(cliente), referencia[nombres[i]])));
         }
 
-        // Los que más empujaron hacia el riesgo primero; los factores protectores (impacto
-        // negativo) quedan al final.
-        return resultado.OrderByDescending(f => f.Item2).ToList();
+        // El que más empujó hacia el riesgo primero (BLLModelo usa el primero como "factor
+        // principal"); los factores protectores (impacto negativo) quedan al final.
+        resultado = resultado.OrderByDescending(f => f.Impacto).ToList();
+
+        return (v[combinaciones - 1], v[0], resultado);
     }
+
+    // Cómo asignar el valor de cada indicador sobre una copia del socio (para armar las combinaciones).
+    private static readonly Dictionary<string, Action<ChurnInputData, float>> Asignadores = new()
+    {
+        [NombresFactorRiesgo.InactividadReciente] = (d, v) => d.DiasDesdeUltimaActividad = v,
+        [NombresFactorRiesgo.BajaFrecuenciaAsistencia] = (d, v) => d.VisitasUltimos30Dias = v,
+        [NombresFactorRiesgo.BajaInteraccionApp] = (d, v) => d.UsoAppUltimos30Dias = v,
+        [NombresFactorRiesgo.HistorialPagosVencidos] = (d, v) => d.PagosVencidosUltimos60Dias = v,
+        [NombresFactorRiesgo.CancelacionesFrecuentes] = (d, v) => d.CancelacionesUltimos30Dias = v,
+        [NombresFactorRiesgo.AltaConsultaSoporte] = (d, v) => d.ConsultasSoporteUltimos90Dias = v,
+        [NombresFactorRiesgo.AltaProporcionPagosVencidos] = (d, v) => d.ProporcionPagosVencidos = v,
+        [NombresFactorRiesgo.TendenciaNegativaAsistencia] = (d, v) => d.TendenciaVisitas = v,
+    };
+
+    private static ChurnInputData Copiar(ChurnInputData d) => new()
+    {
+        VisitasUltimos30Dias = d.VisitasUltimos30Dias,
+        UsoAppUltimos30Dias = d.UsoAppUltimos30Dias,
+        ReservasUltimos30Dias = d.ReservasUltimos30Dias,
+        CancelacionesUltimos30Dias = d.CancelacionesUltimos30Dias,
+        DiasDesdeUltimaActividad = d.DiasDesdeUltimaActividad,
+        PagosVencidosUltimos60Dias = d.PagosVencidosUltimos60Dias,
+        ConsultasSoporteUltimos90Dias = d.ConsultasSoporteUltimos90Dias,
+        PagosRegistradosUltimos60Dias = d.PagosRegistradosUltimos60Dias,
+        ProporcionPagosVencidos = d.ProporcionPagosVencidos,
+        TendenciaVisitas = d.TendenciaVisitas,
+        AntiguedadDias = d.AntiguedadDias,
+        PlanSocio = d.PlanSocio,
+        Sede = d.Sede,
+        Sexo = d.Sexo,
+        Abandono = d.Abandono
+    };
 
     // Antes vivía en BLLFactorRiesgo (se calculaba ahí, contra el segmento, cada vez que se
     // abría la pantalla de detalle). Ahora se llama una sola vez por cliente, en
@@ -312,4 +379,3 @@ public static class FeatureEngineering
         return filas;
     }
 }
-

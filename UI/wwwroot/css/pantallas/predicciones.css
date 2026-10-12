@@ -1,13 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Predicciones (Pages/Predicciones.razor)
-   ========================================================================== */
-
-
-
-
-
-/* --- Header con buscador (reemplaza al header simple en esta pantalla) --- */
-.pred-header {
+﻿.pred-header {
     margin-bottom: 24px;
 }
 
@@ -376,7 +367,35 @@ div.prob-fill-pred.nivel-bajo {
         background: #f6f7fa;
     }
 
-/* ==========================================================================
-   FIN PANTALLA: PREDICCIONES
-   ========================================================================== */
+
+/* --- Filas clickeables --- */
+.pred-row {
+    cursor: pointer;
+}
+
+    .pred-row:hover {
+        background: #f6f7fa;
+    }
+
+/* --- Mensajes de exportación --- */
+.alerta-exito,
+.alerta-error {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+.alerta-exito {
+    background: #e8f6ee;
+    color: #1f7a45;
+    border: 1px solid #c5e6d3;
+}
+
+.alerta-error {
+    background: #fdeaea;
+    color: #d63939;
+    border: 1px solid #f6c9c9;
+}
 

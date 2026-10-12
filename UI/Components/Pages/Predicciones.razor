@@ -3,9 +3,13 @@
 @inject BLL.BLLModelo BLLModelo
 @inject UI.Services.GeneradorPdf GeneradorPdf
 @inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject ILogger<Predicciones> Logger
 @rendermode InteractiveServer
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @using BE
+@using System.Globalization
+@using Microsoft.Extensions.Logging
 
 <PageTitle>Motor de Predicciones ML</PageTitle>
 
@@ -29,14 +33,14 @@
             }
         </p>
     </div>
-    <button class="btn-exportar" @onclick="ExportarInforme" disabled="@exportando">
+    <button class="btn-exportar" @onclick="ExportarInforme" disabled="@(exportando || predicciones.Count == 0)">
         @(exportando ? "Generando..." : "⬇ Exportar Informe")
     </button>
 </div>
 
 @if (!string.IsNullOrEmpty(mensajeExportacion))
 {
-    <div class="login-alerta">@mensajeExportacion</div>
+    <div class="@(exportacionExitosa ? "alerta-exito" : "alerta-error")">@mensajeExportacion</div>
 }
 
 @if (predicciones.Count == 0)
@@ -54,7 +58,7 @@ else
                 <span class="pred-kpi-icon icon-alto">⚠️</span>
             </div>
             <div class="pred-kpi-value">@countAlto</div>
-            <div class="pred-kpi-sub">Clientes con probabilidad > 75%</div>
+            <div class="pred-kpi-sub">Clientes con probabilidad &gt; 75%</div>
             <div class="pred-bar"><div class="pred-bar-fill fill-alto" style="width:@(PorcentajeKpi(countAlto))%"></div></div>
         </div>
 
@@ -98,7 +102,7 @@ else
         @if (prediccionesMostradas.Count == 0)
         {
             <p class="pred-sin-resultados">
-                No hay clientes con nivel de riesgo "@filtroActivo".
+                No hay clientes que correspondan al nivel de riesgo seleccionado.
                 <a href="#" @onclick:preventDefault @onclick='() => CambiarFiltro("Todos")'>Limpiar filtro</a>
             </p>
         }
@@ -116,17 +120,17 @@ else
                 <tbody>
                     @foreach (var p in PrediccionesPaginaActual)
                     {
-                        <tr>
+                        <tr class="pred-row" @onclick="() => IrADetalle(p.IdCliente)">
                             <td>
                                 <div class="client-cell">
                                     <div class="client-avatar-initials">@Iniciales(p)</div>
-                                    <a href="prediccion-detalle/@p.IdCliente" class="client-name client-name-link">@p.Cliente!.Nombre @p.Cliente.Apellido</a>
+                                    <span class="client-name">@p.Cliente!.Nombre @p.Cliente.Apellido</span>
                                 </div>
                             </td>
                             <td>
                                 <div class="prob-cell">
-                                    <span class="prob-percent @NivelClase(p.NivelRiesgo)">@p.ProbabilidadAbandono%</span>
-                                    <div class="prob-bar-pred"><div class="prob-fill-pred @NivelClase(p.NivelRiesgo)" style="width:@(p.ProbabilidadAbandono)%"></div></div>
+                                    <span class="prob-percent @NivelClase(p.NivelRiesgo)">@p.ProbabilidadAbandono.ToString("F1")%</span>
+                                    <div class="prob-bar-pred"><div class="prob-fill-pred @NivelClase(p.NivelRiesgo)" style="width:@(AnchoCss(p.ProbabilidadAbandono))%"></div></div>
                                 </div>
                             </td>
                             <td><span class="nivel-badge @NivelClase(p.NivelRiesgo)">@p.NivelRiesgo</span></td>
@@ -175,6 +179,7 @@ else
     private const int tamanioPagina = 5;
 
     private bool exportando = false;
+    private bool exportacionExitosa = false;
     private string mensajeExportacion = "";
 
     private int countAlto, countMedio, countBajo;
@@ -188,42 +193,31 @@ else
         (countAlto, countMedio, countBajo) = await BLLPrediccion.ObtenerResumenNivelesRiesgo();
     }
 
-    private double PorcentajeKpi(int cantidad) =>
-        predicciones.Count == 0 ? 0 : Math.Round(cantidad * 100.0 / predicciones.Count, 1);
+    // Los porcentajes que van dentro de un style="" deben usar punto decimal siempre,
+    // sin importar la cultura (en es-AR "62,5%" sería CSS inválido).
+    private string PorcentajeKpi(int cantidad) =>
+        (predicciones.Count == 0 ? 0 : Math.Round(cantidad * 100.0 / predicciones.Count, 1))
+            .ToString(CultureInfo.InvariantCulture);
 
-   
-    private int OrdenNivel(string nivel) => nivel switch
-    {
-        "Alto" => 0,
-        "Medio" => 1,
-        "Bajo" => 2,
-        _ => 3
-    };
+    private static string AnchoCss(decimal porcentaje) =>
+        porcentaje.ToString("0.##", CultureInfo.InvariantCulture);
 
+    // El filtro y el orden se resuelven en la BLL; cada llamada incluye el otro criterio vigente.
     private async Task CambiarFiltro(string nivel)
     {
         filtroActivo = nivel;
-        prediccionesMostradas = await BLLPrediccion.ObtenerPrediccionesSegunFiltro(nivel);
-        if (criterioOrden != "probabilidad")
-            prediccionesMostradas = AplicarOrdenLocal(prediccionesMostradas, criterioOrden);
+        prediccionesMostradas = await BLLPrediccion.ObtenerPrediccionesSegunFiltro(filtroActivo, criterioOrden);
         paginaActual = 1;
     }
 
     private async Task CambiarOrden(ChangeEventArgs e)
     {
         criterioOrden = e.Value?.ToString() ?? "probabilidad";
-        prediccionesMostradas = await BLLPrediccion.ObtenerPrediccionesOrdenadas(criterioOrden);
-        if (filtroActivo != "Todos")
-            prediccionesMostradas = prediccionesMostradas.Where(p => p.NivelRiesgo == filtroActivo).ToList();
+        prediccionesMostradas = await BLLPrediccion.ObtenerPrediccionesOrdenadas(criterioOrden, filtroActivo);
         paginaActual = 1;
     }
 
-    private List<Prediccion> AplicarOrdenLocal(List<Prediccion> lista, string columna) => columna switch
-    {
-        "nombre" => lista.OrderBy(p => p.Cliente!.Nombre).ThenBy(p => p.Cliente!.Apellido).ToList(),
-        "nivel" => lista.OrderBy(p => OrdenNivel(p.NivelRiesgo)).ToList(),
-        _ => lista
-    };
+    private void IrADetalle(int idCliente) => Nav.NavigateTo($"prediccion-detalle/{idCliente}");
 
     private List<Prediccion> PrediccionesPaginaActual =>
     prediccionesMostradas.Skip((paginaActual - 1) * tamanioPagina).Take(tamanioPagina).ToList();
@@ -257,19 +251,27 @@ else
         _ => ""
     };
 
-    // Pasos 10-12, y alternativo 12.1 (error al exportar).
+    // Pasos 10-12, y alternativo 11.1 (error al exportar).
     private async Task ExportarInforme()
     {
         exportando = true;
         mensajeExportacion = "";
+        StateHasChanged();
+        await Task.Yield(); // permite que se pinte "Generando..." antes del trabajo síncrono
+
         try
         {
             var pdfBytes = GeneradorPdf.GenerarInformePredicciones(prediccionesMostradas, filtroActivo);
             var base64 = Convert.ToBase64String(pdfBytes);
             await JS.InvokeVoidAsync("descargarArchivo", $"Predicciones_{DateTime.Now:yyyyMMdd_HHmm}.pdf", base64);
+
+            exportacionExitosa = true;
+            mensajeExportacion = "El archivo PDF se generó con éxito.";
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.LogError(ex, "Error al exportar el informe de predicciones (filtro: {Filtro})", filtroActivo);
+            exportacionExitosa = false;
             mensajeExportacion = "No fue posible generar el archivo. Podés reintentar o seguir navegando la vista normalmente.";
         }
         finally

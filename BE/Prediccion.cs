@@ -36,6 +36,7 @@ public static class NivelesRiesgo
     public const string Alto = "Alto";
     public const string Medio = "Medio";
     public const string Bajo = "Bajo";
+    public const string Todos = "Todos"; // valor de filtro: sin restricción de nivel
 
     public static string Clasificar(decimal probabilidadAbandono)
     {
@@ -45,3 +46,9 @@ public static class NivelesRiesgo
     }
 }
 
+public static class CriteriosOrden
+{
+    public const string Probabilidad = "probabilidad";
+    public const string Nombre = "nombre";
+    public const string Nivel = "nivel";
+}

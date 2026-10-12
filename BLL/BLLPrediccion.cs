@@ -8,40 +8,70 @@ public class BLLPrediccion
     private readonly AccesoDatos _accesoDatos;
     public BLLPrediccion(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
+    // Clase auxiliar para mapear el resultado del GROUP BY con el DAL genérico.
+    private class ConteoNivel
+    {
+        public string NivelRiesgo { get; set; } = string.Empty;
+        public int Total { get; set; }
+    }
+
+    // Una sola consulta agregada en lugar de traer todas las predicciones y contarlas en memoria.
     public async Task<(int Alto, int Medio, int Bajo)> ObtenerResumenNivelesRiesgo(CancellationToken ct = default)
     {
-        var todas = await ObtenerPrediccionesConDatosAsync(ct);
-        return (
-            todas.Count(p => p.NivelRiesgo == "Alto"),
-            todas.Count(p => p.NivelRiesgo == "Medio"),
-            todas.Count(p => p.NivelRiesgo == "Bajo")
-        );
+        var filas = (await _accesoDatos.Leer<ConteoNivel>(
+            "SELECT NivelRiesgo, COUNT(*) AS Total FROM Prediccion GROUP BY NivelRiesgo",
+            ct: ct)).ToList();
+
+        int Contar(string nivel) => filas.Where(f => f.NivelRiesgo == nivel).Sum(f => f.Total);
+
+        return (Contar(NivelesRiesgo.Alto), Contar(NivelesRiesgo.Medio), Contar(NivelesRiesgo.Bajo));
     }
 
-    public async Task<List<Prediccion>> ObtenerPredicciones(CancellationToken ct = default)
-    {
-        var lista = await ObtenerPrediccionesConDatosAsync(ct);
-        return lista.OrderByDescending(p => p.ProbabilidadAbandono).ToList();
-    }
+    // Lista por defecto: todos los niveles, ordenada por probabilidad descendente.
+    public Task<List<Prediccion>> ObtenerPredicciones(CancellationToken ct = default)
+        => ObtenerFiltradasYOrdenadasAsync(NivelesRiesgo.Todos, CriteriosOrden.Probabilidad, ct);
 
-    public async Task<List<Prediccion>> ObtenerPrediccionesSegunFiltro(string nivelRiesgo, CancellationToken ct = default)
-    {
-        var lista = await ObtenerPredicciones(ct);
-        return nivelRiesgo == "Todos" ? lista : lista.Where(p => p.NivelRiesgo == nivelRiesgo).ToList();
-    }
+    // Filtro por nivel de riesgo. Respeta el criterio de orden vigente en la pantalla.
+    public Task<List<Prediccion>> ObtenerPrediccionesSegunFiltro(
+        string nivelRiesgo, string columna = CriteriosOrden.Probabilidad, CancellationToken ct = default)
+        => ObtenerFiltradasYOrdenadasAsync(nivelRiesgo, columna, ct);
 
-    public async Task<List<Prediccion>> ObtenerPrediccionesOrdenadas(string columna, CancellationToken ct = default)
+    // Orden por columna. Respeta el filtro de nivel de riesgo vigente en la pantalla.
+    public Task<List<Prediccion>> ObtenerPrediccionesOrdenadas(
+        string columna, string nivelRiesgo = NivelesRiesgo.Todos, CancellationToken ct = default)
+        => ObtenerFiltradasYOrdenadasAsync(nivelRiesgo, columna, ct);
+
+    private async Task<List<Prediccion>> ObtenerFiltradasYOrdenadasAsync(
+        string nivelRiesgo, string columna, CancellationToken ct)
     {
-        var lista = await ObtenerPrediccionesConDatosAsync(ct);
-        return columna switch
+        IEnumerable<Prediccion> consulta = await ObtenerPrediccionesConDatosAsync(ct);
+
+        if (nivelRiesgo != NivelesRiesgo.Todos)
+            consulta = consulta.Where(p => p.NivelRiesgo == nivelRiesgo);
+
+        // En todos los criterios, el desempate es por probabilidad descendente
+        // para que el orden dentro de un mismo nivel / nombre sea estable.
+        consulta = columna switch
         {
-            "nombre" => lista.OrderBy(p => p.Cliente!.Nombre).ThenBy(p => p.Cliente!.Apellido).ToList(),
-            "nivel" => lista.OrderBy(p => OrdenNivel(p.NivelRiesgo)).ToList(),
-            _ => lista.OrderByDescending(p => p.ProbabilidadAbandono).ToList(),
+            CriteriosOrden.Nombre => consulta
+                .OrderBy(p => p.Cliente?.Nombre).ThenBy(p => p.Cliente?.Apellido)
+                .ThenByDescending(p => p.ProbabilidadAbandono),
+            CriteriosOrden.Nivel => consulta
+                .OrderBy(p => OrdenNivel(p.NivelRiesgo))
+                .ThenByDescending(p => p.ProbabilidadAbandono),
+            _ => consulta.OrderByDescending(p => p.ProbabilidadAbandono),
         };
+
+        return consulta.ToList();
     }
 
-    private static int OrdenNivel(string nivel) => nivel switch { "Alto" => 0, "Medio" => 1, "Bajo" => 2, _ => 3 };
+    private static int OrdenNivel(string nivel) => nivel switch
+    {
+        NivelesRiesgo.Alto => 0,
+        NivelesRiesgo.Medio => 1,
+        NivelesRiesgo.Bajo => 2,
+        _ => 3
+    };
 
     public async Task<Prediccion?> ObtenerPrediccionPorCliente(int idCliente, CancellationToken ct = default)
     {

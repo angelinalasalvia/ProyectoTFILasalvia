@@ -1,12 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Gestión de Roles y Permisos (Pages/RolesPermisos.razor)
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: GESTIÓN DE ROLES Y PERMISOS
-   ========================================================================== */
-
-.roles-grid {
+﻿.roles-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
@@ -228,5 +220,11 @@
     .roles-permisos-table th:first-child,
     .roles-permisos-table td:first-child {
         padding-left: 20px;
+    }
+
+    .roles-mensaje-error {
+        background: #fdecec;
+        border-color: #f5c2c2;
+        color: #b42318;
     }
 }

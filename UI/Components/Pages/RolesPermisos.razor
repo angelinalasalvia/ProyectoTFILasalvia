@@ -1,6 +1,9 @@
 ﻿@page "/administracion/roles"
 
 @inject NavigationManager Navigation
+@inject BLLRol RolBLL
+@using BE
+@using BLL
 
 <PageTitle>Gestión de Roles y Permisos</PageTitle>
 
@@ -144,7 +147,7 @@
 
             <tbody>
 
-                @foreach (var permiso in permisos)
+                @foreach (var permiso in PermisosFiltrados)
                 {
                     <tr>
 
@@ -194,355 +197,240 @@
         ✔ @mensaje
     </div>
 }
-
-
-<!-- Paginación -->
-<div class="roles-pagination">
-
-    <button class="page-btn"
-            disabled="@(paginaActual == 1)"
-            @onclick="PaginaAnterior">
-        ‹ Anterior
-    </button>
-
-    <div class="roles-pagination-pages">
-
-        @for (int i = 1; i <= totalPaginas; i++)
-        {
-            var pagina = i;
-
-            <button class="page-btn @(paginaActual == pagina ? "active" : "")"
-                    @onclick="() => IrAPagina(pagina)">
-                @pagina
-            </button>
-        }
-
-    </div>
-
-    <button class="page-btn"
-            disabled="@(paginaActual == totalPaginas)"
-            @onclick="PaginaSiguiente">
-        Siguiente ›
-    </button>
-
-</div>
-
+@if (!string.IsNullOrWhiteSpace(mensajeError))
+{
+    <div class="roles-mensaje roles-mensaje-error">⚠ @mensajeError</div>
+}
 
 @code {
+    private const string NombreAdministrador = "Administrador";
 
     private string textoBusqueda = "";
-
-    private int paginaActual = 1;
-
-    private int totalPaginas = 12;
-
     private string mensaje = "";
+    private string mensajeError = "";
 
+    private List<Rol> rolesCargados = new();
+    private List<Permiso> permisosCargados = new();
 
-    private List<RolItem> roles = new()
+    private List<RolItem> roles = new();
+    private List<PermisoItem> permisos = new();
+
+    // Configuración mostrada (la editan los checkboxes): idRol -> ids de permisos asignados
+    private Dictionary<int, HashSet<int>> asignados = new();
+
+    // Cambios pendientes de guardar (DS: ModificaAsignacionPermisos(idRol, listaPermisosModificados))
+    private Dictionary<int, List<Permiso>> modificaciones = new();
+
+    private List<string> permisosAInformar = new();
+
+    private IEnumerable<PermisoItem> PermisosFiltrados =>
+        string.IsNullOrWhiteSpace(textoBusqueda)
+            ? permisos
+            : permisos.Where(p => p.Nombre.Contains(textoBusqueda.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    // DS: Accede a "Gestión de Roles y Permisos"
+    protected override async Task OnInitializedAsync()
     {
-        new RolItem
+        try
         {
-            Id = 1,
-            Nombre = "Administrador",
-            Descripcion = "Acceso total a todas las funciones.",
-            Icono = "⚿",
-            ClaseIcono = "rol-icon-admin",
-            EsAdministrador = true
-        },
-
-        new RolItem
-        {
-            Id = 2,
-            Nombre = "Gerente",
-            Descripcion = "Tiene acceso a reportes de efectividad y de retención.",
-            Icono = "↗",
-            ClaseIcono = "rol-icon-gerente",
-            EsAdministrador = false
-        },
-
-        new RolItem
-        {
-            Id = 3,
-            Nombre = "Ejecutivo Comercial",
-            Descripcion = "Puede gestionar predicciones, campañas y reglas.",
-            Icono = "▧",
-            ClaseIcono = "rol-icon-ejecutivo",
-            EsAdministrador = false
+            await CargarConfiguracion();   // luego el markup hace MostrarFormulario / MostrarConfiguracionActual
         }
-    };
-
-
-    private List<PermisoItem> permisos = new()
-    {
-        new PermisoItem
+        catch (Exception)
         {
-            Id = 1,
-            Nombre = "Reportes",
-            Icono = "▣"
-        },
-
-        new PermisoItem
-        {
-            Id = 2,
-            Nombre = "Campañas",
-            Icono = "☷"
-        },
-
-        new PermisoItem
-        {
-            Id = 3,
-            Nombre = "Reglas",
-            Icono = "♧"
-        },
-
-        new PermisoItem
-        {
-            Id = 4,
-            Nombre = "Predicciones",
-            Icono = "✥"
-        },
-
-        new PermisoItem
-        {
-            Id = 5,
-            Nombre = "Gestión de Usuarios",
-            Icono = "♢"
+            mensajeError = "No se pudo cargar la configuración de roles y permisos.";
         }
-    };
+    }
 
-
-    /*
-     * Configuración inicial de permisos.
-     *
-     * Esta parte después debería venir de BLL/DAL.
-     */
-    private Dictionary<(int RolId, int PermisoId), bool> permisosAsignados = new()
+    // DS: ObtenerRoles() + ObtenerPermisosAsociados() + ActualizarInformacionMostrada()
+    private async Task CargarConfiguracion()
     {
-        // Administrador
-        { (1, 1), true },
-        { (1, 2), true },
-        { (1, 3), true },
-        { (1, 4), true },
-        { (1, 5), true },
+        rolesCargados = await RolBLL.ObtenerRoles();
+        permisosCargados = await RolBLL.ObtenerPermisosAsociados();
+        ActualizarInformacionMostrada();
+    }
 
-        // Gerente
-        { (2, 1), true },
-        { (2, 2), false },
-        { (2, 3), false },
-        { (2, 4), false },
-        { (2, 5), false },
+    // DS: ActualizarInformacionMostrada()
+    private void ActualizarInformacionMostrada()
+    {
+        roles = rolesCargados.Select(r =>
+        {
+            var (icono, clase) = EstiloRol(r.Nombre);
+            return new RolItem
+            {
+                Id = r.IdRol,
+                Nombre = r.Nombre,
+                Descripcion = r.Descripcion,
+                Icono = icono,
+                ClaseIcono = clase,
+                EsAdministrador = r.Nombre == NombreAdministrador
+            };
+        }).ToList();
 
-        // Ejecutivo Comercial
-        { (3, 1), false },
-        { (3, 2), true },
-        { (3, 3), true },
-        { (3, 4), true },
-        { (3, 5), false }
-    };
+        permisos = permisosCargados
+            .Select(p => new PermisoItem { Id = p.Id, Nombre = p.Nombre, Icono = IconoPermiso(p.Nombre) })
+            .ToList();
 
+        asignados = rolesCargados.ToDictionary(r => r.IdRol, r => r.Permisos.Select(p => p.Id).ToHashSet());
+        modificaciones.Clear();
+    }
 
     private bool TienePermiso(RolItem rol, PermisoItem permiso)
+        => asignados.TryGetValue(rol.Id, out var set) && set.Contains(permiso.Id);
+
+    // CU23 9.2: los permisos del Administrador son obligatorios (checkbox deshabilitado).
+    private bool EsPermisoObligatorio(RolItem rol, PermisoItem permiso)
+        => rol.EsAdministrador;
+
+    private void CambiarPermiso(RolItem rol, PermisoItem permiso, ChangeEventArgs e)
     {
-        if (permisosAsignados.TryGetValue(
-                (rol.Id, permiso.Id),
-                out bool asignado))
-        {
-            return asignado;
-        }
+        if (EsPermisoObligatorio(rol, permiso)) return;
 
-        return false;
-    }
+        var asignado = e.Value is bool valor && valor;
+        var set = asignados[rol.Id];
+        if (asignado) set.Add(permiso.Id); else set.Remove(permiso.Id);
 
+        var lista = permisos
+            .Where(p => set.Contains(p.Id))
+            .Select(p => new Permiso { Id = p.Id, Nombre = p.Nombre })
+            .ToList();
 
-    private bool EsPermisoObligatorio(
-        RolItem rol,
-        PermisoItem permiso)
-    {
-        /*
-         * CU22 - Alternativo 9.2:
-         * El Administrador posee permisos obligatorios.
-         *
-         * Por ahora se considera que todos los permisos
-         * del Administrador son obligatorios.
-         *
-         * Si después definís cuáles son específicamente
-         * obligatorios, esto se cambia acá.
-         */
-
-        return rol.EsAdministrador;
-    }
-
-
-    private void CambiarPermiso(
-        RolItem rol,
-        PermisoItem permiso,
-        ChangeEventArgs e)
-    {
-        /*
-         * El Administrador no puede modificar permisos
-         * obligatorios.
-         */
-
-        if (EsPermisoObligatorio(rol, permiso))
-            return;
-
-
-        bool nuevoValor = e.Value is bool valor && valor;
-
-        permisosAsignados[(rol.Id, permiso.Id)] = nuevoValor;
+        ModificaAsignacionPermisos(rol.Id, lista);
 
         mensaje = "";
+        mensajeError = "";
     }
 
-
-    private void GuardarCambios()
+    // DS: ModificaAsignacionPermisos(int idRol, List<Permiso> listaPermisosModificados)
+    private void ModificaAsignacionPermisos(int idRol, List<Permiso> listaPermisosModificados)
     {
-        /*
-         * CU22 paso 9:
-         * validar consistencia de la configuración.
-         */
+        modificaciones[idRol] = listaPermisosModificados;
+    }
 
-        if (!ConfiguracionValida())
+    // DS: Selecciona botón "Guardar"()
+    private async Task GuardarCambios()
+    {
+        mensaje = "";
+        mensajeError = "";
+
+        if (modificaciones.Count == 0)
         {
-            mensaje = "La configuración seleccionada es inconsistente.";
+            mensaje = "No hay cambios para guardar.";
             return;
         }
 
-
-        /*
-         * TODO:
-         * Persistir mediante BLL/DAL.
-         */
-
-        mensaje = "La configuración fue actualizada correctamente.";
-
-        StateHasChanged();
-    }
-
-
-    private bool ConfiguracionValida()
-    {
-        /*
-         * Acá después pueden agregarse las reglas
-         * reales de consistencia.
-         *
-         * Por ahora el Administrador mantiene todos
-         * sus permisos obligatorios.
-         */
-
-        foreach (var permiso in permisos)
+        try
         {
-            if (!TienePermiso(roles.First(r => r.EsAdministrador), permiso))
-                return false;
+            // Se valida todo antes de guardar nada.
+            foreach (var (idRol, lista) in modificaciones.ToList())
+            {
+                if (!ValidarConsistenciaConfiguracion(lista))
+                {
+                    mensajeError = "La configuración seleccionada es inconsistente. Verifique los campos indicados: "
+                                   + string.Join(", ", permisosAInformar) + ".";
+                    return;
+                }
+
+                if (!ValidarPermisosObligatoriosAdmin(idRol, lista))
+                {
+                    mensajeError = "No es posible eliminar permisos obligatorios del rol Administrador.";
+                    await CargarConfiguracion();   // 9.2.2: se cancela la modificación
+                    return;
+                }
+            }
+
+            foreach (var (idRol, lista) in modificaciones)
+                await RolBLL.ActualizarPermisosRol(idRol, lista);
+
+            await CargarConfiguracion();           // vuelve a leer y refresca lo mostrado
+            mensaje = "La configuración fue actualizada correctamente.";
         }
-
-        return true;
-    }
-
-
-    private void Cancelar()
-    {
-        /*
-         * CU22 - Alternativo 8.1:
-         * descartar modificaciones.
-         *
-         * Volvemos a cargar la configuración original.
-         */
-
-        CargarConfiguracionOriginal();
-
-        mensaje = "";
-    }
-
-
-    private void CargarConfiguracionOriginal()
-    {
-        /*
-         * TODO:
-         * volver a consultar los permisos desde BLL/DAL.
-         *
-         * Por ahora se restablece la configuración
-         * inicial de demostración.
-         */
-
-        permisosAsignados = new()
+        catch (Exception)
         {
-            { (1, 1), true },
-            { (1, 2), true },
-            { (1, 3), true },
-            { (1, 4), true },
-            { (1, 5), true },
-
-            { (2, 1), true },
-            { (2, 2), false },
-            { (2, 3), false },
-            { (2, 4), false },
-            { (2, 5), false },
-
-            { (3, 1), false },
-            { (3, 2), true },
-            { (3, 3), true },
-            { (3, 4), true },
-            { (3, 5), false }
-        };
+            mensajeError = "Ocurrió un error inesperado al guardar. Intentá nuevamente.";
+        }
     }
 
+    // DS: ValidarConsistenciaConfiguracion(List<Permiso> listaPermisosModificados): bool
+    private bool ValidarConsistenciaConfiguracion(List<Permiso> listaPermisosModificados)
+    {
+        permisosAInformar.Clear();
+        var idsCatalogo = permisos.Select(p => p.Id).ToHashSet();
+
+        foreach (var p in listaPermisosModificados)
+            if (!idsCatalogo.Contains(p.Id))
+                permisosAInformar.Add(string.IsNullOrEmpty(p.Nombre) ? $"#{p.Id}" : p.Nombre);
+
+        foreach (var repetido in listaPermisosModificados.GroupBy(p => p.Id).Where(g => g.Count() > 1))
+            permisosAInformar.Add(repetido.First().Nombre);
+
+        // Si el profe define dependencias entre permisos (ej. "Reglas" requiere "Campañas"), se agregan acá.
+        return permisosAInformar.Count == 0;
+    }
+
+    // DS: ValidarPermisosObligatoriosAdmin(int idRol, List<Permiso> listaPermisosModificados): bool
+    private bool ValidarPermisosObligatoriosAdmin(int idRol, List<Permiso> listaPermisosModificados)
+    {
+        var rol = roles.FirstOrDefault(r => r.Id == idRol);
+        if (rol is null || !rol.EsAdministrador) return true;
+
+        // Para el Administrador son obligatorios todos los permisos del catálogo.
+        var ids = listaPermisosModificados.Select(p => p.Id).ToHashSet();
+        return permisos.All(p => ids.Contains(p.Id));
+    }
+
+    // CU23 8.1: descartar modificaciones y volver a la configuración guardada.
+    private async Task Cancelar()
+    {
+        try
+        {
+            await CargarConfiguracion();
+        }
+        catch (Exception)
+        {
+            mensajeError = "No se pudo recargar la configuración.";
+            return;
+        }
+        mensaje = "";
+        mensajeError = "";
+    }
 
     private void CrearRolPersonalizado()
     {
-        /*
-         * La captura tiene este botón,
-         * pero CU22 no describe el CU de creación
-         * de roles personalizados.
-         *
-         * Por ahora no implementamos el flujo.
-         */
+        // Sin CU de creación de roles: por ahora no hace nada.
     }
 
-
-    private void PaginaAnterior()
+    private static (string Icono, string Clase) EstiloRol(string nombre) => nombre switch
     {
-        if (paginaActual > 1)
-            paginaActual--;
-    }
+        "Administrador" => ("⚿", "rol-icon-admin"),
+        "Gerente" => ("↗", "rol-icon-gerente"),
+        "Ejecutivo Comercial" => ("▧", "rol-icon-ejecutivo"),
+        _ => ("◆", "rol-icon-gerente")
+    };
 
-
-    private void PaginaSiguiente()
+    private static string IconoPermiso(string nombre) => nombre switch
     {
-        if (paginaActual < totalPaginas)
-            paginaActual++;
-    }
-
-
-    private void IrAPagina(int pagina)
-    {
-        paginaActual = pagina;
-    }
-
+        "Reportes" => "▣",
+        "Campañas" => "☷",
+        "Reglas" => "♧",
+        "Predicciones" => "✥",
+        "Gestión de Usuarios" => "♢",
+        _ => "•"
+    };
 
     private class RolItem
     {
         public int Id { get; set; }
-
         public string Nombre { get; set; } = "";
-
         public string Descripcion { get; set; } = "";
-
         public string Icono { get; set; } = "";
-
         public string ClaseIcono { get; set; } = "";
-
         public bool EsAdministrador { get; set; }
     }
-
 
     private class PermisoItem
     {
         public int Id { get; set; }
-
         public string Nombre { get; set; } = "";
-
         public string Icono { get; set; } = "";
     }
 }

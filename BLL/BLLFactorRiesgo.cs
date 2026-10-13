@@ -8,7 +8,7 @@ public class BLLFactorRiesgo
     private readonly AccesoDatos _accesoDatos;
     public BLLFactorRiesgo(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
-    public async Task<List<FactorRiesgo>> ObtenerFactorRiesgo(int idCliente, string periodo = "mes", CancellationToken ct = default)
+    public async Task<List<FactorRiesgo>> ObtenerFactorRiesgo(int idCliente, CancellationToken ct = default)
     {
         var prediccion = (await _accesoDatos.Leer<Prediccion>(
             "SELECT TOP 1 * FROM Prediccion WHERE IdCliente = @idCliente",
@@ -45,4 +45,9 @@ public class BLLFactorRiesgo
             })
             .ToList();
     }
+
+    // Riesgo que el modelo le asigna a un socio típico del plan: la probabilidad final
+    // menos lo que suman (o restan) los factores propios de este cliente.
+    public double CalcularRiesgoBase(Prediccion? prediccion, List<FactorRiesgo> factores)
+        => (double)(prediccion?.ProbabilidadAbandono ?? 0) - factores.Sum(f => (double)(f.Impacto ?? 0));
 }

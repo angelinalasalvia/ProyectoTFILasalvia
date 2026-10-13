@@ -19,16 +19,23 @@
     </div>
 </div>
 
-@if (cliente == null)
+@if (cargando)
 {
     <p>Cargando...</p>
+}
+else if (cliente == null)
+{
+    <p class="pred-sin-resultados">No se encontró el cliente solicitado.</p>
 }
 else
 {
     <h1 class="detalle-title">Análisis de Predicción: @cliente.Nombre @cliente.Apellido</h1>
-    <span class="riesgo-tag">
-        ● RIESGO @prediccion?.NivelRiesgo?.ToUpper() - @prediccion?.ProbabilidadAbandono.ToString("0.0")%
-    </span>
+    @if (prediccion != null)
+    {
+        <span class="riesgo-tag @ClaseNivel(prediccion.NivelRiesgo)">
+            ● RIESGO @prediccion.NivelRiesgo?.ToUpper() - @prediccion.ProbabilidadAbandono.ToString("0.0")%
+        </span>
+    }
 
     <div class="detalle-row">
         <div class="detalle-col-izq">
@@ -48,11 +55,11 @@ else
                     </div>
                     <div class="perfil-dato">
                         <span class="dato-label">Última Actividad</span>
-                        <span class="dato-value">@(UltimaActividad()?.ToString("dd MMM, yyyy") ?? "Sin registros")</span>
+                        <span class="dato-value">@(ultimaActividad?.ToString("dd/MM/yyyy") ?? "Sin registros")</span>
                     </div>
                     <div class="perfil-dato">
                         <span class="dato-label">Último Pago</span>
-                        <span class="dato-value">@(UltimoPago()?.ToString("dd MMM, yyyy") ?? "Sin registros")</span>
+                        <span class="dato-value">@(ultimoPago?.ToString("dd/MM/yyyy") ?? "Sin registros")</span>
                     </div>
                 </div>
             </div>
@@ -71,7 +78,7 @@ else
 
                 @if (hayAnomalia)
                 {
-                    <div class="login-alerta">
+                    <div class="alerta-anomalia">
                         ⚠️ Anomalía detectada: @detalleAnomalia
                         <div class="anomalia-nota">Se marca cuando el uso del gimnasio o de la app está @(umbralAnomalia)% o más por debajo del promedio de su segmento en los últimos 30 días.</div>
                     </div>
@@ -96,72 +103,79 @@ else
                         <p class="card-hint">Parte del riesgo que el modelo le asigna a un socio típico de su mismo plan y suma o resta puntos según cómo se aparta este socio de lo típico en cada indicador, hasta llegar a su probabilidad. <span class="leyenda-riesgo">Rojo: aumenta el riesgo</span> · <span class="leyenda-protector">Verde: lo reduce</span>.</p>
                     </div>
                 </div>
-                <div class="factores-content">
-                    <div class="factores-lista">
-                        <div class="factor-item">
-                            <div class="factor-top">
-                                <span class="factor-nombre">Riesgo de un socio típico de su plan</span>
-                                <span class="factor-valor">@riesgoBase.ToString("0.0")%</span>
-                            </div>
-                        </div>
-
-                        @foreach (var f in factoresVisibles.Where(x => Math.Abs(x.Impacto ?? 0) >= 0.05m).Concat(otros is null ? Array.Empty<FactorRiesgo>() : new[] { otros }))
-                        {
-                            var pts = f.Impacto ?? 0;
+                @if (prediccion == null)
+                {
+                    <p class="pred-sin-resultados">Este cliente aún no tiene una predicción calculada.</p>
+                }
+                else
+                {
+                    <div class="factores-content">
+                        <div class="factores-lista">
                             <div class="factor-item">
                                 <div class="factor-top">
-                                    <span class="factor-nombre">@f.Nombre</span>
-                                    <span class="factor-valor @(pts >= 0 ? "factor-positivo" : "factor-negativo")">
-                                        @(pts >= 0 ? "+" : "−")@Math.Abs(pts).ToString("0.0") pts
-                                    </span>
+                                    <span class="factor-nombre">Riesgo de un socio típico de su plan</span>
+                                    <span class="factor-valor">@riesgoBase.ToString("0.0")%</span>
                                 </div>
-                                <div class="factor-bar">
-                                    <div class="factor-fill @(pts >= 0 ? "fill-positivo" : "fill-negativo")" style="width:@(Ancho(pts))%"></div>
-                                </div>
-                                <div class="factor-desc">@f.Descripcion</div>
                             </div>
-                        }
-                        @{
-                            var sinEfecto = factoresVisibles.Where(x => Math.Abs(x.Impacto ?? 0) < 0.05m).Select(x => x.Nombre).ToList();
-                        }
-                        @if (sinEfecto.Count > 0)
-                        {
-                            <p class="card-hint">Sin influencia en esta predicción: @string.Join(", ", sinEfecto).</p>
-                        }
 
-                        <div class="factor-item">
-                            <div class="factor-top">
-                                <span class="factor-nombre"><strong>= Probabilidad de abandono</strong></span>
-                                <span class="factor-valor"><strong>@prediccion?.ProbabilidadAbandono.ToString("0.0")%</strong></span>
+                            @foreach (var f in factoresVisibles.Where(x => Math.Abs(x.Impacto ?? 0) >= 0.05m).Concat(otros is null ? Array.Empty<FactorRiesgo>() : new[] { otros }))
+                            {
+                                var pts = f.Impacto ?? 0;
+                                <div class="factor-item">
+                                    <div class="factor-top">
+                                        <span class="factor-nombre">@f.Nombre</span>
+                                        <span class="factor-valor @(pts >= 0 ? "factor-positivo" : "factor-negativo")">
+                                            @(pts >= 0 ? "+" : "−")@Math.Abs(pts).ToString("0.0") pts
+                                        </span>
+                                    </div>
+                                    <div class="factor-bar">
+                                        <div class="factor-fill @(pts >= 0 ? "fill-positivo" : "fill-negativo")" style="width:@(Ancho(pts))%"></div>
+                                    </div>
+                                    <div class="factor-desc">@f.Descripcion</div>
+                                </div>
+                            }
+                            @{
+                                var sinEfecto = factoresVisibles.Where(x => Math.Abs(x.Impacto ?? 0) < 0.05m).Select(x => x.Nombre).ToList();
+                            }
+                            @if (sinEfecto.Count > 0)
+                            {
+                                <p class="card-hint">Sin influencia en esta predicción: @string.Join(", ", sinEfecto).</p>
+                            }
+
+                            <div class="factor-item">
+                                <div class="factor-top">
+                                    <span class="factor-nombre"><strong>= Probabilidad de abandono</strong></span>
+                                    <span class="factor-valor"><strong>@prediccion?.ProbabilidadAbandono.ToString("0.0")%</strong></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
 
-                    <div class="radar-container">
-                        <svg viewBox="0 0 260 260" class="radar-svg">
-                            @for (int i = 0; i < factoresVisibles.Count; i++)
-                            {
-                                var (ejeX, ejeY) = RadarPosicion(i, factores.Count, 1.0);
-                                <line x1="130" y1="130" x2="@ejeX.ToString(CultureInfo.InvariantCulture)" y2="@ejeY.ToString(CultureInfo.InvariantCulture)"
-                                      stroke="#e5e8ee" stroke-width="1" />
-                            }
-                            <polygon points="@RadarPuntos()" fill="#f2b8c6" fill-opacity="0.35" stroke="#d63939" stroke-width="2" />
-                            <circle cx="130" cy="130" r="26" fill="#fff" stroke="#e5e8ee" stroke-width="1" />
-                            <text x="130" y="127" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">Modelo:</text>
-                            <text x="130" y="137" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">@nombreModelo</text>
-                            <text x="130" y="112" text-anchor="middle" font-size="14">🎯</text>
-                            @for (int i = 0; i < factoresVisibles.Count; i++)
-                            {
-                                var (labelX, labelY) = RadarPosicion(i, factoresVisibles.Count);
-                                <g>
-                                    <text x="@labelX.ToString(CultureInfo.InvariantCulture)" y="@labelY.ToString(CultureInfo.InvariantCulture)"
-                                          text-anchor="middle" font-size="7" fill="#555b6a">@TruncarNombre(factoresVisibles[i].Nombre)</text>
-                                </g>
-                            }
-                        </svg>
+                        <div class="radar-container">
+                            <svg viewBox="0 0 260 260" class="radar-svg">
+                                @for (int i = 0; i < factoresVisibles.Count; i++)
+                                {
+                                    var (ejeX, ejeY) = RadarPosicion(i, factoresVisibles.Count, 1.0);
+                                    <line x1="130" y1="130" x2="@ejeX.ToString(CultureInfo.InvariantCulture)" y2="@ejeY.ToString(CultureInfo.InvariantCulture)"
+                                          stroke="#e5e8ee" stroke-width="1" />
+                                }
+                                <polygon points="@RadarPuntos()" fill="#f2b8c6" fill-opacity="0.35" stroke="#d63939" stroke-width="2" />
+                                <circle cx="130" cy="130" r="26" fill="#fff" stroke="#e5e8ee" stroke-width="1" />
+                                <text x="130" y="127" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">Modelo:</text>
+                                <text x="130" y="137" text-anchor="middle" font-size="8" fill="#555b6a" font-weight="600">@NombreModeloCorto()</text>
+                                <text x="130" y="112" text-anchor="middle" font-size="14">🎯</text>
+                                @for (int i = 0; i < factoresVisibles.Count; i++)
+                                {
+                                    var (labelX, labelY) = RadarPosicion(i, factoresVisibles.Count);
+                                    <g>
+                                        <text x="@labelX.ToString(CultureInfo.InvariantCulture)" y="@labelY.ToString(CultureInfo.InvariantCulture)"
+                                              text-anchor="middle" font-size="7" fill="#555b6a">@TruncarNombre(factoresVisibles[i].Nombre)</text>
+                                    </g>
+                                }
+                            </svg>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
 
 
@@ -234,6 +248,7 @@ else
 @code {
     [Parameter] public int IdCliente { get; set; }
 
+    private bool cargando = true;
     private Cliente? cliente;
     private Prediccion? prediccion;
     private (double UsoInstalaciones, double InteraccionesApp) metricas = (0, 0);
@@ -242,50 +257,46 @@ else
     private string periodoActivo = "mes";
     private bool hayAnomalia;
     private string detalleAnomalia = "";
-    private const int umbralAnomalia = 50;
+    private const int umbralAnomalia = BLL.BLLCliente.UmbralAnomalia;
+    private DateTime? ultimaActividad;
+    private DateTime? ultimoPago;
 
-    protected override async Task OnInitializedAsync() => await CargarDatos();
+    protected override async Task OnInitializedAsync()
+    {
+        try { await CargarDatos(); }
+        finally { cargando = false; }
+    }
 
     private async Task CargarDatos()
     {
         cliente = await BLLCliente.ObtenerCliente(IdCliente);
-        prediccion = await BLLPrediccion.ObtenerPrediccionPorCliente(IdCliente);
+        if (cliente == null) return;
+
+        ultimaActividad = BLLCliente.ObtenerUltimaActividad(cliente);
+        ultimoPago = BLLCliente.ObtenerUltimoPago(cliente);
         metricas = await BLLCliente.ObtenerMetricasRelativasMedia(IdCliente);
-        factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente);
+        (hayAnomalia, detalleAnomalia) = BLLCliente.VerificarAnomalias(metricas);
+                
+        prediccion = await BLLPrediccion.ObtenerPrediccionPorCliente(IdCliente);
         if (prediccion != null)
+        {
+            factores = await BLLFactorRiesgo.ObtenerFactorRiesgo(IdCliente);
             nombreModelo = await BLLModelo.ObtenerNombreModelo(prediccion.IdModelo);
-        PrepararFactores();
-        VerificarAnomalias();
+            GenerarGraficoFactores();
+        }
         GenerarGraficoEngagement(cliente);
     }
-        
-    private void VerificarAnomalias()
-    {
-        const double umbral = -umbralAnomalia;
-        var motivos = new List<string>();
-        if (metricas.UsoInstalaciones <= umbral)
-            motivos.Add($"el uso de instalaciones está {Math.Abs(metricas.UsoInstalaciones)}% por debajo de la media");
-        if (metricas.InteraccionesApp <= umbral)
-            motivos.Add($"las interacciones con la app están {Math.Abs(metricas.InteraccionesApp)}% por debajo de la media");
 
-        hayAnomalia = motivos.Count > 0;
-        detalleAnomalia = hayAnomalia ? string.Join(" y ", motivos) + "." : "";
-    }
-
-    private async Task CambiarPeriodo(ChangeEventArgs e)
+    private void CambiarPeriodo(ChangeEventArgs e)
     {
         periodoActivo = e.Value?.ToString() ?? "mes";
         GenerarGraficoEngagement(cliente);
-        await Task.CompletedTask;
     }
 
-    private DateTime? UltimaActividad() => cliente?.Eventos
-        .Where(e => e.Evento == TipoEvento.VisitaGimnasio || e.Evento == TipoEvento.UsoApp)
-        .Select(e => (DateTime?)e.Fecha).Max();
+    private static string ClaseNivel(string? nivel) => $"nivel-{(nivel ?? "").ToLowerInvariant()}";
 
-    private DateTime? UltimoPago() => cliente?.Eventos
-        .Where(e => e.Evento == TipoEvento.PagoRegistrado)
-        .Select(e => (DateTime?)e.Fecha).Max();
+    // La BD guarda "Random Forest - Predicción de Churn"; en el gráfico solo se muestra el algoritmo.
+    private string NombreModeloCorto() => nombreModelo.Split(" - ")[0];
 
     private string FormatearRelativo(double valor) =>
         valor == 0 ? "En la media del segmento"
@@ -326,66 +337,14 @@ else
     private List<(string Etiqueta, double Score)> puntosEngagement = new();
     private bool haySuficienteHistorialEngagement = true;
 
-    private const double PesoVisitas = 50.0;
-    private const double PesoApp = 30.0;
-    private const double PesoPago = 20.0;
-
-    private const int MaxVisitasPorBucket = 10;
-    private const int MaxUsosAppPorBucket = 10;
-
-    private const int CantidadBuckets = 6;
-
+    // El cálculo vive en la BLL; la GUI solo dibuja. Lista vacía = sin historial en el período.
     private void GenerarGraficoEngagement(Cliente? clienteActual)
     {
-        puntosEngagement = new();
-        if (clienteActual == null) { haySuficienteHistorialEngagement = false; return; }
-
-        var desde = DateTime.Now.AddDays(-BLL.BLLCliente.DiasSegunPeriodo(periodoActivo));
-        var eventosEnRango = clienteActual.Eventos.Where(e => e.Fecha >= desde).ToList();
-
-        if (eventosEnRango.Count == 0)
-        {
-            haySuficienteHistorialEngagement = false;
-            return;
-        }
-
-        var duracionBucket = (DateTime.Now - desde) / CantidadBuckets;
-        var crudos = new List<(string Etiqueta, double Score)>();
-        for (int i = 0; i < CantidadBuckets; i++)
-        {
-            var inicio = desde.Add(duracionBucket * i);
-            var fin = i == CantidadBuckets - 1 ? DateTime.Now : desde.Add(duracionBucket * (i + 1));
-            var delBucket = eventosEnRango.Where(e => e.Fecha >= inicio && e.Fecha < fin).ToList();
-
-            int visitas = delBucket.Count(e => e.Evento == TipoEvento.VisitaGimnasio);
-            int usosApp = delBucket.Count(e => e.Evento == TipoEvento.UsoApp);
-            bool huboPago = delBucket.Any(e => e.Evento == TipoEvento.PagoRegistrado);
-
-            double puntosVisitas =
-                Math.Min((double)visitas / MaxVisitasPorBucket, 1.0) * PesoVisitas;
-
-            double puntosApp =
-                Math.Min((double)usosApp / MaxUsosAppPorBucket, 1.0) * PesoApp;
-
-            double puntosPago = huboPago ? PesoPago : 0;
-
-            double score = puntosVisitas + puntosApp + puntosPago;
-
-            crudos.Add((EtiquetaBucket(fin, periodoActivo), Math.Round(score, 1)));
-        }
-
-        puntosEngagement = crudos;
-
-        haySuficienteHistorialEngagement = true;
+        puntosEngagement = clienteActual == null
+            ? new()
+            : BLLCliente.ObtenerEvolucionEngagement(clienteActual, periodoActivo);
+        haySuficienteHistorialEngagement = puntosEngagement.Count > 0;
     }
-
-    private static string EtiquetaBucket(DateTime fecha, string periodo) => periodo switch
-    {
-        "semana" => fecha.ToString("dd/MM"),
-        "trimestre" => fecha.ToString("MMM"),
-        "año" => fecha.ToString("MMM yy"),
-        _ => fecha.ToString("dd/MM")
-    };
 
     private string EngagementPolylinePuntos()
     {
@@ -405,14 +364,16 @@ else
     private FactorRiesgo? otros;
     private double riesgoBase, maxPuntos = 1;
 
-    private void PrepararFactores()
+    private void GenerarGraficoFactores()
     {
         otros = factores.FirstOrDefault(f => f.Nombre == NombresFactorRiesgo.OtrosFactores);
         factoresVisibles = factores.Where(f => f.Nombre != NombresFactorRiesgo.OtrosFactores)
                                    .OrderByDescending(f => f.Impacto ?? 0).ToList();
 
-        riesgoBase = (double)(prediccion?.ProbabilidadAbandono ?? 0) - factores.Sum(f => (double)(f.Impacto ?? 0));
-        maxPuntos = Math.Max(1, factores.Max(f => Math.Abs((double)(f.Impacto ?? 0))));
+        riesgoBase = BLLFactorRiesgo.CalcularRiesgoBase(prediccion, factores);
+        maxPuntos = factores.Count == 0
+            ? 1
+            : Math.Max(1, factores.Max(f => Math.Abs((double)(f.Impacto ?? 0))));
     }
 
     private string Ancho(decimal? pts) =>

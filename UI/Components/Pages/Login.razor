@@ -212,9 +212,18 @@
     private TimeSpan DeterminarDuracionSesion() => DuracionNormal;
 
     // DS: RedirigirAMenúPrincipal()
+    // DS: RedirigirAMenúPrincipal()  (a la primera pantalla a la que el usuario tiene acceso)
     private void RedirigirAMenuPrincipal()
     {
-        Navigation.NavigateTo("/predicciones");
+        var sesion = SessionManager.GetInstance();
+        var destino =
+            sesion.TienePermiso("Predicciones") ? "/predicciones" :
+            sesion.TienePermiso("Reportes") ? "/reportes/efectividad" :
+            sesion.TienePermiso("Campañas") ? "/campanas" :
+            sesion.TienePermiso("Reglas") ? "/automatizacion" :
+            sesion.TienePermiso("Gestión de Usuarios") ? "/administracion/usuarios" :
+                                                         "/clientes";
+        Navigation.NavigateTo(destino);
     }
 
     // DS: opción "¿Olvidaste tu contraseña?" -> CU19 Recuperar contraseña

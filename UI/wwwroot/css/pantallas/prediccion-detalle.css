@@ -1,13 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Detalle de Predicción (Pages/PrediccionDetalle.razor)
-   ========================================================================== */
-/* ==========================================================================
-   PANTALLA: DETALLE DE PREDICCIÓN (Pages/PrediccionDetalleCarlos.razor)
-   Por ahora hardcodeada para Carlos Ruiz. Cuando se programe la lógica real
-   esto se va a convertir en una ruta con parámetro (ej: /prediccion/{id}).
-   ========================================================================== */
-
-.back-link {
+﻿.back-link {
     color: #2f6fed;
     text-decoration: none;
     font-size: 14px;
@@ -18,18 +9,6 @@
         text-decoration: underline;
     }
 
-/* Hace clickeable el nombre de un cliente en la tabla de Predicciones */
-.client-name-link {
-    color: #111;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-    .client-name-link:hover {
-        text-decoration: underline;
-        color: #2f6fed;
-    }
-
 .detalle-title {
     font-size: 26px;
     margin: 20px 0 10px 0;
@@ -37,14 +16,29 @@
 
 .riesgo-tag {
     display: inline-block;
-    color: #d63939;
-    background: #fdeaea;
+    color: #555b6a;
+    background: #f0f2f6;
     font-size: 13px;
     font-weight: 700;
     padding: 5px 14px;
     border-radius: 20px;
     margin-bottom: 24px;
 }
+
+    .riesgo-tag.nivel-alto {
+        color: #d63939;
+        background: #fdeaea;
+    }
+
+    .riesgo-tag.nivel-medio {
+        color: #2f6fed;
+        background: #eaf1fd;
+    }
+
+    .riesgo-tag.nivel-bajo {
+        color: #8a90a2;
+        background: #f0f2f6;
+    }
 
 .detalle-row {
     display: grid;
@@ -147,9 +141,25 @@
     font-weight: 700;
 }
 
+    .segmento-value.positivo {
+        color: #2f9e5c;
+    }
+
     .segmento-value.negativo {
         color: #d63939;
     }
+
+/* Alerta de anomalía respecto a la media del segmento */
+.alerta-anomalia {
+    background: #fff4e0;
+    color: #a15c00;
+    border: 1px solid #f5d9a8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
 
 /* --- Botón de acción de retención --- */
 .btn-accion-retencion {
@@ -165,6 +175,7 @@
     justify-content: center;
     gap: 10px;
     cursor: pointer;
+    text-decoration: none;
 }
 
     .btn-accion-retencion:hover {
@@ -287,11 +298,6 @@
     color: #8a90a2;
     margin-top: 8px;
 }
-
-/* ==========================================================================
-   FIN PANTALLA: DETALLE DE PREDICCIÓN
-   ========================================================================== */
-
 
 /* --- Textos de ayuda --- */
 .card-hint {

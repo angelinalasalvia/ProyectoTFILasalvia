@@ -26,11 +26,14 @@ else if (estado == Acceso.SinPermiso)
     private enum Acceso { SinSesion, SinPermiso, Permitido }
     private Acceso estado = Acceso.SinSesion;
 
-    // Ruta (sin la barra inicial) -> permiso requerido. Completar con los nombres de la tabla Permiso.
     private static readonly Dictionary<string, string> PermisoPorRuta = new()
     {
-        // ["clientes"] = "VerClientes",
-        // ["detalle-prediccion"] = "VerPredicciones",
+        ["campanas"] = "Campañas",
+        ["predicciones"] = "Predicciones",
+        ["detalle-prediccion"] = "Predicciones",
+        ["automatizacion"] = "Reglas",
+        ["reportes"] = "Reportes",
+        ["administracion"] = "Gestión de Usuarios",   // usuarios y roles
     };
 
     // Corre en cada navegación, no solo la primera vez.

@@ -336,6 +336,20 @@ public class ServicioEnvio
         return json.Length > 200 ? json[..200] : json;
     }*/
 
+    // DS CU19: Sistema de Correo -> EnviarCorreoRecuperacion(email, tokenLink)
+    public Task<ResultadoEnvio> EnviarCorreoRecuperacion(string email, string tokenLink, CancellationToken ct = default)
+    {
+        const string asunto = "Recuperá tu contraseña";
+        var cuerpo =
+            "Hola,\n\n" +
+            "Recibimos una solicitud para restablecer tu contraseña. " +
+            "Ingresá al siguiente enlace (vale 30 minutos y se puede usar una sola vez):\n\n" +
+            $"{tokenLink}\n\n" +
+            "Si no fuiste vos, ignorá este mensaje: tu contraseña no va a cambiar.";
+
+        return EnviarEmail(email, asunto, cuerpo, ct);
+    }
+
     private ResultadoEnvio Fallo(string motivo)
     {
         _logger.LogWarning("Falló un envío: {Motivo}", motivo);

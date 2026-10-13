@@ -2,6 +2,12 @@
 @page "/login"
 @layout Components.Layout.AuthLayout
 @inject NavigationManager Navigation
+@inject BLLUsuario UsuarioBLL
+@inject BLLBitacora BitacoraBLL
+@inject BLLRol RolBLL
+@using BE
+@using BLL
+@using Servicios
 @using System.Text.RegularExpressions
 
 <PageTitle>Iniciar Sesión</PageTitle>
@@ -50,7 +56,7 @@
         <div class="login-input-wrap @(errores.Contains("email") ? "input-error" : "")">
             <span class="login-input-icon">✉️</span>
             <input type="text" @bind="email" @bind:event="oninput"
-                   placeholder="nombre@gmail.com" disabled="@cuentaBloqueada" />
+                   placeholder="nombre@gmail.com" />
         </div>
 
         <div class="login-label-row">
@@ -62,15 +68,10 @@
         <div class="login-input-wrap @(errores.Contains("password") ? "input-error" : "")">
             <span class="login-input-icon">🔒</span>
             <input type="password" @bind="password" @bind:event="oninput"
-                   placeholder="••••••••" disabled="@cuentaBloqueada" />
+                   placeholder="••••••••" />
         </div>
 
-        <label class="login-checkbox-row">
-            <input type="checkbox" @bind="recordarSesion" disabled="@cuentaBloqueada" />
-            Recordar mi sesión durante 30 días
-        </label>
-
-        <button class="login-btn-submit" disabled="@cuentaBloqueada" @onclick="IniciarSesion">
+        <button class="login-btn-submit" disabled="@procesando" @onclick="IniciarSesion">
             Iniciar Sesión
         </button>
 
@@ -81,109 +82,150 @@
 @code {
     private string email = "";
     private string password = "";
-    private bool recordarSesion = false;
     private string mensajeError = "";
     private bool cuentaBloqueada = false;
-    private int intentosFallidos = 0;
+    private bool procesando = false;
     private HashSet<string> errores = new();
 
-    /// <summary>
-    /// Usuarios de ejemplo para poder probar los distintos caminos del CU17
-    /// (cuenta inexistente, inactiva, credenciales incorrectas, bloqueo).
-    /// En un escenario real esto se resuelve contra el backend de autenticación.
-    /// </summary>
-    private class UsuarioDemo
-    {
-        public string Email { get; set; } = "";
-        public string Password { get; set; } = "";
-        public bool Activo { get; set; } = true;
-        public string Rol { get; set; } = "";
-    }
+    // Usuario devuelto por ObtenerUsuario; ValidarContraseña(contraseña) lo usa para comparar.
+    private Usuario? usuarioEncontrado;
 
-    private List<UsuarioDemo> usuariosDemo = new()
-    {
-        new() { Email = "admin@gmail.com", Password = "123", Activo = true, Rol = "Administrador" },
-    };
+    // Duración de la sesión (DeterminarDuracionSesion)
+    private static readonly TimeSpan DuracionNormal = TimeSpan.FromHours(8);
 
-    private void IniciarSesion()
+    // DS CU18: "Selecciona botón Iniciar Sesión()"
+    private async Task IniciarSesion()
     {
+        if (procesando) return;
+
+        procesando = true;
         errores.Clear();
         mensajeError = "";
+        cuentaBloqueada = false;
 
-        // Alterno 6.2: campos obligatorios vacíos.
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        try
         {
-            if (string.IsNullOrWhiteSpace(email)) errores.Add("email");
-            if (string.IsNullOrWhiteSpace(password)) errores.Add("password");
-            mensajeError = "Todos los campos son obligatorios.";
-            return;
-        }
+            if (!ValidarCamposObligatoriosYFormato(email, password))
+                return;
 
-        // Alterno 6.1: formato de email inválido.
-        if (!EsEmailValido(email))
-        {
-            errores.Add("email");
-            mensajeError = "El formato del email ingresado no es válido.";
-            return;
-        }
+            usuarioEncontrado = await UsuarioBLL.ObtenerUsuario(email, password);
 
-        // Paso 7 / alterno 7.1: ¿existe una cuenta con ese email?
-        var usuario = usuariosDemo.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
-        if (usuario is null)
-        {
-            errores.Add("email");
-            mensajeError = "No existe una cuenta registrada con ese email.";
-            return;
-        }
+            // [Usuario no existe]
+            if (usuarioEncontrado is null)
+            {
+                errores.Add("email");
+                mensajeError = "No existe una cuenta registrada con el email ingresado.";
+                return;
+            }
 
-        // Paso 8 / alterno 8.1: ¿la cuenta está activa?
-        if (!usuario.Activo)
-        {
-            mensajeError = "Tu cuenta se encuentra inactiva. Contactá al administrador para reactivarla.";
-            return;
-        }
+            // [Usuario Inactivo]
+            if (!string.Equals(usuarioEncontrado.Estado, EstadoUsuario.Activo, StringComparison.OrdinalIgnoreCase))
+            {
+                mensajeError = "La cuenta se encuentra inactiva. Contacte al administrador.";
+                return;
+            }
 
-        // Paso 9 / alterno 9.1: si ya está bloqueada, no se reintenta la validación.
-        if (cuentaBloqueada)
-        {
-            return;
-        }
-
-        // Paso 10 / alterno 10.1 y 10.2: credenciales incorrectas y contador de intentos.
-        if (usuario.Password != password)
-        {
-            errores.Add("password");
-            intentosFallidos++;
-
-            if (intentosFallidos >= 3)
+            // [Usuario Activo] -> ¿cuenta bloqueada?
+            var intentos = await BitacoraBLL.ObtenerIntentosFallidosConsecutivos(email);
+            if (intentos >= BLLBitacora.MaxIntentosFallidos)
             {
                 cuentaBloqueada = true;
-                mensajeError = "";
-                // TODO: bloquear la cuenta también del lado del servidor.
+                return;
+            }
+
+            // [Cuenta no bloqueada]
+            if (ValidarContraseña(password))
+            {
+                // [Contraseña correcta]
+                var rol = await RolBLL.ObtenerRolYPermisos(usuarioEncontrado.Id);
+                await BitacoraBLL.ReiniciarContadorIntentosFallidos(email);
+                await BitacoraBLL.RegistrarInicioSesion(usuarioEncontrado.Id, AccionBitacora.InicioSesion, DateTime.Now);
+
+                CargarPermisosEnSesion(rol);
+                var duracion = DeterminarDuracionSesion();
+                SessionManager.GetInstance().DefinirDuracion(duracion);
+
+                RedirigirAMenuPrincipal();
             }
             else
             {
-                mensajeError = $"Email o contraseña incorrectos. Intento {intentosFallidos} de 3.";
+                // [Contraseña incorrecta]
+                errores.Add("password");
+                password = "";
+                var intentoFallido = await BitacoraBLL.RegistrarIntentoFallido(email);
+
+                if (intentoFallido >= BLLBitacora.MaxIntentosFallidos)
+                    cuentaBloqueada = true;   // "Se ha alcanzado el límite de intentos. La cuenta ha sido bloqueada"
+                else
+                    mensajeError = "El email o la contraseña son incorrectos.";
             }
-            return;
+        }
+        catch (Exception)
+        {
+            mensajeError = "Ocurrió un error inesperado. Intentá nuevamente en unos minutos.";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    // DS: ValidarCamposObligatoriosYFormato(string email, string contraseña): bool
+    private bool ValidarCamposObligatoriosYFormato(string email, string contraseña)
+    {
+        if (string.IsNullOrWhiteSpace(email)) errores.Add("email");
+        if (string.IsNullOrEmpty(contraseña)) errores.Add("password");
+
+        if (errores.Count > 0)
+        {
+            mensajeError = "Todos los campos son obligatorios.";
+            return false;
         }
 
-        // Éxito (pasos 11-15): reinicia intentos, guarda sesión y redirige al panel principal.
-        intentosFallidos = 0;
+        if (!Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        {
+            errores.Add("email");
+            mensajeError = "El formato del email ingresado no es válido.";
+            return false;
+        }
 
-        // TODO: persistir la sesión real (cookie / token) y aplicar la duración
-        // correspondiente según "recordarSesion" (30 días vs. sesión normal),
-        // además de cargar los permisos asociados al rol (usuario.Rol).
+        return true;
+    }
+
+    // DS: ValidarContraseña(contraseña): bool  (compara contra el hash del usuario encontrado)
+    private bool ValidarContraseña(string contraseña)
+    {
+        return usuarioEncontrado is not null
+            && CifradoService.Verificar(contraseña, usuarioEncontrado.Contrasena);
+    }
+
+    // DS: CargarPermisosEnSesion(Rol)
+    private void CargarPermisosEnSesion(Rol rol)
+    {
+        usuarioEncontrado!.Contrasena = "";   // el hash no se guarda en la sesión
+        var sesion = SessionManager.GetInstance();
+        sesion.Login(usuarioEncontrado);
+        sesion.CargarPermisos(rol);
+    }
+
+    // DS: DeterminarDuracionSesion(): TimeSpan (duración fija, sin "recordar sesión")
+    private TimeSpan DeterminarDuracionSesion() => DuracionNormal;
+
+    // DS: RedirigirAMenúPrincipal()
+    private void RedirigirAMenuPrincipal()
+    {
         Navigation.NavigateTo("/predicciones");
     }
 
-    private bool EsEmailValido(string valor) =>
-        Regex.IsMatch(valor, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-
+    // DS: opción "¿Olvidaste tu contraseña?" -> CU19 Recuperar contraseña
     private void IrARecuperarContrasena()
     {
-        // TODO: navegar a la pantalla de CU18 – Recuperar contraseña cuando esté armada.
         Navigation.NavigateTo("/recuperar-contrasena");
     }
-}
 
+    protected override void OnInitialized()
+    {
+        if (SessionManager.GetInstance().EstaLogueado)
+            Navigation.NavigateTo("/predicciones");
+    }
+}

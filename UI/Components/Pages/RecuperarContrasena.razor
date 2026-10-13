@@ -1,6 +1,14 @@
 ﻿@page "/recuperar-contrasena"
 @layout Components.Layout.AuthLayout
 @inject NavigationManager Navigation
+@inject BLLUsuario UsuarioBLL
+@inject BLLTokenRecuperacion TokenBLL
+@inject ServicioEnvio Envio
+@inject ILogger<RecuperarContrasena> Logger
+@using BE
+@using BLL
+@using Servicios
+@using Microsoft.Extensions.Logging
 @using System.Text.RegularExpressions
 
 <PageTitle>Recuperar acceso</PageTitle>
@@ -13,9 +21,6 @@
         @if (!string.IsNullOrEmpty(mensajeExito))
         {
             <div class="login-alerta login-alerta-exito">✅ @mensajeExito</div>
-            <a href="restablecer-contrasena" class="auth-demo-link">
-                (Demo) Ir a la pantalla de Restablecer contraseña →
-            </a>
         }
         else
         {
@@ -30,7 +35,7 @@
                 <input type="text" @bind="email" @bind:event="oninput" placeholder="nombre@gmail.com" />
             </div>
 
-            <button class="login-btn-submit" @onclick="EnviarInstrucciones">
+            <button class="login-btn-submit" disabled="@procesando" @onclick="EnviarInstrucciones">
                 Enviar instrucciones de recuperación
             </button>
         }
@@ -49,33 +54,78 @@
 @code {
     private string email = "";
     private bool error = false;
+    private bool procesando = false;
     private string mensajeError = "";
     private string mensajeExito = "";
 
-    private void EnviarInstrucciones()
+    // DS CU19: "Selecciona botón Enviar instrucciones()"
+    private async Task EnviarInstrucciones()
     {
+        if (procesando) return;
+
+        procesando = true;
         error = false;
         mensajeError = "";
 
+        try
+        {
+            if (!ValidarFormatoEmail(email))
+                return;
+
+            // Se muestra siempre el mismo mensaje para no revelar qué emails están registrados.
+            var mensajeInstrucciones = $"Las instrucciones fueron enviadas a {email.Trim()}. Revise su bandeja de entrada.";
+
+            var usuario = await UsuarioBLL.ObtenerUsuario(email);
+
+            // [Usuario no existe o está inactivo]
+            if (usuario is null ||
+                !string.Equals(usuario.Estado, EstadoUsuario.Activo, StringComparison.OrdinalIgnoreCase))
+            {
+                mensajeExito = mensajeInstrucciones;
+                return;
+            }
+
+            try
+            {
+                var tokenId = await TokenBLL.GenerarTokenRecuperacion(email);
+                var tokenLink = TokenBLL.ConstruirTokenLink(tokenId, Navigation.BaseUri);
+                await Envio.EnviarCorreoRecuperacion(email.Trim(), tokenLink);
+            }
+            catch (Exception ex)
+            {
+                // No se le cuenta al usuario (revelaría que la cuenta existe); queda en el log.
+                Logger.LogError(ex, "Falló el envío del correo de recuperación.");
+            }
+
+            mensajeExito = mensajeInstrucciones;
+        }
+        catch (Exception)
+        {
+            mensajeError = "Ocurrió un error inesperado. Intentá nuevamente en unos minutos.";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    // DS: ValidarFormatoEmail(email): bool
+    private bool ValidarFormatoEmail(string email)
+    {
         if (string.IsNullOrWhiteSpace(email))
         {
             error = true;
-            mensajeError = "El campo de correo electrónico es obligatorio.";
-            return;
+            mensajeError = "Ingresá tu correo electrónico.";
+            return false;
         }
 
-        if (!EsEmailValido(email))
+        if (!Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
         {
             error = true;
-            mensajeError = "El formato del email ingresado no es válido.";
-            return;
+            mensajeError = "El formato del correo electrónico no es válido.";
+            return false;
         }
 
-        // TODO: llamar al backend real para disparar el envío del email
-        // con el link de restablecimiento (con su token único).
-        mensajeExito = $"Si existe una cuenta asociada a {email}, vas a recibir un email con las instrucciones en unos minutos.";
+        return true;
     }
-
-    private bool EsEmailValido(string valor) =>
-        Regex.IsMatch(valor, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
 }

@@ -1,9 +1,55 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@using Servicios
 
-<div class="app-container">
-    <NavMenu />
+@if (estado == Acceso.Permitido)
+{
+    <div class="app-container">
+        <NavMenu />
+        <main class="main-content">
+            @Body
+        </main>
+    </div>
+}
+else if (estado == Acceso.SinPermiso)
+{
+    <div class="app-container">
+        <NavMenu />
+        <main class="main-content">
+            <h3>Acceso denegado</h3>
+            <p>No tenés permisos para ver esta pantalla.</p>
+        </main>
+    </div>
+}
 
-    <main class="main-content">
-        @Body
-    </main>
-</div>
+@code {
+    private enum Acceso { SinSesion, SinPermiso, Permitido }
+    private Acceso estado = Acceso.SinSesion;
+
+    // Ruta (sin la barra inicial) -> permiso requerido. Completar con los nombres de la tabla Permiso.
+    private static readonly Dictionary<string, string> PermisoPorRuta = new()
+    {
+        // ["clientes"] = "VerClientes",
+        // ["detalle-prediccion"] = "VerPredicciones",
+    };
+
+    // Corre en cada navegación, no solo la primera vez.
+    protected override void OnParametersSet()
+    {
+        var sesion = SessionManager.GetInstance();
+
+        if (!sesion.EstaLogueado)
+        {
+            estado = Acceso.SinSesion;
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        var ruta = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].ToLowerInvariant();
+        var requerido = PermisoPorRuta.FirstOrDefault(p => ruta.StartsWith(p.Key)).Value;
+
+        estado = requerido is null || sesion.TienePermiso(requerido)
+            ? Acceso.Permitido
+            : Acceso.SinPermiso;
+    }
+}

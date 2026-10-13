@@ -30,6 +30,11 @@ builder.Services.AddScoped<BLLRegla>();
 builder.Services.AddScoped<BLLSede>();
 builder.Services.AddScoped<BLLPlanSocio>();
 builder.Services.AddScoped<BLLIntegracion>();
+builder.Services.AddScoped<BLLUsuario>();
+builder.Services.AddScoped<BLLRol>();
+builder.Services.AddScoped<BLLTokenRecuperacion>();
+builder.Services.AddScoped<BLLBitacora>();
+
 
 // UI
 builder.Services.AddScoped<GeneradorPdf>();

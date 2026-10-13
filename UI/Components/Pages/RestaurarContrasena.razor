@@ -1,46 +1,64 @@
 ﻿@page "/restablecer-contrasena"
 @layout Components.Layout.AuthLayout
 @inject NavigationManager Navigation
+@inject BLLUsuario UsuarioBLL
+@inject BLLBitacora BitacoraBLL
+@inject BLLTokenRecuperacion TokenBLL
+@using BLL
+@using Servicios
 
 <PageTitle>Restablecer contraseña</PageTitle>
 
 <div class="auth-screen">
     <div class="auth-card-simple">
         <h2 class="auth-card-title">Restablecer contraseña</h2>
-        <p class="auth-card-subtitle">Ingresa tu nueva contraseña para acceder a tu cuenta.</p>
 
-        @if (!string.IsNullOrEmpty(mensajeExito))
+        @if (validandoEnlace)
         {
-            <div class="login-alerta login-alerta-exito">✅ @mensajeExito</div>
+            <p class="auth-card-subtitle">Validando enlace…</p>
+        }
+        else if (!enlaceValido)
+        {
+            <div class="login-alerta">⚠️ El enlace ya no es válido por haber superado el límite de tiempo o por haber sido utilizado.</div>
+            <a href="recuperar-contrasena" class="auth-back-link">Solicitar nuevo enlace</a>
         }
         else
         {
-            @if (!string.IsNullOrEmpty(mensajeError))
+            <p class="auth-card-subtitle">Ingresa tu nueva contraseña para acceder a tu cuenta. Mínimo 8 caracteres, una mayúscula y un número.</p>
+
+            @if (!string.IsNullOrEmpty(mensajeExito))
             {
-                <div class="login-alerta">⚠️ @mensajeError</div>
+                <div class="login-alerta login-alerta-exito">✅ @mensajeExito</div>
             }
+            else
+            {
+                @if (!string.IsNullOrEmpty(mensajeError))
+                {
+                    <div class="login-alerta">⚠️ @mensajeError</div>
+                }
 
-            <label class="form-label">NUEVA CONTRASEÑA</label>
-            <div class="login-input-wrap password-input-wrap @(errores.Contains("nueva") ? "input-error" : "")">
-                <input type="@(mostrarNueva ? "text" : "password")"
-                       @bind="nuevaPassword" @bind:event="oninput" placeholder="••••••••" />
-                <button type="button" class="password-toggle-btn" @onclick="() => mostrarNueva = !mostrarNueva">
-                    @(mostrarNueva ? "🙈" : "👁")
+                <label class="form-label">NUEVA CONTRASEÑA</label>
+                <div class="login-input-wrap password-input-wrap @(errores.Contains("nueva") ? "input-error" : "")">
+                    <input type="@(mostrarNueva ? "text" : "password")"
+                           @bind="nuevaClave" @bind:event="oninput" placeholder="••••••••" />
+                    <button type="button" class="password-toggle-btn" @onclick="() => mostrarNueva = !mostrarNueva">
+                        @(mostrarNueva ? "🙈" : "👁")
+                    </button>
+                </div>
+
+                <label class="form-label">CONFIRMAR NUEVA CONTRASEÑA</label>
+                <div class="login-input-wrap password-input-wrap @(errores.Contains("confirmar") ? "input-error" : "")">
+                    <input type="@(mostrarConfirmar ? "text" : "password")"
+                           @bind="confirmarClave" @bind:event="oninput" placeholder="••••••••" />
+                    <button type="button" class="password-toggle-btn" @onclick="() => mostrarConfirmar = !mostrarConfirmar">
+                        @(mostrarConfirmar ? "🙈" : "👁")
+                    </button>
+                </div>
+
+                <button class="login-btn-submit" disabled="@procesando" @onclick="ActualizarContrasena">
+                    Actualizar contraseña
                 </button>
-            </div>
-
-            <label class="form-label">CONFIRMAR NUEVA CONTRASEÑA</label>
-            <div class="login-input-wrap password-input-wrap @(errores.Contains("confirmar") ? "input-error" : "")">
-                <input type="@(mostrarConfirmar ? "text" : "password")"
-                       @bind="confirmarPassword" @bind:event="oninput" placeholder="••••••••" />
-                <button type="button" class="password-toggle-btn" @onclick="() => mostrarConfirmar = !mostrarConfirmar">
-                    @(mostrarConfirmar ? "🙈" : "👁")
-                </button>
-            </div>
-
-            <button class="login-btn-submit" @onclick="ActualizarContrasena">
-                Actualizar contraseña
-            </button>
+            }
         }
     </div>
 
@@ -50,50 +68,123 @@
 </div>
 
 @code {
-    private string nuevaPassword = "";
-    private string confirmarPassword = "";
+    // tokenLink: llega en el enlace del correo -> /restablecer-contrasena?token=...
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? TokenLink { get; set; }
+
+    private string nuevaClave = "";
+    private string confirmarClave = "";
     private bool mostrarNueva = false;
     private bool mostrarConfirmar = false;
+    private bool validandoEnlace = true;
+    private bool enlaceValido = false;
+    private bool procesando = false;
     private string mensajeError = "";
     private string mensajeExito = "";
+    private string emailUsuario = "";
     private HashSet<string> errores = new();
 
-    private void ActualizarContrasena()
+    // DS: "Selecciona el enlace del correo(tokenLink)" -> ValidarToken(tokenLink): bool
+    protected override async Task OnInitializedAsync()
     {
+        try
+        {
+            var link = TokenLink ?? "";
+            enlaceValido = await TokenBLL.ValidarToken(link);   // [Enlace válido] -> MostrarFormularioNuevaContraseña()
+            if (enlaceValido)
+                emailUsuario = await TokenBLL.ObtenerEmailDeToken(link) ?? "";
+            enlaceValido = enlaceValido && emailUsuario.Length > 0;
+        }
+        catch (Exception)
+        {
+            enlaceValido = false;
+        }
+        validandoEnlace = false;
+    }
+
+    // DS: "Selecciona botón Actualizar Contraseña()"
+    private async Task ActualizarContrasena()
+    {
+        if (procesando) return;
+
+        procesando = true;
         errores.Clear();
         mensajeError = "";
 
-        if (string.IsNullOrWhiteSpace(nuevaPassword))
+        try
         {
-            errores.Add("nueva");
+            if (!ValidarContraseña(nuevaClave, confirmarClave))
+                return;
+
+            var link = TokenLink ?? "";
+
+            // El enlace se vuelve a validar: pudo vencer o usarse mientras el formulario estaba abierto.
+            if (!await TokenBLL.ValidarToken(link))
+            {
+                enlaceValido = false;
+                return;
+            }
+            await UsuarioBLL.ActualizarContraseña(emailUsuario, CifradoService.Hashear(nuevaClave));
+            await TokenBLL.MarcarTokenComoUtilizado(link);
+
+            // Agregado al DS: si la cuenta estaba bloqueada por intentos fallidos, queda habilitada.
+            await BitacoraBLL.ReiniciarContadorIntentosFallidos(emailUsuario);
+
+            mensajeExito = "Tu contraseña fue actualizada correctamente. Ya podés iniciar sesión.";
+            StateHasChanged();
+
+            // DS: continúa en el CU18 – Iniciar sesión
+            await Task.Delay(2500);
+            Navigation.NavigateTo("login");
         }
-        if (string.IsNullOrWhiteSpace(confirmarPassword))
+        catch (Exception)
         {
-            errores.Add("confirmar");
+            mensajeError = "Ocurrió un error inesperado. Intentá nuevamente en unos minutos.";
         }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    // DS: ValidarContraseña(string nuevaClave, string confirmarClave): bool
+    private bool ValidarContraseña(string nuevaClave, string confirmarClave)
+    {
+        if (string.IsNullOrEmpty(nuevaClave)) errores.Add("nueva");
+        if (string.IsNullOrEmpty(confirmarClave)) errores.Add("confirmar");
         if (errores.Count > 0)
         {
             mensajeError = "Todos los campos son obligatorios.";
-            return;
+            return false;
         }
 
-        if (nuevaPassword.Length < 8)
-        {
-            errores.Add("nueva");
-            mensajeError = "La contraseña debe tener al menos 8 caracteres.";
-            return;
-        }
-
-        if (nuevaPassword != confirmarPassword)
+        if (nuevaClave != confirmarClave)
         {
             errores.Add("nueva");
             errores.Add("confirmar");
-            mensajeError = "Las contraseñas ingresadas no coinciden.";
-            return;
+            mensajeError = "Las contraseñas no coinciden.";
+            return false;
         }
 
-        // TODO: enviar la nueva contraseña al backend junto con el token
-        // de restablecimiento recibido por email, y luego invalidar ese token.
-        mensajeExito = "Tu contraseña fue actualizada correctamente. Ya podés iniciar sesión.";
+        if (nuevaClave.Length < 8)
+        {
+            errores.Add("nueva");
+            mensajeError = "La contraseña debe tener al menos 8 caracteres.";
+            return false;
+        }
+        if (!nuevaClave.Any(char.IsUpper))
+        {
+            errores.Add("nueva");
+            mensajeError = "La contraseña debe contener al menos una letra mayúscula.";
+            return false;
+        }
+        if (!nuevaClave.Any(char.IsDigit))
+        {
+            errores.Add("nueva");
+            mensajeError = "La contraseña debe contener al menos un número.";
+            return false;
+        }
+        
+        return true;
     }
 }

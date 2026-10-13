@@ -1,4 +1,5 @@
 ﻿@inject NavigationManager Navigation
+@using Servicios
 
 <div class="sidebar @(isCollapsed ? "collapsed" : "")">
     <div class="sidebar-brand">
@@ -79,9 +80,18 @@
         </div>
 
         <div class="nav-item">
-            <NavLink class="nav-link" href="login" title="Log In">
-                <span class="icon">🔑</span> <span class="nav-text">Log In</span>
-            </NavLink>
+            @if (SessionManager.GetInstance().EstaLogueado)
+            {
+                <button class="nav-link nav-link-parent" @onclick="CerrarSesion" title="Cerrar sesión">
+                    <span class="icon">🚪</span> <span class="nav-text">Cerrar sesión</span>
+                </button>
+            }
+            else
+            {
+                <NavLink class="nav-link" href="login" title="Iniciar sesión">
+                    <span class="icon">🔑</span> <span class="nav-text">Iniciar sesión</span>
+                </NavLink>
+            }
         </div>
     </nav>
 
@@ -120,5 +130,11 @@
     private void ToggleAdministracion()
     {
         administracionAbierto = !administracionAbierto;
+    }
+
+    private void CerrarSesion()
+    {
+        SessionManager.GetInstance().Logout();
+        Navigation.NavigateTo("/login");
     }
 }

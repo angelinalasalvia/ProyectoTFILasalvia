@@ -22,6 +22,10 @@ public class HistorialAccion
     // (conversión > lectura > envío). Viene de un COALESCE en el SELECT.
     public DateTime FechaAccion { get; set; }
 
+    // Se completan solo cuando la consulta hace JOIN con Campaña / Canal (CU03: historial del cliente).
+    public string NombreCampania { get; set; } = string.Empty;
+    public string Canal { get; set; } = string.Empty;
+
     public string NombreCliente { get; set; } = string.Empty;
     public string ApellidoCliente { get; set; } = string.Empty;
     public string PlanCliente { get; set; } = string.Empty;
@@ -31,6 +35,9 @@ public class HistorialAccion
 
     // Valores que usa el motor de reglas (constantes de la clase; no son columnas).
     public const string TipoEnvioAutomatico = "Envío automático";
+    public const string TipoAccionManual = "Manual";          // acción de retención manual (CU03)
+    public const string EstadoProgramada = "Programada";      // manual programada que todavía no salió
+    public const string EnvioPendiente = "Pendiente";         // EstadoEnvio de una acción programada
     public const string EstadoActivo = "Activo";          // envío en observación (sin resultado todavía)
     public const string EstadoFinalizada = "Finalizada";  // envío cerrado
     public const string EnvioEntregado = "Entregado";

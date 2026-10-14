@@ -1,12 +1,17 @@
 ﻿@page "/administracion/usuarios"
 @inject NavigationManager Navigation
+@inject BLLUsuario UsuarioBLL
+@inject BLLRol RolBLL
+@using BE
+@using BLL
+@using Servicios
 
 <PageTitle>Gestión de Usuarios</PageTitle>
 
 <div class="usr-topbar">
     <div class="search-box usr-search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Buscar por nombre o correo..." @bind="textoBusqueda" @bind:event="oninput" />
+        <input type="text" placeholder="Buscar por nombre o correo..." @bind="textoBusqueda" @bind:event="oninput" @bind:after="BuscarUsuarioAsync" />
     </div>
     <div class="usr-topbar-icons">
         <button class="usr-icon-btn" title="Notificaciones">
@@ -29,158 +34,338 @@
 </div>
 
 <div class="usr-kpi-row">
-    <div class="card">
-        <div class="kpi-label">TOTAL USUARIOS</div>
-        <div class="kpi-value">@totalUsuarios.ToString("N0")</div>
+    <div class="card usr-kpi-card">
+        <div class="usr-kpi-icon usr-kpi-icon-total">👥</div>
+        <div>
+            <div class="usr-kpi-label">TOTAL USUARIOS</div>
+            <div class="usr-kpi-value">@totalUsuarios.ToString("N0")</div>
+        </div>
     </div>
-    <div class="card">
-        <div class="kpi-label">USUARIOS ACTIVOS</div>
-        <div class="kpi-value">@usuariosActivos.ToString("N0")</div>
+    <div class="card usr-kpi-card">
+        <div class="usr-kpi-icon usr-kpi-icon-activos">✔</div>
+        <div>
+            <div class="usr-kpi-label">USUARIOS ACTIVOS</div>
+            <div class="usr-kpi-value">@usuariosActivos.ToString("N0")</div>
+        </div>
     </div>
 </div>
+
+@if (!string.IsNullOrWhiteSpace(mensajeExito))
+{
+    <div class="usr-mensaje">✔ @mensajeExito</div>
+}
+@if (!string.IsNullOrWhiteSpace(mensajeError))
+{
+    <div class="usr-mensaje usr-mensaje-error">⚠ @mensajeError</div>
+}
 
 <div class="card">
     <div class="pred-filter-row">
         <div class="filter-left">
             <span class="filter-label">Filtrar por:</span>
-            <select class="filtro-select" @bind="rolFiltro">
+            <select class="filtro-select" @bind="rolFiltro" @bind:after="FiltrarTabla">
                 <option value="">Todos los roles</option>
-                <option value="Administrador">Administrador</option>
-                <option value="Gerente">Gerente</option>
-                <option value="Ejecutivo Comercial">Ejecutivo Comercial</option>
+                @foreach (var r in rolesDisponibles)
+                {
+                    <option value="@r.IdRol">@r.Nombre</option>
+                }
             </select>
         </div>
-        <span class="pagination-info">Mostrando @usuarios.Count de @totalUsuarios.ToString("N0") usuarios</span>
+        <span class="pagination-info">Mostrando @usuariosPagina.Count de @totalUsuarios.ToString("N0") usuarios</span>
     </div>
 
-    <table class="cli-table">
-        <thead>
-            <tr>
-                <th>NOMBRE COMPLETO</th>
-                <th>ROL ASIGNADO</th>
-                <th>ESTADO</th>
-                <th>FECHA DE CREACIÓN</th>
-                <th class="usr-th-acciones">ACCIONES</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var usuario in usuarios)
+    @if (cargando)
+    {
+        <div class="usr-vacio">Cargando usuarios…</div>
+    }
+    else if (todosLosUsuarios.Count == 0)
+    {
+        <div class="usr-vacio">No existen usuarios registrados en la plataforma. Podés registrar uno con "Agregar usuario".</div>
+    }
+    else if (usuarios.Count == 0)
+    {
+        <div class="usr-vacio">
+            <span>@MensajeSinResultados</span>
+            @if (!string.IsNullOrEmpty(rolFiltro))
             {
-                <tr>
-                    <td>
-                        <div class="client-cell">
-                            <div class="cli-avatar @usuario.AvatarClase">@usuario.Iniciales</div>
-                            <div>
-                                <div class="client-name">@usuario.NombreCompleto</div>
-                                <div class="cli-email">@usuario.Email</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td><span class="usr-rol-badge">@usuario.Rol</span></td>
-                    <td>
-                        <div class="integ-fuente-estado">
-                            <span class="integ-estado-dot @(usuario.Activo ? "integ-dot-verde" : "usr-dot-gris")"></span>
-                            @(usuario.Activo ? "Activo" : "Inactivo")
-                        </div>
-                    </td>
-                    <td class="cli-email">@usuario.FechaCreacion.ToString("dd MMM yyyy")</td>
-                    <td class="usr-acciones-cell">
-                        @if (!usuario.Activo)
-                        {
-                            <button class="auto-icon-btn usr-mail-alert" title="Reenviar invitación" @onclick="() => ReenviarInvitacion(usuario)">✉️</button>
-                        }
-                        <button class="auto-icon-btn" title="Editar" @onclick="() => EditarUsuario(usuario)">✏️</button>
-                        <button class="auto-icon-btn" title="Eliminar" @onclick="() => EliminarUsuario(usuario)">🗑️</button>
-                    </td>
-                </tr>
+                <button class="page-btn" @onclick="QuitarFiltro">Quitar filtro</button>
             }
-        </tbody>
-    </table>
-
-    <div class="pred-pagination">
-        <span class="pagination-info">Página @paginaActual de @totalPaginas</span>
-        <div class="pagination-controls">
-            <button class="page-btn" disabled="@(paginaActual == 1)" @onclick="PaginaAnterior">‹ Anterior</button>
-            @for (int i = 1; i <= Math.Min(3, totalPaginas); i++)
-            {
-                var pagina = i;
-                <button class="page-btn @(paginaActual == pagina ? "active" : "")" @onclick="() => IrAPagina(pagina)">@pagina</button>
-            }
-            @if (totalPaginas > 3)
-            {
-                <span class="pagination-info">…</span>
-                <button class="page-btn" @onclick="() => IrAPagina(totalPaginas)">@totalPaginas</button>
-            }
-            <button class="page-btn" disabled="@(paginaActual == totalPaginas)" @onclick="PaginaSiguiente">Siguiente ›</button>
         </div>
-    </div>
+    }
+    else
+    {
+        <table class="cli-table">
+            <thead>
+                <tr>
+                    <th>NOMBRE COMPLETO</th>
+                    <th>ROL ASIGNADO</th>
+                    <th>ESTADO</th>
+                    <th class="usr-th-acciones">ACCIONES</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var usuario in usuariosPagina)
+                {
+                    <tr>
+                        <td>
+                            <div class="client-cell">
+                                <div class="cli-avatar @usuario.AvatarClase">@usuario.Iniciales</div>
+                                <div>
+                                    <div class="client-name">@usuario.NombreCompleto</div>
+                                    <div class="cli-email">@usuario.Email</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="usr-rol-badge">@usuario.NombreRol</span></td>
+                        <td>
+                            <div class="integ-fuente-estado">
+                                <span class="integ-estado-dot @(usuario.Activo ? "integ-dot-verde" : "usr-dot-gris")"></span>
+                                @(usuario.Activo ? "Activo" : "Inactivo")
+                            </div>
+                        </td>
+                        <td class="usr-acciones-cell">
+                            @if (!usuario.Activo)
+                            {
+                                <button class="auto-icon-btn usr-mail-alert" title="Reenviar invitación" @onclick="() => ReenviarInvitacion(usuario)">✉️</button>
+                            }
+                            <button class="auto-icon-btn" title="Editar" @onclick="() => EditarUsuario(usuario)">✏️</button>
+                            <button class="auto-icon-btn" title="Eliminar" @onclick="() => SolicitarEliminacion(usuario)">🗑️</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="pred-pagination">
+            <span class="pagination-info">Página @paginaActual de @totalPaginas</span>
+            <div class="pagination-controls">
+                <button class="page-btn" disabled="@(paginaActual == 1)" @onclick="PaginaAnterior">‹ Anterior</button>
+                @for (int i = 1; i <= Math.Min(3, totalPaginas); i++)
+                {
+                    var pagina = i;
+                    <button class="page-btn @(paginaActual == pagina ? "active" : "")" @onclick="() => IrAPagina(pagina)">@pagina</button>
+                }
+                @if (totalPaginas > 3)
+                {
+                    <span class="pagination-info">…</span>
+                    <button class="page-btn" @onclick="() => IrAPagina(totalPaginas)">@totalPaginas</button>
+                }
+                <button class="page-btn" disabled="@(paginaActual == totalPaginas)" @onclick="PaginaSiguiente">Siguiente ›</button>
+            </div>
+        </div>
+    }
 </div>
 
+@if (usuarioAEliminar is not null)
+{
+    <div class="usr-modal-overlay">
+        <div class="card usr-modal">
+            <h3>Eliminar usuario</h3>
+            <p>
+                ¿Confirmás que querés eliminar a <strong>@usuarioAEliminar.NombreCompleto</strong>?
+                El usuario dejará de tener acceso a la plataforma.
+            </p>
+            <div class="usr-modal-actions">
+                <button class="btn-cancelar" @onclick="CancelarEliminacion">Cancelar</button>
+                <button class="btn-confirmar" @onclick="ConfirmarEliminacion">Eliminar</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    private const int TamanoPagina = 10;
+    private const string NombreAdministrador = "Administrador";
+    private static readonly string[] AvatarClases = { "cli-avatar-azul", "cli-avatar-ambar", "cli-avatar-rojo" };
+
     private string textoBusqueda = "";
     private string rolFiltro = "";
     private int paginaActual = 1;
-    private int totalPaginas = 12;
-    private int totalUsuarios = 1248;
-    private int usuariosActivos = 1102;
+    private bool cargando = true;
 
-    private List<UsuarioItem> usuarios = new()
-{
-    new UsuarioItem
-    {
-        Id = 1,
-        NombreCompleto = "Alejandro Mendoza",
-        Email = "a.mendoza@tecnocorp.com",
-        Iniciales = "AM",
-        AvatarClase = "cli-avatar-azul",
-        Rol = "Administrador",
-        Activo = true,
-        FechaCreacion = new DateTime(2024, 1, 12)
-    },
+    private string mensajeExito = "";
+    private string mensajeError = "";
+    private string motivoNoEliminable = "";
 
-    new UsuarioItem
-    {
-        Id = 2,
-        NombreCompleto = "Sofía Larrea",
-        Email = "s.larrea@tecnocorp.com",
-        Iniciales = "SL",
-        AvatarClase = "cli-avatar-ambar",
-        Rol = "Gerente",
-        Activo = true,
-        FechaCreacion = new DateTime(2024, 1, 15)
-    },
+    private List<Rol> rolesDisponibles = new();
+    private List<Usuario> todosLosUsuarios = new();   // lo que devuelve ObtenerUsuarios()
+    private List<UsuarioItem> usuarios = new();       // lo que queda tras filtrar y buscar
+    private UsuarioItem? usuarioAEliminar;
 
-    new UsuarioItem
+    private int totalUsuarios => todosLosUsuarios.Count;
+    private int usuariosActivos => todosLosUsuarios.Count(u => EsActivo(u.Estado));
+    private int totalPaginas => Math.Max(1, (int)Math.Ceiling(usuarios.Count / (double)TamanoPagina));
+    private List<UsuarioItem> usuariosPagina =>
+        usuarios.Skip((paginaActual - 1) * TamanoPagina).Take(TamanoPagina).ToList();
+
+    private string MensajeSinResultados =>
+        !string.IsNullOrWhiteSpace(textoBusqueda)
+            ? "No se encontraron usuarios que coincidan con el criterio ingresado."   // CU20 8.1
+            : "No se encontraron usuarios para el rol filtrado.";                      // CU20 6.1
+
+    // DS: Ingresa a "Gestión de usuarios"
+    protected override async Task OnInitializedAsync()
     {
-        Id = 3,
-        NombreCompleto = "Ricardo Pineda",
-        Email = "r.pineda@tecnocorp.com",
-        Iniciales = "RP",
-        AvatarClase = "cli-avatar-rojo",
-        Rol = "Ejecutivo Comercial",
-        Activo = false,
-        FechaCreacion = new DateTime(2024, 1, 20)
+        try
+        {
+            rolesDisponibles = await RolBLL.ObtenerRoles();
+            await CargarUsuarios();
+        }
+        catch (Exception)
+        {
+            mensajeError = "No se pudo cargar el listado de usuarios.";
+        }
+        finally
+        {
+            cargando = false;
+        }
     }
-};
 
+    // DS: ObtenerUsuarios() + MostrarTablaUsuarios()
+    private async Task CargarUsuarios()
+    {
+        todosLosUsuarios = await UsuarioBLL.ObtenerUsuarios();
+        await AplicarFiltros();
+    }
+
+    // DS: FiltrarTabla() -> ObtenerUsuariosPorRol()  /  Buscar usuario() -> BuscarUsuario(dato)
+    private async Task AplicarFiltros()
+    {
+        IEnumerable<Usuario> resultado = todosLosUsuarios;
+
+        if (int.TryParse(rolFiltro, out var idRol))
+            resultado = await UsuarioBLL.ObtenerUsuariosPorRol(idRol);
+
+        if (!string.IsNullOrWhiteSpace(textoBusqueda))
+        {
+            var coincidencias = (await UsuarioBLL.BuscarUsuario(textoBusqueda)).Select(u => u.Id).ToHashSet();
+            resultado = resultado.Where(u => coincidencias.Contains(u.Id));
+        }
+
+        usuarios = resultado.Select(ArmarItem).ToList();
+        paginaActual = Math.Min(paginaActual, totalPaginas);
+    }
+
+    private async Task FiltrarTabla()
+    {
+        paginaActual = 1;
+        await AplicarFiltrosSeguro();
+    }
+
+    private async Task BuscarUsuarioAsync()
+    {
+        paginaActual = 1;
+        await AplicarFiltrosSeguro();
+    }
+
+    private async Task QuitarFiltro()
+    {
+        rolFiltro = "";
+        await FiltrarTabla();
+    }
+
+    private async Task AplicarFiltrosSeguro()
+    {
+        mensajeExito = "";
+        mensajeError = "";
+        try
+        {
+            await AplicarFiltros();
+        }
+        catch (Exception)
+        {
+            mensajeError = "No se pudo actualizar el listado.";
+        }
+    }
+
+    // DS: Solicita eliminar un usuario(int idUsuario) -> SolicitarConfirmacion()
+    private void SolicitarEliminacion(UsuarioItem usuario)
+    {
+        mensajeExito = "";
+        mensajeError = "";
+        usuarioAEliminar = usuario;
+    }
+
+    // DS: ConfirmarEliminacion()
+    private async Task ConfirmarEliminacion()
+    {
+        var usuario = usuarioAEliminar;
+        if (usuario is null) return;
+
+        usuarioAEliminar = null;
+
+        if (!ValidarEliminacion(usuario.Id))
+        {
+            mensajeError = $"No es posible eliminar el usuario: {motivoNoEliminable}";
+            return;
+        }
+
+        try
+        {
+            await UsuarioBLL.EliminarUsuario(usuario.Id);
+            await CargarUsuarios();   // DS: ObtenerUsuarios() + MostrarTablaUsuarios()
+            mensajeExito = "El usuario fue eliminado correctamente.";
+        }
+        catch (Exception)
+        {
+            mensajeError = "Ocurrió un error inesperado al eliminar el usuario.";
+        }
+    }
+
+    // DS: ValidarEliminacion(int idUsuario): bool
+    private bool ValidarEliminacion(int idUsuario)
+    {
+        motivoNoEliminable = "";
+
+        var usuario = todosLosUsuarios.FirstOrDefault(u => u.Id == idUsuario);
+        if (usuario is null)
+        {
+            motivoNoEliminable = "El usuario ya no existe.";
+            return false;
+        }
+
+        // CU20 14.1: único administrador activo
+        var idRolAdmin = rolesDisponibles.FirstOrDefault(r => r.Nombre == NombreAdministrador)?.IdRol;
+        if (idRolAdmin is not null && usuario.IdRol == idRolAdmin && EsActivo(usuario.Estado))
+        {
+            var adminsActivos = todosLosUsuarios.Count(u => u.IdRol == idRolAdmin && EsActivo(u.Estado));
+            if (adminsActivos <= 1)
+            {
+                motivoNoEliminable = "Es el único administrador activo.";
+                return false;
+            }
+        }
+
+        // Agregado: no eliminar al usuario con la sesión iniciada.
+        if (SessionManager.GetInstance().Usuario?.Id == idUsuario)
+        {
+            motivoNoEliminable = "Es el usuario con el que iniciaste sesión.";
+            return false;
+        }
+
+        return true;
+    }
+
+    // DS: CancelarEliminacion() -> MantenerVistaSinCambios()
+    private void CancelarEliminacion() => MantenerVistaSinCambios();
+
+    private void MantenerVistaSinCambios() => usuarioAEliminar = null;
+
+    // DS: Selecciona "Nuevo Usuario" -> CU21
     private void AbrirFormularioUsuario()
     {
         Navigation.NavigateTo("/administracion/usuarios/nuevo");
     }
 
+    // DS: Selecciona "Modificar Usuario" -> CU22
     private void EditarUsuario(UsuarioItem usuario)
     {
         Navigation.NavigateTo($"/administracion/usuarios/editar/{usuario.Id}");
     }
 
-    private void EliminarUsuario(UsuarioItem usuario)
-    {
-        // TODO: confirmar y dar de baja al usuario
-    }
-
     private void ReenviarInvitacion(UsuarioItem usuario)
     {
-        // TODO: reenviar el email de invitación/activación al usuario inactivo
+        // TODO: se arma junto con Crear usuario (token de activación + EnviarCorreoActivacion).
     }
 
     private void PaginaAnterior()
@@ -198,6 +383,24 @@
         paginaActual = pagina;
     }
 
+    private UsuarioItem ArmarItem(Usuario u) => new()
+    {
+        Id = u.Id,
+        NombreCompleto = u.NombreCompleto,
+        Email = u.Email,
+        Iniciales = Inicial(u.Nombre) + Inicial(u.Apellido),
+        AvatarClase = AvatarClases[u.Id % AvatarClases.Length],
+        IdRol = u.IdRol,
+        NombreRol = rolesDisponibles.FirstOrDefault(r => r.IdRol == u.IdRol)?.Nombre ?? "",
+        Activo = EsActivo(u.Estado)
+    };
+
+    private static string Inicial(string texto)
+        => string.IsNullOrWhiteSpace(texto) ? "" : texto.Trim()[..1].ToUpper();
+
+    private static bool EsActivo(string estado)
+        => string.Equals(estado, EstadoUsuario.Activo, StringComparison.OrdinalIgnoreCase);
+
     private class UsuarioItem
     {
         public int Id { get; set; }
@@ -205,8 +408,8 @@
         public string Email { get; set; } = "";
         public string Iniciales { get; set; } = "";
         public string AvatarClase { get; set; } = "";
-        public string Rol { get; set; } = "";
+        public int IdRol { get; set; }
+        public string NombreRol { get; set; } = "";
         public bool Activo { get; set; }
-        public DateTime FechaCreacion { get; set; }
     }
 }

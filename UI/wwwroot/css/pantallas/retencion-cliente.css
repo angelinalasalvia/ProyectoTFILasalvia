@@ -50,8 +50,13 @@
         background: #333;
     }
 
+    .btn-confirmar:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 
-.ia-banner {
+
+.sugerencia-banner {
     background: linear-gradient(135deg, #2f6fed, #4c6ef5);
     border-radius: 12px;
     padding: 22px 24px;
@@ -64,7 +69,7 @@
     color: #fff;
 }
 
-.ia-icon {
+.sugerencia-icon {
     background: rgba(255,255,255,0.2);
     width: 36px;
     height: 36px;
@@ -76,25 +81,28 @@
     flex-shrink: 0;
 }
 
-.ia-content h3 {
+.sugerencia-content h3 {
     margin: 0 0 6px 0;
     font-size: 16px;
 }
 
-.ia-content p {
-    margin: 0 0 14px 0;
+.sugerencia-content p {
+    margin: 0;
     font-size: 13px;
     opacity: 0.9;
     max-width: 560px;
     line-height: 1.5;
 }
 
-.ia-aviso {
-    background: rgba(255,255,255,0.15);
-    display: inline-block;
-    padding: 8px 14px;
+/* Advertencia: la campaña elegida ya se envió antes a este cliente */
+.aviso-previo {
+    background: #fff4e0;
+    color: #a15c00;
+    border: 1px solid #f5d9a8;
     border-radius: 8px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 
@@ -161,6 +169,11 @@
 .resultado-exito {
     background: #e3f7ea;
     color: #2f9e5c;
+}
+
+.resultado-error {
+    background: #fdeaea;
+    color: #d63939;
 }
 
 .form-block {
@@ -261,4 +274,33 @@
         cursor: pointer;
     }
 
+/* --- Programación del envío: fecha y hora --- */
+.fecha-hora-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+}
 
+.campo-fecha {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #1e2432;
+    background: #fff;
+}
+
+.mensaje-programacion {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+/* --- Resumen final de la acción registrada --- */
+.resumen-label {
+    width: 160px;
+    color: #8a90a2;
+    font-weight: 600;
+}

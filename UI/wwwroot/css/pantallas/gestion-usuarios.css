@@ -1,17 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Gestión de Usuarios (Pages/GestionUsuarios.razor)
-   Reutiliza clases de: base.css, retencion-cliente.css, clientes.css, integraciones.css, automatizacion.css
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: GESTIÓN DE USUARIOS (Pages/GestionUsuarios.razor)
-   Reutiliza: .card, .kpi-label, .kpi-value, .search-box, .cli-table,
-   .cli-avatar (+ variantes de color), .btn-crear-campana, .camp-subtitle,
-   .pred-filter-row, .filter-left, .filter-label, .filtro-select,
-   .pagination-info, .pred-pagination, .pagination-controls, .page-btn,
-   .integ-fuente-estado, .integ-estado-dot, .integ-dot-verde, .auto-icon-btn.
-   ========================================================================== */
-.usr-topbar {
+﻿.usr-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -55,15 +42,13 @@
     border: 2px solid #fff;
 }
 
-/* --- KPIs (solo 2, angostas, no ocupan todo el ancho) --- */
 .usr-kpi-row {
     display: grid;
-    grid-template-columns: repeat(2, minmax(200px, 260px));
+    grid-template-columns: repeat(2, minmax(220px, 300px));
     gap: 18px;
     margin-bottom: 18px;
 }
 
-/* --- Badge de rol --- */
 .usr-rol-badge {
     background: #eef0f4;
     color: #475467;
@@ -74,12 +59,10 @@
     white-space: nowrap;
 }
 
-/* --- Dot gris para estado "Inactivo" --- */
 .usr-dot-gris {
     background: #c7ccd6;
 }
 
-/* --- Acciones de la fila --- */
 .usr-th-acciones {
     text-align: right !important;
 }
@@ -99,6 +82,108 @@
     .usr-mail-alert:hover {
         background: #f6c6c6 !important;
     }
-/* ==========================================================================
-   FIN PANTALLA: GESTIÓN DE USUARIOS
-   ========================================================================== */
+
+.usr-mensaje {
+    margin-bottom: 14px;
+    padding: 11px 14px;
+    border-radius: 7px;
+    background: #e3f7ea;
+    border: 1px solid #c3ecd2;
+    color: #1f7a44;
+    font-size: 13px;
+}
+
+.usr-mensaje-error {
+    background: #fdeaea;
+    border-color: #f5caca;
+    color: #d63939;
+}
+
+.usr-vacio {
+    padding: 28px 16px;
+    text-align: center;
+    color: #7c8495;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.usr-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.usr-modal {
+    max-width: 440px;
+    width: calc(100% - 40px);
+    padding: 24px;
+}
+
+    .usr-modal h3 {
+        margin: 0 0 10px 0;
+        font-size: 17px;
+        color: #16213a;
+    }
+
+    .usr-modal p {
+        margin: 0 0 20px 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #555b6a;
+    }
+
+.usr-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.usr-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+}
+
+.usr-kpi-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.usr-kpi-icon-total {
+    background: #e5efff;
+    color: #1769d1;
+}
+
+.usr-kpi-icon-activos {
+    background: #e3f7ea;
+    color: #1f7a44;
+}
+
+.usr-kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: #8a90a2;
+    margin-bottom: 4px;
+}
+
+.usr-kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #16213a;
+    line-height: 1.1;
+}

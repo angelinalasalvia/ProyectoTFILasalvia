@@ -12,72 +12,105 @@
 
     <nav class="flex-column">
         
-        <div class="nav-item">
-            <NavLink class="nav-link" href="clientes" title="Clientes">
+        @if (Puede("Clientes"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="clientes" title="Clientes">
                 <span class="icon">👥</span> <span class="nav-text">Clientes</span>
             </NavLink>
         </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="campanas" title="Campañas">
-                <span class="icon">📣</span> <span class="nav-text">Campañas</span>
-            </NavLink>
-        </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="predicciones" title="Predicciones">
+        }
+        @if (Puede("Campañas"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="campanas" title="Campañas">
+                    <span class="icon">📣</span> <span class="nav-text">Campañas</span>
+                </NavLink>
+            </div>
+        }
+        @if (Puede("Predicciones"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="predicciones" title="Predicciones">
                 <span class="icon">🎯</span> <span class="nav-text">Predicciones</span>
             </NavLink>
         </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="automatizacion" title="Automatización">
+        }
+        @if (Puede("Automatización"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="automatizacion" title="Automatización">
                 <span class="icon">⚙️</span> <span class="nav-text">Automatización</span>
             </NavLink>
         </div>
+        }
 
         <!-- Reportes: ítem padre con submenú desplegable -->
-        <div class="nav-item">
-            <button class="nav-link nav-link-parent @(reportesAbierto ? "active" : "")"
-                    @onclick="ToggleReportes" title="Reportes">
-                <span class="icon">📊</span> <span class="nav-text">Reportes</span>
-                <span class="nav-chevron">@(reportesAbierto ? "▾" : "▸")</span>
-            </button>
-            @if (reportesAbierto)
-            {
-                <div class="nav-submenu">
-                    <NavLink class="nav-sublink" href="reportes/efectividad" title="Reporte de Efectividad">
-                        Reporte de Efectividad
-                    </NavLink>
-                    <NavLink class="nav-sublink" href="reportes/retencion" title="Reporte de Retención">
-                        Reporte de Retención
-                    </NavLink>
-                </div>
-            }
-        </div>
+        @if (Puede("Reportes"))
+        {
+            <div class="nav-item">
+                <button class="nav-link nav-link-parent @(reportesAbierto ? "active" : "")"
+                @onclick="ToggleReportes" title="Reportes">
+                    <span class="icon">📊</span> <span class="nav-text">Reportes</span>
+                    <span class="nav-chevron">@(reportesAbierto ? "▾" : "▸")</span>
+                </button>
+                @if (reportesAbierto)
+                {
+                    <div class="nav-submenu">
+                        @if (Puede("Reporte de Efectividad"))
+                        {
+                            <NavLink class="nav-sublink" href="reportes/efectividad" title="Reporte de Efectividad">
+                                Reporte de Efectividad
+                            </NavLink>
+                        }
+                        @if (Puede("Reporte de Retención"))
+                        {
+                            <NavLink class="nav-sublink" href="reportes/retencion" title="Reporte de Retención">
+                                Reporte de Retención
+                            </NavLink>
+                        }
+                    </div>
+                }
+            </div>
+        }
 
-        <div class="nav-item">
-            <NavLink class="nav-link" href="integraciones" title="Integraciones">
+        @if (Puede("Integraciones"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="integraciones" title="Integraciones">
                 <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
             </NavLink>
         </div>
+        }
 
         <!-- Administración: ítem padre con submenú desplegable (Usuarios / Roles) -->
-        <div class="nav-item">
-            <button class="nav-link nav-link-parent @(administracionAbierto ? "active" : "")"
-                    @onclick="ToggleAdministracion" title="Administración">
-                <span class="icon">👥</span> <span class="nav-text">Administración</span>
-                <span class="nav-chevron">@(administracionAbierto ? "▾" : "▸")</span>
-            </button>
-            @if (administracionAbierto)
-            {
-                <div class="nav-submenu">
-                    <NavLink class="nav-sublink" href="administracion/usuarios" title="Usuarios">
-                        Usuarios
-                    </NavLink>
-                    <NavLink class="nav-sublink" href="administracion/roles" title="Roles">
-                        Roles
-                    </NavLink>
-                </div>
-            }
-        </div>
+        @if (Puede("Administración"))
+        {
+            <div class="nav-item">
+                <button class="nav-link nav-link-parent @(administracionAbierto ? "active" : "")"
+                @onclick="ToggleAdministracion" title="Administración">
+                    <span class="icon">👥</span> <span class="nav-text">Administración</span>
+                    <span class="nav-chevron">@(administracionAbierto ? "▾" : "▸")</span>
+                </button>
+                @if (administracionAbierto)
+                {
+                    <div class="nav-submenu">
+                        @if (Puede("Usuarios"))
+                        {
+                            <NavLink class="nav-sublink" href="administracion/usuarios" title="Usuarios">
+                                Usuarios
+                            </NavLink>
+                        }
+                        @if (Puede("Roles"))
+                        {
+                            <NavLink class="nav-sublink" href="administracion/roles" title="Roles">
+                                Roles
+                            </NavLink>
+                        }
+                    </div>
+                }
+            </div>
+        }
 
         <div class="nav-item">
             @if (SessionManager.GetInstance().EstaLogueado)
@@ -137,4 +170,7 @@
         SessionManager.GetInstance().Logout();
         Navigation.NavigateTo("/login");
     }
+
+    private static bool Puede(string permiso)
+    => SessionManager.GetInstance().TienePermiso(permiso);
 }

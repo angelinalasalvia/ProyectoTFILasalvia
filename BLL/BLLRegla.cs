@@ -27,7 +27,7 @@ public class BLLRegla
         LEFT JOIN Sede sede ON sede.IdSede = r.IdSede
         LEFT JOIN [Plan] pl ON pl.IdPlan = r.IdPlan";
 
-    
+
     public async Task<List<Regla>> ObtenerReglas(CancellationToken ct = default)
     {
         var reglas = (await _accesoDatos.Leer<Regla>($"{SelectBase} ORDER BY r.FechaCreacion DESC", ct: ct)).ToList();
@@ -56,16 +56,16 @@ public class BLLRegla
         _ => "r.FechaCreacion DESC" // "Más recientes"
     };
 
-    
+
     //public bool RequiereAccionAdicional(Regla regla) => false;
 
-    
+
     public Task CambiarEstado(int idRegla, string nuevoEstado, CancellationToken ct = default)
         => _accesoDatos.Modificar(
             "UPDATE Regla SET Estado = @nuevoEstado WHERE IdRegla = @idRegla",
             new { nuevoEstado, idRegla }, ct: ct);
 
-    
+
     public Task EliminarRegla(int idRegla, CancellationToken ct = default)
         => _accesoDatos.Eliminar(
             @"DECLARE @condiciones TABLE (IdCondicion INT);
@@ -372,6 +372,41 @@ public class BLLRegla
         }
 
         return (enviados, cerrados);
+    }
+
+    // CU03, paso 4: sugiere una campaña para el cliente según su nivel de riesgo.
+    // Toma la primera regla ACTIVA (menor Prioridad; a igual prioridad, la más antigua) cuya segmentación
+    // (plan / sede) incluye al cliente y que tiene una condición de "Nivel de Riesgo" que abarca el nivel
+    // del cliente. A diferencia del motor (EjecutarReglas) no evalúa inactividad, pagos ni intentos previos:
+    // la sugerencia se basa solo en el riesgo y el usuario puede elegir otra campaña.
+    // Si ninguna regla aplica, sugiere la campaña con mayor tasa de éxito.
+    public async Task<(Campana? Campana, string Motivo)> SugerirCampana(
+        Cliente cliente, string nivelRiesgo, List<Campana> campanas, CancellationToken ct = default)
+    {
+        if (campanas.Count == 0) return (null, string.Empty);
+
+        var reglas = (await ObtenerReglas(ct))
+            .Where(r => r.Estado == EstadosRegla.Activa)
+            .OrderBy(r => r.Prioridad).ThenBy(r => r.IdRegla);
+
+        foreach (var regla in reglas)
+        {
+            if (regla.NombrePlan is not null && regla.NombrePlan != cliente.PlanSocio) continue;
+            if (regla.NombreSede is not null && regla.NombreSede != cliente.Sede) continue;
+
+            var abarcaElNivel = regla.Condiciones.Any(c =>
+                c.Atributo == Condicion.NivelRiesgo && Condicion.SepararValores(c.Valor).Contains(nivelRiesgo));
+            if (!abarcaElNivel) continue;
+
+            var campana = campanas.FirstOrDefault(c => c.IdCampania == regla.IdCampania);
+            if (campana is null) continue;
+
+            return (campana, $"La regla \"{regla.Nombre}\" asigna esta campaña a clientes con riesgo {nivelRiesgo.ToLower()}.");
+        }
+
+        var masExitosa = campanas.OrderByDescending(c => c.TasaExito ?? 0).First();
+        return (masExitosa,
+            $"No hay ninguna regla activa para clientes con riesgo {nivelRiesgo.ToLower()}: se sugiere la campaña con mayor tasa de éxito.");
     }
 
     // Fecha del último evento de un tipo por cliente (opcionalmente desde una fecha).

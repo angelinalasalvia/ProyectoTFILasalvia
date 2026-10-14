@@ -1,116 +1,401 @@
-﻿@page "/retencion-cliente"
+﻿@page "/retencion-cliente/{IdCliente:int}"
+@inject BLL.BLLCliente BLLCliente
+@inject BLL.BLLPrediccion BLLPrediccion
+@inject BLL.BLLHistorialAcciones BLLHistorialAcciones
+@inject BLL.BLLCampana BLLCampana
+@inject BLL.BLLIncentivo BLLIncentivo
+@inject BLL.BLLRegla BLLRegla
+@inject NavigationManager Nav
+@inject ILogger<RetencionCliente> Logger
+@rendermode InteractiveServer
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BE
+@using BLL
 
 <PageTitle>Retención de Cliente</PageTitle>
 
-<div class="retencion-header-row">
-    <div>
-        <div class="breadcrumb">Clientes <span class="breadcrumb-sep">›</span> Ejecutar Retención Manual</div>
-        <h1 class="detalle-title">Retención de Cliente</h1>
-    </div>
-    <div class="retencion-actions">
-        <button class="btn-cancelar" @onclick="Cancelar">Cancelar</button>
-        <button class="btn-confirmar" @onclick="ConfirmarEjecutar">▷ Confirmar y Ejecutar</button>
-    </div>
-</div>
-
-<div class="ia-banner">
-    <div class="ia-icon">✨</div>
-    <div class="ia-content">
-        <h3>Campaña Sugerida por IA</h3>
-        <p>Recomendamos la Campaña de Fidelización Gold. Este cliente responde positivamente a incentivos exclusivos tras periodos de baja actividad.</p>
-        <div class="ia-aviso">⚠ Aviso: Esta campaña ya fue enviada a Javier hace 15 días</div>
-    </div>
-</div>
-
-<div class="card seccion-card">
-    <div class="seccion-header">HISTORIAL DE ACCIONES DE RETENCIÓN</div>
-    <table class="historial-table">
-        <thead>
-            <tr>
-                <th>CAMPAÑA</th>
-                <th>CANAL</th>
-                <th>FECHA</th>
-                <th>RESULTADO</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var h in historial)
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else if (cliente == null)
+{
+    <a href="predicciones" class="back-link">‹ Volver a Predicciones</a>
+    <p class="pred-sin-resultados">No se encontró el cliente solicitado.</p>
+}
+else
+{
+    <div class="retencion-header-row">
+        <div>
+            <div class="breadcrumb">Clientes <span class="breadcrumb-sep">›</span> Ejecutar Retención Manual</div>
+            <h1 class="detalle-title">Retención de @cliente.Nombre @cliente.Apellido</h1>
+        </div>
+        <div class="retencion-actions">
+            <button class="btn-cancelar" @onclick="VolverAlDetalle">@(registrada ? "Volver al detalle" : "Cancelar")</button>
+            @if (!sinCampanas && !registrada)
             {
-                <tr>
-                    <td class="campana-nombre">@h.Campana</td>
-                    <td><span class="canal-cell">@h.CanalIcono @h.Canal</span></td>
-                    <td class="fecha-cell">@h.Fecha</td>
-                    <td><span class="resultado-badge @h.ResultadoClase">@h.Resultado</span></td>
-                </tr>
+                <button class="btn-confirmar" disabled="@ejecutando" @onclick="ConfirmarEjecutar">
+                    @(ejecutando ? "Procesando..." : "▷ Confirmar y Ejecutar")
+                </button>
             }
-        </tbody>
-    </table>
-</div>
-
-<div class="card seccion-card">
-    <div class="seccion-header">SELECCIONAR CAMPAÑA EXISTENTE</div>
-
-    <div class="form-block">
-        <label class="form-label">Campaña</label>
-        <select class="campana-select" @bind="campanaSeleccionada">
-            <option>Campaña de Fidelización Gold</option>
-            <option>Campaña Q4</option>
-            <option>Upgrade Premium</option>
-        </select>
-    </div>
-
-    <div class="canal-incentivo-row">
-        <div class="canal-incentivo-item">
-            <span class="cii-label">CANAL</span>
-            <span class="cii-value canal-telegram">📱 Telegram</span>
-        </div>
-        <div class="canal-incentivo-item">
-            <span class="cii-label">INCENTIVO</span>
-            <span class="cii-value">Cupón de Descuento 20%</span>
         </div>
     </div>
 
-    <div class="form-block">
-        <label class="form-label">Vista Previa del Mensaje</label>
-        <div class="mensaje-preview">
-            "Hola {nombre_cliente}, como miembro Gold valoramos tu lealtad. Te ofrecemos un {incentivo} exclusivo para tu renovación. ¿Hablamos?"
+    @if (sinCampanas)
+    {
+        <div class="alerta-error">No existe ninguna campaña disponible para ejecutar.</div>
+    }
+    else
+    {
+        <div class="sugerencia-banner">
+            <div class="sugerencia-icon">💡</div>
+            <div class="sugerencia-content">
+                <h3>@(campanaSugerida is null ? "Sin campaña sugerida" : $"Campaña sugerida: {campanaSugerida.Nombre}")</h3>
+                <p>@motivoSugerencia</p>
+            </div>
         </div>
-    </div>
 
-    <div class="form-block programacion-block">
-        <label class="form-label">Programación del Envío</label>
-        <div class="radio-row">
-            <label class="radio-option">
-                <input type="radio" name="programacion" checked="@(programacion == "ahora")" @onchange='() => programacion = "ahora"' />
-                Enviar Ahora
-            </label>
-            <label class="radio-option">
-                <input type="radio" name="programacion" checked="@(programacion == "programar")" @onchange='() => programacion = "programar"' />
-                Programar Envío
-            </label>
+        <div class="card seccion-card">
+            <div class="seccion-header">HISTORIAL DE ACCIONES DE RETENCIÓN</div>
+            <table class="historial-table">
+                <thead>
+                    <tr>
+                        <th>CAMPAÑA</th>
+                        <th>CANAL</th>
+                        <th>FECHA</th>
+                        <th>RESULTADO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (historial.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="4" class="fecha-cell">Este cliente todavía no tiene acciones de retención.</td>
+                        </tr>
+                    }
+                    @foreach (var h in historial)
+                    {
+                        var (textoResultado, claseResultado) = ResultadoVisible(h);
+                        <tr>
+                            <td class="campana-nombre">@h.NombreCampania</td>
+                            <td><span class="canal-cell">@IconoCanal(h.Canal) @h.Canal</span></td>
+                            <td class="fecha-cell">@Fecha(h.FechaEnvio)</td>
+                            <td><span class="resultado-badge @claseResultado">@textoResultado</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
-    </div>
-</div>
+
+        <div class="card seccion-card">
+            <div class="seccion-header">SELECCIONAR CAMPAÑA EXISTENTE</div>
+
+            <div class="form-block">
+                <label class="form-label">Campaña</label>
+                <select class="campana-select" @bind="campanaSeleccionadaId" @bind:after="ActualizarAvisoPrevio"
+                        disabled="@(ejecutando || registrada)">
+                    @foreach (var c in campanas)
+                    {
+                        <option value="@c.IdCampania">@(c.Nombre + (c.IdCampania == campanaSugerida?.IdCampania ? " (sugerida)" : ""))</option>
+                    }
+                </select>
+            </div>
+
+            @if (CampanaActual is { } actual)
+            {
+                <div class="canal-incentivo-row">
+                    <div class="canal-incentivo-item">
+                        <span class="cii-label">CANAL</span>
+                        <span class="cii-value @(actual.Canal == "Telegram" ? "canal-telegram" : "")">@IconoCanal(actual.Canal) @actual.Canal</span>
+                    </div>
+                    <div class="canal-incentivo-item">
+                        <span class="cii-label">INCENTIVO</span>
+                        <span class="cii-value">@NombreIncentivo(actual)</span>
+                    </div>
+                </div>
+
+                <div class="form-block">
+                    <label class="form-label">Vista Previa del Mensaje</label>
+                    <div class="mensaje-preview">"@MensajePreview(actual)"</div>
+                </div>
+
+                @if (fechaEnvioPrevio is not null)
+                {
+                    <div class="form-block">
+                        <div class="aviso-previo">⚠ Aviso: @TextoAvisoPrevio(fechaEnvioPrevio.Value)</div>
+                    </div>
+                }
+            }
+
+            <div class="form-block programacion-block">
+                <label class="form-label">Programación del Envío</label>
+                <div class="radio-row">
+                    <label class="radio-option">
+                        <input type="radio" name="programacion" checked="@(programacion == "ahora")"
+                               disabled="@(ejecutando || registrada)" @onchange='() => CambiarProgramacion("ahora")' />
+                        Enviar Ahora
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="programacion" checked="@(programacion == "programar")"
+                               disabled="@(ejecutando || registrada)" @onchange='() => CambiarProgramacion("programar")' />
+                        Programar Envío
+                    </label>
+                </div>
+
+                @if (programacion == "programar")
+                {
+                    <div class="fecha-hora-row">
+                        <div>
+                            <label class="form-label">Fecha</label>
+                            <input type="date" class="campo-fecha" @bind="fechaProgramada" @bind:after="ValidarAlEditar"
+                                   min="@(DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))"
+                                   disabled="@(ejecutando || registrada)" />
+                        </div>
+                        <div>
+                            <label class="form-label">Hora</label>
+                            <input type="time" class="campo-fecha" @bind="horaProgramada" @bind:after="ValidarAlEditar"
+                                   disabled="@(ejecutando || registrada)" />
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(errorProgramacion))
+                    {
+                        <div class="alerta-error mensaje-programacion">@errorProgramacion</div>
+                    }
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorEjecucion))
+        {
+            <div class="alerta-error">@errorEjecucion</div>
+        }
+
+        @if (registrada && resultadoAccion is not null && CampanaActual is { } enviada)
+        {
+            <div class="alerta-exito">La acción de retención fue registrada exitosamente.</div>
+
+            <div class="card seccion-card">
+                <div class="seccion-header">RESUMEN DE LA ACCIÓN REGISTRADA</div>
+                <table class="historial-table">
+                    <tbody>
+                        <tr><td class="resumen-label">Cliente</td><td>@cliente.Nombre @cliente.Apellido</td></tr>
+                        <tr><td class="resumen-label">Campaña</td><td>@enviada.Nombre</td></tr>
+                        <tr><td class="resumen-label">Canal</td><td>@IconoCanal(enviada.Canal) @enviada.Canal</td></tr>
+                        <tr><td class="resumen-label">Incentivo</td><td>@NombreIncentivo(enviada)</td></tr>
+                        <tr><td class="resumen-label">Mensaje</td><td>@MensajePreview(enviada)</td></tr>
+                        <tr>
+                            <td class="resumen-label">Envío</td>
+                            <td>@(fechaHoraProgramada is null ? "Inmediato" : $"Programado para el {FechaHora(fechaHoraProgramada.Value)}")</td>
+                        </tr>
+                        <tr><td class="resumen-label">Estado</td><td>@resultadoAccion.Estado</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+}
 
 @code {
-    private string campanaSeleccionada = "Campaña de Fidelización Gold";
+    [Parameter] public int IdCliente { get; set; }
+
+    private bool cargando = true;
+    private bool sinCampanas;
+    private bool ejecutando;
+    private bool registrada;
+
+    private Cliente? cliente;
+    private Prediccion? prediccion;
+    private List<HistorialAccion> historial = new();
+    private List<Campana> campanas = new();
+    private List<Incentivo> incentivos = new();
+
+    private Campana? campanaSugerida;
+    private string motivoSugerencia = "";
+    private int campanaSeleccionadaId;
+    private DateTime? fechaEnvioPrevio;
+
     private string programacion = "ahora";
+    private DateOnly? fechaProgramada;
+    private TimeOnly? horaProgramada;
+    private string errorProgramacion = "";
+    private string errorEjecucion = "";
+    private DateTime? fechaHoraProgramada;
+    private ResultadoAccionManual? resultadoAccion;
 
-    private record AccionHistorial(string Campana, string Canal, string CanalIcono, string Fecha, string Resultado, string ResultadoClase);
+    private Campana? CampanaActual => campanas.FirstOrDefault(c => c.IdCampania == campanaSeleccionadaId);
 
-    private List<AccionHistorial> historial = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("Campaña Q4", "Email", "@", "Hace 3 días", "Sin respuesta", "resultado-neutro"),
-        new("Upgrade Premium", "Consultoría", "🎧", "May 2023", "Cupón canjeado", "resultado-exito"),
+        try { await CargarDatos(); }
+        finally { cargando = false; }
+    }
+
+    // Pasos 2 a 6 del CU. Si no hay campañas (4.1) el flujo termina sin cargar nada más.
+    private async Task CargarDatos()
+    {
+        cliente = await BLLCliente.ObtenerCliente(IdCliente);
+        if (cliente is null) return;
+
+        historial = await BLLHistorialAcciones.ObtenerHistorialCliente(IdCliente);
+        campanas = await BLLCampana.ObtenerCampanas();
+        if (campanas.Count == 0)
+        {
+            sinCampanas = true;
+            return;
+        }
+
+        incentivos = await BLLIncentivo.ObtenerIncentivos();
+        prediccion = await BLLPrediccion.ObtenerPrediccionPorCliente(IdCliente);
+
+        if (prediccion is null)
+        {
+            motivoSugerencia = "El cliente no tiene una predicción calculada, por eso no hay una campaña sugerida. Elegí una campaña de la lista.";
+        }
+        else
+        {
+            (campanaSugerida, motivoSugerencia) = await BLLRegla.SugerirCampana(cliente, prediccion.NivelRiesgo, campanas);
+        }
+
+        campanaSeleccionadaId = campanaSugerida?.IdCampania ?? campanas[0].IdCampania;
+        ActualizarAvisoPrevio();
+    }
+
+    // Pasos 6 y 12: el aviso se calcula para la campaña elegida (sugerida o no).
+    private void ActualizarAvisoPrevio()
+        => fechaEnvioPrevio = BLLHistorialAcciones.ObtenerFechaEnvioPrevio(historial, campanaSeleccionadaId);
+
+    private void CambiarProgramacion(string valor)
+    {
+        programacion = valor;
+        errorProgramacion = "";
+        if (valor == "ahora")
+        {
+            fechaProgramada = null;
+            horaProgramada = null;
+        }
+    }
+
+    // Paso 10: valida que la fecha y hora sean posteriores al momento actual.
+    // Al editar solo se valida cuando ya están completas; al confirmar se exigen ambas.
+    private void ValidarAlEditar() => ValidarFechaHora(exigirCompleto: false);
+
+    private bool ValidarFechaHora(bool exigirCompleto)
+    {
+        errorProgramacion = "";
+
+        if (fechaProgramada is null || horaProgramada is null)
+        {
+            if (exigirCompleto) errorProgramacion = "Ingresá la fecha y la hora del envío.";
+            return !exigirCompleto;
+        }
+
+        if (fechaProgramada.Value.ToDateTime(horaProgramada.Value) <= DateTime.Now)
+        {
+            errorProgramacion = "La fecha y hora deben ser posteriores al momento actual.";
+            return false;
+        }
+
+        return true;
+    }
+
+    // Pasos 11 a 15 (y 10.1 / 11.1).
+    private async Task ConfirmarEjecutar()
+    {
+        if (ejecutando || registrada || cliente is null || CampanaActual is null) return;
+
+        errorEjecucion = "";
+        DateTime? fechaHora = null;
+
+        if (programacion == "programar")
+        {
+            if (!ValidarFechaHora(exigirCompleto: true)) return;
+            fechaHora = fechaProgramada!.Value.ToDateTime(horaProgramada!.Value);
+        }
+
+        ejecutando = true;
+        StateHasChanged();
+        await Task.Yield(); // permite pintar "Procesando..." antes del envío
+
+        try
+        {
+            // TODO (autenticación): usar el usuario logueado. Mientras tanto se registra con el usuario "Sistema".
+            var idUsuario = await BLLHistorialAcciones.ObtenerIdUsuarioSistema();
+
+            var resultado = await BLLHistorialAcciones.RegistrarAccionManual(IdCliente, campanaSeleccionadaId, idUsuario, fechaHora);
+
+            historial = await BLLHistorialAcciones.ObtenerHistorialCliente(IdCliente);
+            ActualizarAvisoPrevio();
+
+            if (resultado.Exito)
+            {
+                resultadoAccion = resultado;
+                fechaHoraProgramada = fechaHora;
+                registrada = true;
+            }
+            else
+            {
+                // El envío falló: la acción quedó registrada como fallida y se puede reintentar.
+                errorEjecucion = $"No fue posible enviar el mensaje: {resultado.Error}";
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            errorProgramacion = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al registrar la acción de retención manual (cliente {IdCliente}, campaña {IdCampania})",
+                IdCliente, campanaSeleccionadaId);
+            errorEjecucion = "No fue posible registrar la acción. Podés reintentar.";
+        }
+        finally
+        {
+            ejecutando = false;
+        }
+    }
+
+    private void VolverAlDetalle() => Nav.NavigateTo($"prediccion-detalle/{IdCliente}");
+
+    // ---- Presentación ----
+
+    private static string IconoCanal(string canal) => canal switch
+    {
+        "Email" => "@",
+        "Telegram" => "📱",
+        _ => ""
     };
 
-    private void Cancelar()
+    private string NombreIncentivo(Campana campana)
+        => incentivos.FirstOrDefault(i => i.IdIncentivo == campana.IdIncentivo)?.Nombre ?? "Sin incentivo";
+
+    // Es el mismo texto que se envía: el servicio de envío solo reemplaza {nombre_cliente}.
+    private string MensajePreview(Campana campana)
+        => campana.Mensaje.Replace("{nombre_cliente}", cliente?.Nombre ?? "");
+
+    private string TextoAvisoPrevio(DateTime fecha)
     {
-        // TODO: navegar de vuelta al detalle del cliente
+        var dias = (DateTime.Today - fecha.Date).Days;
+        var hace = dias switch { <= 0 => "hoy", 1 => "hace 1 día", _ => $"hace {dias} días" };
+        return $"Esta campaña ya fue enviada a {cliente?.Nombre} el {Fecha(fecha)} ({hace}).";
     }
 
-    private void ConfirmarEjecutar()
+    // El resultado que muestra el historial: traduce lo que guarda la base a los textos del CU.
+    private static (string Texto, string Clase) ResultadoVisible(HistorialAccion h)
     {
-        // TODO: lógica real de ejecución de campaña
+        if (h.Estado == HistorialAccion.EstadoProgramada) return ("Programada", "resultado-neutro");
+
+        return (h.Resultado ?? "") switch
+        {
+            HistorialAccion.ResultadoRescatado => ("Cliente retenido", "resultado-exito"),
+            HistorialAccion.ResultadoSinAccion => ("Sin respuesta", "resultado-neutro"),
+            HistorialAccion.ResultadoClic => ("Clic en enlace", "resultado-neutro"),
+            HistorialAccion.ResultadoErrorEnvio => ("Error de envío", "resultado-error"),
+            _ => ("Enviada", "resultado-neutro") // enviada, todavía sin resultado
+        };
     }
+
+    private static string Fecha(DateTime fecha) => fecha.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+    private static string FechaHora(DateTime fecha) => fecha.ToString("dd/MM/yyyy 'a las' HH:mm", CultureInfo.InvariantCulture);
 }

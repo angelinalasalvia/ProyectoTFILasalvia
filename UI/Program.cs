@@ -41,6 +41,7 @@ builder.Services.AddScoped<GeneradorPdf>();
 builder.Services.AddScoped<ServicioEnvio>();
 
 builder.Services.AddHostedService<PrediccionBackgroundService>();
+builder.Services.AddHostedService<EnvioProgramadoBackgroundService>();
 
 builder.Services.AddDataProtection().SetApplicationName("TFILasalvia");
 

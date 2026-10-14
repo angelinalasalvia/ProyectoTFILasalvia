@@ -18,5 +18,6 @@
     {
         public const string Activo = "Activo";
         public const string Inactivo = "Inactivo";
+        public const string Eliminado = "Eliminado";
     }
 }

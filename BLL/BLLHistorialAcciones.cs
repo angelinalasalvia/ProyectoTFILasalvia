@@ -159,7 +159,9 @@ public class BLLHistorialAcciones
             ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}). Ejecutá el script de datos.");
     }
 
-    public async Task RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
+    // Envía el mensaje y registra la acción. Devuelve el resultado del envío (los envíos fallidos
+    // también quedan registrados, con EstadoEnvio = Fallido).
+    public async Task<ResultadoEnvio> RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
                                       CancellationToken ct = default)
     {
         var envio = await EnviarMensajeCampania(idCliente, idCampania, ct);
@@ -170,7 +172,7 @@ public class BLLHistorialAcciones
 
           UPDATE Campaña SET ClientesAlcanzados =
               (SELECT COUNT(DISTINCT h.IdCliente) FROM HistorialAcciones h
-               WHERE h.IdCampaña = @idCampania AND h.EstadoEnvio <> @fallido)
+               WHERE h.IdCampaña = @idCampania AND h.EstadoEnvio NOT IN (@fallido, @pendiente))
           WHERE IdCampaña = @idCampania;",
             new
             {
@@ -183,8 +185,11 @@ public class BLLHistorialAcciones
                 estado = envio.Exito ? HistorialAccion.EstadoActivo : HistorialAccion.EstadoFinalizada,
                 idRegla,
                 resultado = envio.Exito ? null : HistorialAccion.ResultadoErrorEnvio,
-                fallido = HistorialAccion.EnvioFallido
+                fallido = HistorialAccion.EnvioFallido,
+                pendiente = HistorialAccion.EnvioPendiente
             }, ct: ct);
+
+        return envio;
     }
 
     private async Task<ResultadoEnvio> EnviarMensajeCampania(int idCliente, int idCampania, CancellationToken ct)
@@ -214,7 +219,112 @@ public class BLLHistorialAcciones
         return new ResultadoEnvio(false, $"Canal no soportado: {campania.Canal}");
     }
 
-    // Cierra los envíos automáticos cuya ventana de observación (7 días) ya terminó y devuelve cuántos cerró.
+    // ------------------------------------------------------------------------------------
+    // Acciones de retención manuales (CU03)
+    // ------------------------------------------------------------------------------------
+
+    // Paso 2: historial de acciones de retención del cliente, la más reciente primero.
+    public async Task<List<HistorialAccion>> ObtenerHistorialCliente(int idCliente, CancellationToken ct = default)
+    {
+        var resultado = await _accesoDatos.Leer<HistorialAccion>(
+            @"SELECT ha.IdHistorial, ha.EstadoEnvio, ha.FechaEnvio, ha.TipoAccion, ha.IdCampaña AS IdCampania,
+                     ha.IdCliente, ha.IdUsuario, ha.Resultado, ha.Estado,
+                     camp.Asunto AS NombreCampania, ca.Nombre AS Canal
+              FROM HistorialAcciones ha
+              JOIN Campaña camp ON camp.IdCampaña = ha.IdCampaña
+              JOIN Canal ca ON ca.IdCanal = camp.IdCanal
+              WHERE ha.IdCliente = @idCliente
+              ORDER BY ha.FechaEnvio DESC",
+            new { idCliente }, ct: ct);
+        return resultado.ToList();
+    }
+
+    // Pasos 6 y 12: fecha del último envío efectivo de la campaña a ese cliente (null si nunca se envió).
+    // No cuentan los envíos fallidos ni los programados que todavía no salieron.
+    public DateTime? ObtenerFechaEnvioPrevio(List<HistorialAccion> historial, int idCampania)
+        => historial
+            .Where(h => h.IdCampania == idCampania
+                     && h.Estado != HistorialAccion.EstadoProgramada
+                     && h.EstadoEnvio != HistorialAccion.EnvioFallido)
+            .Select(h => (DateTime?)h.FechaEnvio)
+            .Max();
+
+    // Pasos 13 a 15. Sin fecha: envío inmediato (se envía y se registra). Con fecha: se registra como
+    // "Programada" y la envía EnvioProgramadoBackgroundService cuando llegue la hora.
+    public async Task<ResultadoAccionManual> RegistrarAccionManual(
+        int idCliente, int idCampania, int idUsuario, DateTime? fechaProgramada = null, CancellationToken ct = default)
+    {
+        if (fechaProgramada is null)
+        {
+            var envio = await RegistrarAccion(idCliente, idCampania, null, idUsuario,
+                HistorialAccion.TipoAccionManual, DateTime.Now, ct);
+
+            return envio.Exito
+                ? new ResultadoAccionManual(true, "Enviada", null)
+                : new ResultadoAccionManual(false, "Fallida", envio.Mensaje);
+        }
+
+        if (fechaProgramada <= DateTime.Now)
+            throw new ArgumentException("La fecha y hora programadas deben ser posteriores al momento actual.");
+
+        await _accesoDatos.Escribir(
+            @"INSERT INTO HistorialAcciones (EstadoEnvio, FechaEnvio, TipoAccion, IdCampaña, IdCliente, IdUsuario, Estado, IdRegla, Resultado)
+              VALUES (@estadoEnvio, @fechaEnvio, @tipoAccion, @idCampania, @idCliente, @idUsuario, @estado, NULL, NULL)",
+            new
+            {
+                estadoEnvio = HistorialAccion.EnvioPendiente,
+                fechaEnvio = fechaProgramada,
+                tipoAccion = HistorialAccion.TipoAccionManual,
+                idCampania,
+                idCliente,
+                idUsuario,
+                estado = HistorialAccion.EstadoProgramada
+            }, ct: ct);
+
+        return new ResultadoAccionManual(true, HistorialAccion.EstadoProgramada, null);
+    }
+
+    // Envía las acciones programadas cuya fecha y hora ya llegó (lo ejecuta EnvioProgramadoBackgroundService).
+    // Devuelve cuántas procesó. El "AND Estado = @programada" del UPDATE evita procesar dos veces la misma acción.
+    public async Task<int> EnviarAccionesProgramadas(DateTime ahora, CancellationToken ct = default)
+    {
+        var pendientes = (await _accesoDatos.Leer<HistorialAccion>(
+            @"SELECT IdHistorial, IdCliente, IdCampaña AS IdCampania
+              FROM HistorialAcciones
+              WHERE Estado = @programada AND FechaEnvio <= @ahora
+              ORDER BY FechaEnvio",
+            new { programada = HistorialAccion.EstadoProgramada, ahora }, ct: ct)).ToList();
+
+        foreach (var accion in pendientes)
+        {
+            var envio = await EnviarMensajeCampania(accion.IdCliente, accion.IdCampania, ct);
+
+            await _accesoDatos.Modificar(
+                @"UPDATE HistorialAcciones
+                  SET EstadoEnvio = @estadoEnvio, Estado = @estado, Resultado = @resultado
+                  WHERE IdHistorial = @idHistorial AND Estado = @programada;
+
+                  UPDATE Campaña SET ClientesAlcanzados =
+                      (SELECT COUNT(DISTINCT h.IdCliente) FROM HistorialAcciones h
+                       WHERE h.IdCampaña = @idCampania AND h.EstadoEnvio NOT IN (@fallido, @pendiente))
+                  WHERE IdCampaña = @idCampania;",
+                new
+                {
+                    estadoEnvio = envio.Exito ? HistorialAccion.EnvioEntregado : HistorialAccion.EnvioFallido,
+                    estado = envio.Exito ? HistorialAccion.EstadoActivo : HistorialAccion.EstadoFinalizada,
+                    resultado = envio.Exito ? null : HistorialAccion.ResultadoErrorEnvio,
+                    idHistorial = accion.IdHistorial,
+                    idCampania = accion.IdCampania,
+                    programada = HistorialAccion.EstadoProgramada,
+                    fallido = HistorialAccion.EnvioFallido,
+                    pendiente = HistorialAccion.EnvioPendiente
+                }, ct: ct);
+        }
+
+        return pendientes.Count;
+    }
+
+    // Cierra los envíos (automáticos y manuales) cuya ventana de observación (7 días) ya terminó y devuelve cuántos cerró.
     //  - Rescatado: el cliente tuvo una visita o un pago registrado después del envío, dentro de la ventana
     //    (sale de EventosCliente, no de una API).
     //  - Si no volvió, la lectura y el clic se simulan (mientras no haya API real). La semilla es el IdHistorial,
@@ -224,11 +334,10 @@ public class BLLHistorialAcciones
         var pendientes = (await _accesoDatos.Leer<HistorialAccion>(
             @"SELECT IdHistorial, IdCliente, FechaEnvio
               FROM HistorialAcciones
-              WHERE Estado = @activo AND TipoAccion = @tipo AND Resultado IS NULL AND FechaEnvio <= @limite",
+              WHERE Estado = @activo AND Resultado IS NULL AND FechaEnvio <= @limite",
             new
             {
                 activo = HistorialAccion.EstadoActivo,
-                tipo = HistorialAccion.TipoEnvioAutomatico,
                 limite = ahora.AddDays(-DiasVentanaResultado)
             }, ct: ct)).ToList();
 
@@ -301,3 +410,6 @@ public class BLLHistorialAcciones
     }
 }
 
+// Resultado de ejecutar una acción de retención manual (CU03).
+// Estado: "Enviada", "Programada" o "Fallida" (en ese caso, Error trae el motivo).
+public record ResultadoAccionManual(bool Exito, string Estado, string? Error);

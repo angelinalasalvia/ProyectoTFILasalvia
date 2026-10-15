@@ -19,10 +19,10 @@ namespace BLL
         public async Task<int> ObtenerIntentosFallidosConsecutivos(string email)
         {
             const string sql = @"
-SELECT COUNT(*) AS Valor
-FROM Bitacora b
-INNER JOIN Usuario u ON u.IdUsuario = b.IdUsuario
-WHERE u.Email = @Email AND b.Accion = @Accion";
+            SELECT COUNT(*) AS Valor
+            FROM Bitacora b
+            INNER JOIN Usuario u ON u.IdUsuario = b.IdUsuario
+            WHERE u.Email = @Email AND b.Accion = @Accion";
             var filas = await _dal.Leer<ValorEscalar>(sql, new
             {
                 Email = (email ?? "").Trim(),
@@ -35,8 +35,8 @@ WHERE u.Email = @Email AND b.Accion = @Accion";
         public async Task<int> RegistrarIntentoFallido(string email)
         {
             const string sql = @"
-INSERT INTO Bitacora (Accion, Fecha, IdUsuario)
-SELECT @Accion, @Fecha, IdUsuario FROM Usuario WHERE Email = @Email";
+            INSERT INTO Bitacora (Accion, Fecha, IdUsuario)
+            SELECT @Accion, @Fecha, IdUsuario FROM Usuario WHERE Email = @Email";
             await _dal.Escribir(sql, new
             {
                 Accion = AccionBitacora.IntentoFallido,

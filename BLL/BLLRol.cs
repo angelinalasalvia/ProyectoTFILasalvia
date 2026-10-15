@@ -12,7 +12,18 @@ namespace BLL
         {
             _dal = dal;
         }
-
+        // DS CU21/CU22: TraerPermisosRol(int id): List<Permiso>
+        public async Task<List<Permiso>> TraerPermisosRol(int idRol)
+        {
+            const string sql = @"
+            SELECT p.IdPermiso AS Id, p.Nombre, p.Descripcion
+            FROM Permiso p
+            INNER JOIN Rol_Permiso rp ON rp.PermisoID = p.IdPermiso
+            WHERE rp.RolID = @IdRol
+            ORDER BY p.IdPermiso";
+            var filas = await _dal.Leer<Permiso>(sql, new { IdRol = idRol });
+            return filas.ToList();
+        }
         /// <summary>DS: ObtenerRolYPermisos(idUsuario): Rol — el rol del usuario con sus permisos.</summary>
         public async Task<Rol> ObtenerRolYPermisos(int idUsuario)
         {

@@ -92,5 +92,87 @@ namespace BLL
                 IdUsuario = idUsuario
             });
         }
+
+        private const string ContrasenaPendiente = "SIN_ACCESO";
+
+        // DS CU22: ObtenerUsuario(int idUsuario): Usuario
+        public async Task<Usuario?> ObtenerUsuario(int idUsuario)
+        {
+            var sql = $"SELECT {ColumnasListado} FROM Usuario WHERE IdUsuario = @IdUsuario AND Estado <> @Eliminado";
+            var filas = await _dal.Leer<Usuario>(sql, new { IdUsuario = idUsuario, Eliminado = EstadoUsuario.Eliminado });
+            return filas.FirstOrDefault();
+        }
+
+        // DS CU21: VerificarEmailRegistrado(string email): bool
+        public async Task<bool> VerificarEmailRegistrado(string email)
+        {
+            const string sql = "SELECT COUNT(*) AS Valor FROM Usuario WHERE Email = @Email AND Estado <> @Eliminado";
+            var filas = await _dal.Leer<ValorEscalar>(sql, new { Email = (email ?? "").Trim(), Eliminado = EstadoUsuario.Eliminado });
+            return (filas.FirstOrDefault()?.Valor ?? 0) > 0;
+        }
+
+        // DS CU21: CrearUsuarioInactivo(string nombreCompleto, string email, int rol)
+        public async Task<int> CrearUsuarioInactivo(string nombreCompleto, string email, int rol)
+        {
+            var (nombre, apellido) = SepararNombreCompleto(nombreCompleto);
+            const string sql = @"
+INSERT INTO Usuario (Nombre, Apellido, Email, Contrasena, IdRol, Estado)
+VALUES (@Nombre, @Apellido, @Email, @Contrasena, @IdRol, @Estado)";
+            return await _dal.Escribir(sql, new
+            {
+                Nombre = nombre,
+                Apellido = apellido,
+                Email = (email ?? "").Trim(),
+                Contrasena = ContrasenaPendiente,
+                IdRol = rol,
+                Estado = EstadoUsuario.Inactivo
+            });
+        }
+
+        // DS CU22: ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
+        public async Task<int> ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
+        {
+            var actual = await ObtenerUsuario(idUsuario)
+                ?? throw new InvalidOperationException("El usuario no existe.");
+
+            // Si el nombre no cambió se conserva cómo estaba separado en la base.
+            var (nombre, apellido) = Normalizar(nombreCompleto) == Normalizar(actual.NombreCompleto)
+                ? (actual.Nombre, actual.Apellido)
+                : SepararNombreCompleto(nombreCompleto);
+
+            const string sql = @"
+UPDATE Usuario SET Nombre = @Nombre, Apellido = @Apellido, IdRol = @IdRol
+WHERE IdUsuario = @IdUsuario AND Estado <> @Eliminado";
+            return await _dal.Modificar(sql, new
+            {
+                Nombre = nombre,
+                Apellido = apellido,
+                IdRol = rol,
+                IdUsuario = idUsuario,
+                Eliminado = EstadoUsuario.Eliminado
+            });
+        }
+
+        // Al establecer la contraseña desde el enlace de activación la cuenta pasa a Activo.
+        public async Task ActivarUsuario(string email)
+        {
+            const string sql = "UPDATE Usuario SET Estado = @Activo WHERE Email = @Email AND Estado = @Inactivo";
+            await _dal.Modificar(sql, new
+            {
+                Activo = EstadoUsuario.Activo,
+                Inactivo = EstadoUsuario.Inactivo,
+                Email = (email ?? "").Trim()
+            });
+        }
+
+        public static (string Nombre, string Apellido) SepararNombreCompleto(string nombreCompleto)
+        {
+            var partes = (nombreCompleto ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (partes.Length < 2) return (partes.FirstOrDefault() ?? "", "");
+            return (string.Join(' ', partes[..^1]), partes[^1]);
+        }
+
+        private static string Normalizar(string texto)
+            => string.Join(' ', (texto ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToLowerInvariant();
     }
 }

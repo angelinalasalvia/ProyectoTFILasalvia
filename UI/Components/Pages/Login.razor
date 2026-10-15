@@ -90,9 +90,6 @@
     // Usuario devuelto por ObtenerUsuario; ValidarContraseña(contraseña) lo usa para comparar.
     private Usuario? usuarioEncontrado;
 
-    // Duración de la sesión (DeterminarDuracionSesion)
-    private static readonly TimeSpan DuracionNormal = TimeSpan.FromHours(8);
-
     // DS CU18: "Selecciona botón Iniciar Sesión()"
     private async Task IniciarSesion()
     {
@@ -107,6 +104,12 @@
         {
             if (!ValidarCamposObligatoriosYFormato(email, password))
                 return;
+
+            if (SessionManager.GetInstance().EstaLogueado)
+            {
+                mensajeError = "Ya hay una sesión iniciada.";
+                return;
+            }
 
             usuarioEncontrado = await UsuarioBLL.ObtenerUsuario(email, password);
 
@@ -142,8 +145,6 @@
                 await BitacoraBLL.RegistrarInicioSesion(usuarioEncontrado.Id, AccionBitacora.InicioSesion, DateTime.Now);
 
                 CargarPermisosEnSesion(rol);
-                var duracion = DeterminarDuracionSesion();
-                SessionManager.GetInstance().DefinirDuracion(duracion);
 
                 RedirigirAMenuPrincipal();
             }
@@ -208,9 +209,6 @@
         sesion.CargarPermisos(rol);
     }
 
-    // DS: DeterminarDuracionSesion(): TimeSpan (duración fija, sin "recordar sesión")
-    private TimeSpan DeterminarDuracionSesion() => DuracionNormal;
-
     // DS: RedirigirAMenúPrincipal()
     // DS: RedirigirAMenúPrincipal()  (a la primera pantalla a la que el usuario tiene acceso)
     private void RedirigirAMenuPrincipal()
@@ -218,10 +216,10 @@
         var sesion = SessionManager.GetInstance();
         var destino =
             sesion.TienePermiso("Predicciones") ? "/predicciones" :
-            sesion.TienePermiso("Reportes") ? "/reportes/efectividad" :
+            sesion.TienePermiso("Reportes") ? "/reportes/efectividad" : 
             sesion.TienePermiso("Campañas") ? "/campanas" :
-            sesion.TienePermiso("Reglas") ? "/automatizacion" :
-            sesion.TienePermiso("Gestión de Usuarios") ? "/administracion/usuarios" :
+            sesion.TienePermiso("Automatización") ? "/automatizacion" :
+            sesion.TienePermiso("Administración") ? "/administracion/usuarios" :
                                                          "/clientes";
         Navigation.NavigateTo(destino);
     }
@@ -232,9 +230,9 @@
         Navigation.NavigateTo("/recuperar-contrasena");
     }
 
-    protected override void OnInitialized()
+    /*protected override void OnInitialized()
     {
         if (SessionManager.GetInstance().EstaLogueado)
             Navigation.NavigateTo("/predicciones");
-    }
+    }*/
 }

@@ -1,7 +1,12 @@
 ﻿@page "/administracion/usuarios/nuevo"
 @page "/administracion/usuarios/editar/{UsuarioId:int}"
-
 @inject NavigationManager Navigation
+@inject BLLUsuario UsuarioBLL
+@inject BLLRol RolBLL
+@inject BLLTokenActivacion TokenActivacionBLL
+@inject ServicioEnvio Envio
+@using BE
+@using BLL
 
 <PageTitle>@(EsEdicion ? "Editar Usuario" : "Crear Usuario")</PageTitle>
 
@@ -93,21 +98,14 @@
         <div class="usr-form-field">
             <label class="form-label">ROL</label>
 
-            <select class="campana-select"
-                    @bind="rol">
-
-                <option value="Administrador">
-                    Administrador
-                </option>
-
-                <option value="Gerente">
-                    Gerente
-                </option>
-
-                <option value="Ejecutivo Comercial">
-                    Ejecutivo Comercial
-                </option>
-
+            <select class="campana-select @(errores.Contains("rol") ? "input-error" : "")"
+                    @bind="rolSeleccionado"
+                    @bind:after="MostrarResumenPermisos">
+                <option value="0">Seleccione un rol</option>
+                @foreach (var r in roles)
+                {
+                    <option value="@r.IdRol">@r.Nombre</option>
+                }
             </select>
         </div>
 
@@ -150,7 +148,7 @@
             <span class="usr-permissions-info">ⓘ</span>
 
             <span>
-                @ObtenerDescripcionRol()
+                @ResumenPermisos
             </span>
         </div>
 
@@ -191,8 +189,7 @@
             Cancelar
         </button>
 
-        <button class="btn-confirmar"
-                @onclick="GuardarUsuario">
+        <button class="btn-confirmar" disabled="@guardando" @onclick="GuardarUsuario">
             @(EsEdicion ? "💾 Guardar Cambios" : "👤 Guardar Usuario")
         </button>
 
@@ -209,135 +206,195 @@
 
     private string nombreCompleto = "";
     private string email = "";
-    private string rol = "Gerente";
-
+    private int rolSeleccionado = 0;
     private bool activo = false;
+    private bool guardando = false;
 
     private string mensajeError = "";
     private string mensajeConfirmacion = "";
 
     private HashSet<string> errores = new();
 
-    protected override void OnInitialized()
+    private List<Rol> roles = new();
+    private List<Permiso> permisosRol = new();
+
+    // DS: MostrarResumenPermisos()
+    private string ResumenPermisos
     {
-        if (EsEdicion)
+        get
         {
-            CargarUsuarioExistente(UsuarioId!.Value);
+            if (rolSeleccionado == 0) return "Seleccione un rol para visualizar sus permisos.";
+
+            var descripcion = roles.FirstOrDefault(r => r.IdRol == rolSeleccionado)?.Descripcion ?? "";
+            var lista = permisosRol.Count == 0
+                ? "Sin permisos asignados."
+                : "Permisos: " + string.Join(", ", permisosRol.Select(p => p.Nombre)) + ".";
+
+            return string.IsNullOrWhiteSpace(descripcion) ? lista : $"{descripcion} {lista}";
         }
     }
 
-    private void CargarUsuarioExistente(int id)
+    // DS: Ingresa a "Agregar Usuario" / "Modificar Usuario"
+    protected override async Task OnInitializedAsync()
     {
-        // TODO: reemplazar por la consulta real al usuario.
+        try
+        {
+            roles = await RolBLL.ObtenerRoles();
 
-        if (id == 1)
-        {
-            nombreCompleto = "Alejandro Mendoza";
-            email = "a.mendoza@tecnocorp.com";
-            rol = "Administrador";
-            activo = true;
+            if (EsEdicion)
+                await MostrarFormularioEdicion(UsuarioId!.Value);
         }
-        else if (id == 2)
+        catch (Exception)
         {
-            nombreCompleto = "Sofía Larrea";
-            email = "s.larrea@tecnocorp.com";
-            rol = "Gerente";
-            activo = true;
-        }
-        else if (id == 3)
-        {
-            nombreCompleto = "Ricardo Pineda";
-            email = "r.pineda@tecnocorp.com";
-            rol = "Ejecutivo Comercial";
-            activo = false;
+            mensajeError = "No se pudo cargar el formulario.";
         }
     }
 
-    private string ObtenerDescripcionRol()
+    // DS CU22: ObtenerUsuario(int idUsuario) + MostrarFormularioEdicion()
+    private async Task MostrarFormularioEdicion(int idUsuario)
     {
-        return rol switch
+        var usuario = await UsuarioBLL.ObtenerUsuario(idUsuario);
+        if (usuario is null)
         {
-            "Administrador" =>
-                "Acceso completo a la plataforma, incluyendo gestión de usuarios, configuración y todas las funcionalidades.",
+            Navigation.NavigateTo("/administracion/usuarios");   // el usuario ya no existe
+            return;
+        }
 
-            "Gerente" =>
-                "Acceso a la gestión y supervisión de campañas, reportes y métricas de efectividad y retención.",
+        nombreCompleto = usuario.NombreCompleto;
+        email = usuario.Email;
+        rolSeleccionado = usuario.IdRol;
+        activo = string.Equals(usuario.Estado, EstadoUsuario.Activo, StringComparison.OrdinalIgnoreCase);
 
-            "Ejecutivo Comercial" =>
-                "Acceso limitado a la gestión comercial y visualización de reportes de efectividad y retención.",
-
-            _ =>
-                "Seleccione un rol para visualizar sus permisos."
-        };
+        await MostrarResumenPermisos();
     }
 
-    private void GuardarUsuario()
+    // DS: TraerPermisosRol(int id) -> MostrarResumenPermisos()
+    private async Task MostrarResumenPermisos()
     {
+        try
+        {
+            permisosRol = rolSeleccionado == 0
+                ? new List<Permiso>()
+                : await RolBLL.TraerPermisosRol(rolSeleccionado);
+        }
+        catch (Exception)
+        {
+            permisosRol = new List<Permiso>();
+            mensajeError = "No se pudieron cargar los permisos del rol.";
+        }
+    }
+
+    // DS: Selecciona botón "Guardar"()
+    private async Task GuardarUsuario()
+    {
+        if (guardando) return;
+
+        guardando = true;
         errores.Clear();
         mensajeError = "";
         mensajeConfirmacion = "";
 
-        // CU20 / CU21 - campos obligatorios
-        if (string.IsNullOrWhiteSpace(nombreCompleto))
+        var exito = false;
+        try
         {
-            errores.Add("nombre");
+            if (!ValidarCamposObligatoriosYFormato(nombreCompleto, email, rolSeleccionado))
+                return;
+
+            exito = EsEdicion ? await ModificarUsuario() : await CrearNuevoUsuario();
+        }
+        catch (Exception)
+        {
+            mensajeError = "Ocurrió un error inesperado. Intentá nuevamente en unos minutos.";
+        }
+        finally
+        {
+            if (!exito) guardando = false;   // si salió bien, el botón queda deshabilitado hasta redirigir
         }
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (exito)
+        {
+            StateHasChanged();
+            await RedirigirAGestionUsuarios();
+        }
+    }
+
+    // DS CU21: VerificarEmailRegistrado -> CrearUsuarioInactivo -> GenerarTokenActivacion -> EnviarInstruccionesAcceso
+    private async Task<bool> CrearNuevoUsuario()
+    {
+        if (await UsuarioBLL.VerificarEmailRegistrado(email))
         {
             errores.Add("email");
+            mensajeError = "El correo electrónico ya se encuentra registrado.";
+            return false;
         }
+
+        await UsuarioBLL.CrearUsuarioInactivo(nombreCompleto, email, rolSeleccionado);
+
+        var correoEnviado = false;
+        try
+        {
+            var tokenLink = await TokenActivacionBLL.GenerarTokenActivacion(email.Trim(), Navigation.BaseUri);
+            var envio = await Envio.EnviarInstruccionesAcceso(email.Trim(), tokenLink);
+            correoEnviado = envio.Exito;
+        }
+        catch (Exception)
+        {
+            correoEnviado = false;
+        }
+
+        // CU21 13.1: si falla el correo el usuario igual queda creado.
+        mensajeConfirmacion = correoEnviado
+            ? "Usuario creado correctamente. Correo enviado."
+            : "Usuario creado correctamente. Error al enviar el correo: podés reenviarlo desde Gestión de Usuarios.";
+        return true;
+    }
+
+    // DS CU22: ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
+    private async Task<bool> ModificarUsuario()
+    {
+        await UsuarioBLL.ModificarUsuario(UsuarioId!.Value, nombreCompleto, rolSeleccionado);
+        mensajeConfirmacion = "La modificación fue realizada correctamente.";
+        return true;
+    }
+
+    // DS: ValidarCamposObligatoriosYFormato(string nombreCompleto, string email, int rol): bool
+    private bool ValidarCamposObligatoriosYFormato(string nombreCompleto, string email, int rol)
+    {
+        if (string.IsNullOrWhiteSpace(nombreCompleto)) errores.Add("nombre");
+        if (!EsEdicion && string.IsNullOrWhiteSpace(email)) errores.Add("email");
+        if (rol == 0) errores.Add("rol");
 
         if (errores.Count > 0)
         {
-            mensajeError = "Complete todos los campos obligatorios.";
-            return;
+            mensajeError = "Complete los campos obligatorios: " + string.Join(", ", errores.Select(NombreCampo)) + ".";
+            return false;
         }
 
-        // CU20 - validar formato del email
-        if (!EsEmailValido(email))
+        if (nombreCompleto.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length < 2)
+        {
+            errores.Add("nombre");
+            mensajeError = "Ingrese nombre y apellido.";
+            return false;
+        }
+
+        // En edición el correo no se modifica, así que no se vuelve a validar.
+        if (!EsEdicion && !EsEmailValido(email.Trim()))
         {
             errores.Add("email");
             mensajeError = "El formato del correo electrónico no es válido.";
-            return;
+            return false;
         }
 
-        if (!EsEdicion)
-        {
-            // CU20 - verificar que no exista
-            if (CorreoYaRegistrado(email))
-            {
-                mensajeError = "Existe un usuario asociado al correo ingresado.";
-                return;
-            }
-
-            // CU20 paso 11:
-            // el nuevo usuario se crea INACTIVO.
-            activo = false;
-
-            // TODO:
-            // Crear usuario en BLL/DAL.
-            // Generar enlace de contraseña.
-            // Enviar correo de invitación.
-
-            mensajeConfirmacion = "Usuario creado correctamente.";
-        }
-        else
-        {
-            // CU21:
-            // Email y estado no se modifican.
-            // Solo se actualizan nombre, apellido/Nombre completo y rol.
-
-            // TODO:
-            // Actualizar usuario mediante BLL/DAL.
-
-            mensajeConfirmacion = "La modificación fue realizada correctamente.";
-        }
-
-        StateHasChanged();
-
-        _ = RedirigirAGestionUsuarios();
+        return true;
     }
+
+    private static string NombreCampo(string campo) => campo switch
+    {
+        "nombre" => "nombre completo",
+        "email" => "correo electrónico",
+        "rol" => "rol",
+        _ => campo
+    };
 
     private bool EsEmailValido(string valor)
     {
@@ -352,23 +409,15 @@
         }
     }
 
-    private bool CorreoYaRegistrado(string correo)
-    {
-        // TODO: reemplazar por UsuarioBLL.ExisteCorreo(...)
-        return false;
-    }
-
     private async Task RedirigirAGestionUsuarios()
     {
-        await Task.Delay(1000);
-
+        await Task.Delay(1800);
         Navigation.NavigateTo("/administracion/usuarios");
     }
 
+    // DS: Selecciona botón "Cancelar"() -> vuelve a Gestión de usuarios y descarta lo ingresado
     private void Cancelar()
     {
-        // CU20 / CU21:
-        // descartar los cambios y regresar al listado.
         Navigation.NavigateTo("/administracion/usuarios");
     }
 }

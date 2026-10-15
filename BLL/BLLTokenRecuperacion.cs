@@ -69,11 +69,13 @@ namespace BLL
             const string sql = @"
             SELECT COUNT(*) AS Valor
             FROM Token
-            WHERE TokenID = @TokenID AND Tipo = @Tipo AND Estado = @Pendiente AND FechaExpiracion > @Ahora";
+            WHERE TokenID = @TokenID AND Tipo IN (@Recuperacion, @Activacion)
+              AND Estado = @Pendiente AND FechaExpiracion > @Ahora";
             var filas = await _dal.Leer<ValorEscalar>(sql, new
             {
                 TokenID = tokenId,
-                Tipo = TipoToken.Recuperacion,
+                Recuperacion = TipoToken.Recuperacion,
+                Activacion = TipoToken.Activacion,
                 Pendiente = EstadoToken.Pendiente,
                 Ahora = DateTime.Now
             });

@@ -2,6 +2,8 @@
 @inject NavigationManager Navigation
 @inject BLLUsuario UsuarioBLL
 @inject BLLRol RolBLL
+@inject BLLTokenActivacion TokenActivacionBLL
+@inject ServicioEnvio Envio
 @using BE
 @using BLL
 @using Servicios
@@ -363,9 +365,34 @@
         Navigation.NavigateTo($"/administracion/usuarios/editar/{usuario.Id}");
     }
 
-    private void ReenviarInvitacion(UsuarioItem usuario)
+    // DS: Solicita reenvío de correo de activación(int idUsuario)
+    private async Task ReenviarInvitacion(UsuarioItem usuario)
     {
-        // TODO: se arma junto con Crear usuario (token de activación + EnviarCorreoActivacion).
+        mensajeExito = "";
+        mensajeError = "";
+
+        if (await EnviarCorreoActivacion(usuario.Id))
+            mensajeExito = "Correo de activación reenviado con éxito.";
+        else
+            mensajeError = "No fue posible reenviar el correo de activación.";
+    }
+
+    // DS: EnviarCorreoActivacion(int idUsuario): bool
+    private async Task<bool> EnviarCorreoActivacion(int idUsuario)
+    {
+        try
+        {
+            var usuario = await UsuarioBLL.ObtenerUsuario(idUsuario);
+            if (usuario is null) return false;
+
+            var tokenLink = await TokenActivacionBLL.GenerarTokenActivacion(usuario.Email, Navigation.BaseUri);
+            var resultado = await Envio.EnviarInstruccionesAcceso(usuario.Email, tokenLink);
+            return resultado.Exito;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private void PaginaAnterior()

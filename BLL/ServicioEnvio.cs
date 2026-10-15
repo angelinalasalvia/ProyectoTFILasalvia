@@ -134,209 +134,7 @@ public class ServicioEnvio
 
         return json.Length > 200 ? json[..200] : json;
     }
-    /*
-    public Task<ResultadoEnvio> EnviarWhatsApp(string telefono, string mensaje, CancellationToken ct = default) =>
-        string.Equals(_config["WhatsApp:Proveedor"], "Twilio", StringComparison.OrdinalIgnoreCase)
-            ? EnviarWhatsAppTwilio(telefono, mensaje, ct)
-            : EnviarWhatsAppMeta(telefono, mensaje, ct);
-
-    private async Task<ResultadoEnvio> EnviarWhatsAppMeta(string telefono, string mensaje, CancellationToken ct)
-    {
-        var token = _config["Meta:AccessToken"];
-        var phoneId = _config["Meta:PhoneNumberId"];
-        var version = _config["Meta:ApiVersion"] ?? "v21.0";
-
-        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(phoneId))
-            return Fallo("El envío de WhatsApp (Meta) no está configurado (faltan AccessToken o PhoneNumberId).");
-
-        var telefonoPrueba = _config["Meta:DestinatarioPrueba"];
-        var modoPrueba = !string.IsNullOrWhiteSpace(telefonoPrueba);
-        var destino = NormalizarTelefono(modoPrueba ? telefonoPrueba! : telefono);
-        if (destino is null)
-            return Fallo("El cliente no tiene un teléfono válido (formato internacional, ej: +5491112345678).");
-
-        if (modoPrueba) mensaje += $"\n\n[Modo prueba] Destinatario original: {telefono}";
-
-        var nombrePlantilla = _config["Meta:PlantillaNombre"];
-        var usaPlantilla = !string.IsNullOrWhiteSpace(nombrePlantilla);
-
-        object payload;
-        if (usaPlantilla)
-        {
-            var template = new Dictionary<string, object>
-            {
-                ["name"] = nombrePlantilla!.Trim(),
-                ["language"] = new { code = _config["Meta:PlantillaIdioma"] ?? "es_AR" }
-            };
-            if (bool.TryParse(_config["Meta:PlantillaUsaTexto"], out var usaTexto) && usaTexto)
-            {
-                template["components"] = new[]
-                {
-                    new
-                    {
-                        type = "body",
-                        parameters = new[] { new { type = "text", text = AplanarParaPlantilla(mensaje) } }
-                    }
-                };
-            }
-
-            payload = new Dictionary<string, object>
-            {
-                ["messaging_product"] = "whatsapp",
-                ["to"] = destino.TrimStart('+'),
-                ["type"] = "template",
-                ["template"] = template
-            };
-        }
-        else
-        {
-            payload = new
-            {
-                messaging_product = "whatsapp",
-                to = destino.TrimStart('+'),
-                type = "text",
-                text = new { body = mensaje }
-            };
-        }
     
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"https://graph.facebook.com/{version}/{phoneId}/messages")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
-        };
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        try
-        {
-            using var resp = await Http.SendAsync(req, ct);
-            var json = await resp.Content.ReadAsStringAsync(ct);
-
-            return resp.IsSuccessStatusCode
-                ? new ResultadoEnvio(true, usaPlantilla ? "WhatsApp enviado (con plantilla)." : "WhatsApp enviado.")
-                : Fallo($"Meta rechazó el mensaje: {ExtraerErrorMeta(json)}");
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            return Fallo($"No se pudo contactar a Meta: {ex.Message}");
-        }
-    }*/
-    /*
-    private static string ExtraerErrorMeta(string json)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("error", out var e))
-            {
-                var mensaje = e.TryGetProperty("message", out var m) ? m.GetString() : null;
-                var codigo = e.TryGetProperty("code", out var c) ? c.ToString() : null;
-                var detalle = e.TryGetProperty("error_data", out var d) && d.TryGetProperty("details", out var dt) ? dt.GetString() : null;
-                if (!string.IsNullOrWhiteSpace(mensaje))
-                    return $"{mensaje}{(detalle is null ? "" : " - " + detalle)}{(codigo is null ? "" : $" (código {codigo})")}";
-            }
-        }
-        catch (JsonException) { }
-
-        return json.Length > 300 ? json[..300] : json;
-    }*/
-    /*
-    private async Task<ResultadoEnvio> EnviarWhatsAppTwilio(string telefono, string mensaje, CancellationToken ct)
-    {
-        var sid = _config["Twilio:AccountSid"];
-        var token = _config["Twilio:AuthToken"];
-        var origen = _config["Twilio:NumeroOrigen"];
-
-        if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(origen))
-            return Fallo("El envío de WhatsApp no está configurado (faltan AccountSid, AuthToken o NumeroOrigen).");
-
-        // Modo prueba: nada llega al cliente real.
-        var telefonoPrueba = _config["Twilio:DestinatarioPrueba"];
-        var modoPrueba = !string.IsNullOrWhiteSpace(telefonoPrueba);
-        var destino = NormalizarTelefono(modoPrueba ? telefonoPrueba! : telefono);
-        if (destino is null)
-            return Fallo("El cliente no tiene un teléfono válido (formato internacional, ej: +5491112345678).");
-
-        if (modoPrueba) mensaje += $"\n\n[Modo prueba] Destinatario original: {telefono}";
-
-        var campos = new Dictionary<string, string>
-        {
-            ["From"] = origen.StartsWith("whatsapp:") ? origen : "whatsapp:" + origen,
-            ["To"] = "whatsapp:" + destino
-        };
-
-        // Con ContentSid se envía una plantilla (el texto lo define la plantilla, no 'mensaje'); sin él, texto libre.
-        var contentSid = _config["Twilio:ContentSid"];
-        var usaPlantilla = !string.IsNullOrWhiteSpace(contentSid);
-        if (usaPlantilla)
-        {
-            campos["ContentSid"] = contentSid!.Trim();
-
-            // Si hay ContentVariables fijas en la configuración se usan tal cual (plantilla con valores fijos).
-            // Si no, el texto de la campaña viaja en la variable {{1}}: sirve una plantilla genérica cuyo cuerpo sea "{{1}}".
-            var variables = _config["Twilio:ContentVariables"];
-            campos["ContentVariables"] = !string.IsNullOrWhiteSpace(variables)
-                ? variables
-                : JsonSerializer.Serialize(new Dictionary<string, string> { ["1"] = AplanarParaPlantilla(mensaje) });
-        }
-        else
-        {
-            campos["Body"] = mensaje;
-        }
-
-        using var req = new HttpRequestMessage(HttpMethod.Post,
-            $"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json")
-        {
-            Content = new FormUrlEncodedContent(campos)
-        };
-        req.Headers.Authorization = new AuthenticationHeaderValue("Basic",
-            Convert.ToBase64String(Encoding.ASCII.GetBytes($"{sid}:{token}")));
-
-        _logger.LogInformation("Twilio WhatsApp -> campos enviados: {Campos}", string.Join(", ", campos.Keys));
-
-        try
-        {
-            using var resp = await Http.SendAsync(req, ct);
-            var json = await resp.Content.ReadAsStringAsync(ct);
-
-            return resp.IsSuccessStatusCode
-                ? new ResultadoEnvio(true, usaPlantilla ? "WhatsApp enviado (con plantilla)." : "WhatsApp enviado.")
-                : Fallo($"Twilio rechazó el mensaje: {ExtraerErrorTwilio(json)}");
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            return Fallo($"No se pudo contactar a Twilio: {ex.Message}");
-        }
-    }*/
-
-    /*
-    private static string AplanarParaPlantilla(string texto) =>
-        System.Text.RegularExpressions.Regex.Replace(texto.Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), " {2,}", " ").Trim();
-
-    
-    private static string? NormalizarTelefono(string? telefono)
-    {
-        if (string.IsNullOrWhiteSpace(telefono)) return null;
-
-        var digitos = new string(telefono.Where(char.IsDigit).ToArray());
-        if (digitos.Length is < 11 or > 15) return null;
-
-        return "+" + digitos;
-    }
-
-    private static string ExtraerErrorTwilio(string json)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            var mensaje = doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
-            var codigo = doc.RootElement.TryGetProperty("code", out var c) ? c.ToString() : null;
-            if (!string.IsNullOrWhiteSpace(mensaje)) return codigo is null ? mensaje : $"{mensaje} (código {codigo})";
-        }
-        catch (JsonException) { }
-
-        return json.Length > 200 ? json[..200] : json;
-    }*/
-
-    // DS CU19: Sistema de Correo -> EnviarCorreoRecuperacion(email, tokenLink)
     public Task<ResultadoEnvio> EnviarCorreoRecuperacion(string email, string tokenLink, CancellationToken ct = default)
     {
         const string asunto = "Recuperá tu contraseña";
@@ -346,6 +144,22 @@ public class ServicioEnvio
             "Ingresá al siguiente enlace (vale 30 minutos y se puede usar una sola vez):\n\n" +
             $"{tokenLink}\n\n" +
             "Si no fuiste vos, ignorá este mensaje: tu contraseña no va a cambiar.";
+
+        return EnviarEmail(email, asunto, cuerpo, ct);
+    }
+
+    // DS CU21: Sistema de Correo -> EnviarInstruccionesAcceso(email, tokenLink)
+    public Task<ResultadoEnvio> EnviarInstruccionesAcceso(string email, string tokenLink, CancellationToken ct = default)
+    {
+        const string asunto = "Tu cuenta fue creada: establecé tu contraseña";
+        var cuerpo =
+            "Hola,\n\n" +
+            "Se creó una cuenta para vos en la plataforma.\n\n" +
+            $"Usuario: {email}\n\n" +
+            "Para activarla y establecer tu contraseña ingresá al siguiente enlace " +
+            "(vale 24 horas y se puede usar una sola vez):\n\n" +
+            $"{tokenLink}\n\n" +
+            "Si no esperabas este correo, ignoralo.";
 
         return EnviarEmail(email, asunto, cuerpo, ct);
     }

@@ -19,5 +19,6 @@
     public static class TipoToken
     {
         public const string Recuperacion = "Recuperacion";
+        public const string Activacion = "Activacion";
     }
 }

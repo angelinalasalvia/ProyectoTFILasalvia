@@ -1,5 +1,8 @@
 ﻿@page "/clientes"
 @inject NavigationManager Navigation
+@inject BLLCliente ClienteBLL
+@using BE
+@using BLL
 
 <PageTitle>Gestión de Clientes</PageTitle>
 
@@ -17,22 +20,32 @@
     <div class="filtro-grupo">
         <label class="filtro-label">PLAN</label>
         <select class="filtro-select" @bind="planSeleccionado">
-            <option>Todos</option>
-            <option>Premium Gold</option>
-            <option>Básico Mensual</option>
+            <option value="">Todos</option>
+            @foreach (var p in planesDisponibles)
+            {
+                <option value="@p">@p</option>
+            }
         </select>
     </div>
     <div class="filtro-grupo">
         <label class="filtro-label">ESTADO DE SUSCRIPCIÓN</label>
         <select class="filtro-select" @bind="estadoSeleccionado">
-            <option>Cualquier estado</option>
-            <option>Al día</option>
-            <option>Pendiente</option>
-            <option>Vencido</option>
+            <option value="">Cualquier estado</option>
+            <option value="@EstadoPago.AlDia">Al día</option>
+            <option value="@EstadoPago.Pendiente">Pendiente</option>
+            <option value="@EstadoPago.Vencido">Vencido</option>
         </select>
     </div>
-    <button class="btn-aplicar-filtros" @onclick="AplicarFiltros">▽ Aplicar Filtros</button>
+    <div class="cli-filtros-botones">
+        <button class="btn-aplicar-filtros" @onclick="AplicarFiltro">▽ Aplicar Filtros</button>
+        <button class="btn-limpiar-filtros" @onclick="LimpiarFiltros">Limpiar</button>
+    </div>
 </div>
+
+@if (!string.IsNullOrWhiteSpace(mensajeError))
+{
+    <div class="cli-mensaje-error">⚠ @mensajeError</div>
+}
 
 <!-- Card de tabla -->
 <div class="card cli-table-card">
@@ -41,106 +54,275 @@
         <div class="cli-table-actions">
             <div class="search-box cli-search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" placeholder="Buscar cliente..." @bind="textoBusqueda" @bind:event="oninput" />
+                <input type="text" placeholder="Buscar por nombre o email..."
+                       @bind="textoBusqueda" @bind:event="oninput" @bind:after="BuscarCliente" />
             </div>
-            <button class="btn-filtro-icon">☰</button>
         </div>
     </div>
 
-    <table class="cli-table">
-        <thead>
-            <tr>
-                <th>CLIENTE</th>
-                <th>EMAIL</th>
-                <th>ÚLTIMA INTERACCIÓN</th>
-                <th>ÚLTIMA VISITA</th>
-                <th>HISTORIAL PAGOS</th>
-                <th>PLAN</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in ClientesFiltrados)
-            {
-                <tr class="cli-row-clickeable" @onclick="() => IrADetalleCliente(c.Id)">
-                    <td>
-                        <div class="client-cell">
-                            <div class="cli-avatar @c.AvatarClase">@c.Iniciales</div>
-                            <div class="client-name">@c.Nombre</div>
-                        </div>
-                    </td>
-                    <td class="cli-email">@c.Email</td>
-                    <td>@c.UltimaInteraccion</td>
-                    <td>@c.UltimaVisita</td>
-                    <td><span class="cli-pago-badge @EstadoClase(c.EstadoPago)">@c.EstadoPago</span></td>
-                    <td><a href="#" class="cli-plan-link" @onclick:stopPropagation="true">@c.Plan</a></td>
+    @if (cargando)
+    {
+        <div class="cli-vacio">Cargando clientes…</div>
+    }
+    else if (todosLosClientes.Count == 0)
+    {
+        <div class="cli-vacio">No hay clientes registrados.</div>
+    }
+    else if (clientes.Count == 0)
+    {
+        <div class="cli-vacio">
+            <span>@MensajeSinResultados</span>
+            <div class="cli-vacio-acciones">
+                @if (!string.IsNullOrWhiteSpace(textoBusqueda))
+                {
+                    <button class="page-btn" @onclick="LimpiarBusqueda">Limpiar búsqueda</button>
+                }
+                @if (HayFiltros)
+                {
+                    <button class="page-btn" @onclick="LimpiarFiltros">Limpiar filtros</button>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <table class="cli-table">
+            <thead>
+                <tr>
+                    <th class="cli-th-ordenable @ClaseOrden("nombre")" @onclick='() => ModificarOrden("nombre")'>CLIENTE</th>
+                    <th>EMAIL</th>
+                    <th class="cli-th-ordenable @ClaseOrden("interaccion")" @onclick='() => ModificarOrden("interaccion")'>ÚLTIMA INTERACCIÓN</th>
+                    <th class="cli-th-ordenable @ClaseOrden("visita")" @onclick='() => ModificarOrden("visita")'>ÚLTIMA VISITA</th>
+                    <th class="cli-th-ordenable @ClaseOrden("pagos")" @onclick='() => ModificarOrden("pagos")'>HISTORIAL PAGOS</th>
+                    <th class="cli-th-ordenable @ClaseOrden("plan")" @onclick='() => ModificarOrden("plan")'>PLAN</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var c in clientesPagina)
+                {
+                    <tr class="cli-row-clickeable" @onclick="() => IrADetalleCliente(c.IdCliente)">
+                        <td>
+                            <div class="client-cell">
+                                <div class="cli-avatar @AvatarClase(c)">@Iniciales(c)</div>
+                                <div class="client-name">@c.Nombre @c.Apellido</div>
+                            </div>
+                        </td>
+                        <td class="cli-email">@c.Email</td>
+                        <td title="@Exacta(c.UltimaInteraccion)">@Hace(c.UltimaInteraccion)</td>
+                        <td title="@Exacta(c.UltimaVisita)">@Hace(c.UltimaVisita)</td>
+                        <td><span class="cli-pago-badge @EstadoClase(c.HistorialPagos)">@c.HistorialPagos</span></td>
+                        <td><span class="cli-plan-link">@c.PlanSocio</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
 
-    <div class="pred-pagination">
-        <span class="pagination-info">Mostrando 1-10 de 1,248 clientes</span>
-        <div class="pagination-controls">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <span>...</span>
-            <button class="page-btn">125</button>
-            <button class="page-btn">›</button>
+        <div class="pred-pagination">
+            <span class="pagination-info">Mostrando @(Desde)-@(Hasta) de @clientes.Count clientes</span>
+            <div class="pagination-controls">
+                <button class="page-btn" disabled="@(paginaActual == 1)" @onclick="PaginaAnterior">‹</button>
+                @foreach (var p in PaginasVisibles())
+                {
+                    if (p == 0)
+                    {
+                        <span>...</span>
+                    }
+                    else
+                    {
+                        var pagina = p;
+                        <button class="page-btn @(paginaActual == pagina ? "active" : "")" @onclick="() => IrAPagina(pagina)">@pagina</button>
+                    }
+                }
+                <button class="page-btn" disabled="@(paginaActual == totalPaginas)" @onclick="PaginaSiguiente">›</button>
+            </div>
         </div>
-    </div>
+    }
 </div>
 
 @code {
-    private string planSeleccionado = "Todos";
-    private string estadoSeleccionado = "Cualquier estado";
+    private const int TamanoPagina = 10;
+    private static readonly string[] AvatarClases = { "cli-avatar-azul", "cli-avatar-ambar", "cli-avatar-rojo" };
+
     private string textoBusqueda = "";
+    private string planSeleccionado = "";      // lo elegido en el select
+    private string estadoSeleccionado = "";
+    private string planAplicado = "";          // lo que se aplicó con "Aplicar Filtros"
+    private string estadoAplicado = "";
+    private string columnaOrden = "nombre";
+    private int paginaActual = 1;
+    private bool cargando = true;
+    private string mensajeError = "";
 
-    private record Cliente(
-        string Id,
-        string Iniciales,
-        string AvatarClase,
-        string Nombre,
-        string Email,
-        string UltimaInteraccion,
-        string UltimaVisita,
-        string EstadoPago,
-        string Plan);
+    private List<Cliente> todosLosClientes = new();   // ObtenerClientes()
+    private List<Cliente> clientes = new();           // tras orden, filtros y búsqueda
+    private List<string> planesDisponibles = new();
 
-    private List<Cliente> clientes = new()
+    private bool HayFiltros => planAplicado != "" || estadoAplicado != "";
+    private int totalPaginas => Math.Max(1, (int)Math.Ceiling(clientes.Count / (double)TamanoPagina));
+    private List<Cliente> clientesPagina =>
+        clientes.Skip((paginaActual - 1) * TamanoPagina).Take(TamanoPagina).ToList();
+    private int Desde => clientes.Count == 0 ? 0 : (paginaActual - 1) * TamanoPagina + 1;
+    private int Hasta => (paginaActual - 1) * TamanoPagina + clientesPagina.Count;
+
+    private string MensajeSinResultados =>
+        !string.IsNullOrWhiteSpace(textoBusqueda)
+            ? "No se encontraron clientes que coincidan con el criterio ingresado."   // CU08 8.1
+            : "No existen clientes para los criterios seleccionados.";                  // CU08 10.1
+
+    // DS: Ingresa a sección clientes() -> ObtenerClientes()
+    protected override async Task OnInitializedAsync()
     {
-        new("cli-001", "CR", "cli-avatar-azul",   "Carlos Ruiz",     "carlos.ruiz@email.com",    "Hace 2 horas", "Hace 2 días",  "Al día",    "Premium Gold"),
-        new("cli-002", "SL", "cli-avatar-ambar",  "Sofia Larrea",    "sofia.larrea@gmail.com",   "Hace 3 días",  "Hace 5 días",  "Pendiente", "Básico Mensual"),
-        new("cli-003", "MF", "cli-avatar-rojo",   "Mateo Fernández", "mateo.fdez@outlook.com",   "Hace 14 días", "Hace 20 días", "Vencido",   "Premium Gold"),
-        new("cli-004", "LM", "cli-avatar-azul",   "Lucía Méndez",    "lucia.mendez@icloud.com",  "Ayer",         "Hace 2 horas", "Al día",    "Básico Mensual"),
-    };
+        try
+        {
+            todosLosClientes = await ClienteBLL.ObtenerClientes();
+            planesDisponibles = todosLosClientes.Select(c => c.PlanSocio).Distinct().OrderBy(p => p).ToList();
+            await AplicarCriterios();
+        }
+        catch (Exception)
+        {
+            mensajeError = "No se pudo cargar el listado de clientes.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
 
-    // Filtrado en memoria por plan, estado y texto de búsqueda.
-    private IEnumerable<Cliente> ClientesFiltrados =>
-        clientes.Where(c =>
-            (planSeleccionado == "Todos" || c.Plan == planSeleccionado) &&
-            (estadoSeleccionado == "Cualquier estado" || c.EstadoPago == estadoSeleccionado) &&
-            (string.IsNullOrWhiteSpace(textoBusqueda) ||
-                c.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-                c.Email.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)));
+    // Combina orden + filtros + búsqueda: cada una usa su método del DS y se intersectan los resultados.
+    private async Task AplicarCriterios()
+    {
+        // DS: Modificar orden() -> ObtenerClientesOrdenados(columna)
+        IEnumerable<Cliente> resultado = columnaOrden == "nombre"
+            ? todosLosClientes
+            : await ClienteBLL.ObtenerClientesOrdenados(columnaOrden);
+
+        // DS: AplicarFiltro() -> ObtenerClientesSegúnFiltro()
+        if (HayFiltros)
+        {
+            var idsFiltro = (await ClienteBLL.ObtenerClientesSegunFiltro(planAplicado, estadoAplicado))
+                .Select(c => c.IdCliente).ToHashSet();
+            resultado = resultado.Where(c => idsFiltro.Contains(c.IdCliente));
+        }
+
+        // DS: BuscarCliente(criterio)
+        if (!string.IsNullOrWhiteSpace(textoBusqueda))
+        {
+            var idsBusqueda = (await ClienteBLL.BuscarCliente(textoBusqueda))
+                .Select(c => c.IdCliente).ToHashSet();
+            resultado = resultado.Where(c => idsBusqueda.Contains(c.IdCliente));
+        }
+
+        clientes = resultado.ToList();
+        paginaActual = Math.Min(paginaActual, totalPaginas);
+    }
+
+    private async Task AplicarCriteriosSeguro()
+    {
+        mensajeError = "";
+        try { await AplicarCriterios(); }
+        catch (Exception) { mensajeError = "No se pudo actualizar el listado."; }
+    }
+
+    private async Task ModificarOrden(string columna)
+    {
+        columnaOrden = columna;
+        paginaActual = 1;
+        await AplicarCriteriosSeguro();
+    }
+
+    private async Task BuscarCliente()
+    {
+        paginaActual = 1;
+        await AplicarCriteriosSeguro();
+    }
+
+    // DS: LimpiarBúsqueda()
+    private async Task LimpiarBusqueda()
+    {
+        textoBusqueda = "";
+        await BuscarCliente();
+    }
+
+    // DS: AplicarFiltro()
+    private async Task AplicarFiltro()
+    {
+        planAplicado = planSeleccionado;
+        estadoAplicado = estadoSeleccionado;
+        paginaActual = 1;
+        await AplicarCriteriosSeguro();
+    }
+
+    // DS: LimpiarFiltros() -> ObtenerClientes()
+    private async Task LimpiarFiltros()
+    {
+        planSeleccionado = estadoSeleccionado = "";
+        planAplicado = estadoAplicado = "";
+        paginaActual = 1;
+
+        try
+        {
+            todosLosClientes = await ClienteBLL.ObtenerClientes();
+        }
+        catch (Exception)
+        {
+            mensajeError = "No se pudo actualizar el listado.";
+            return;
+        }
+        await AplicarCriteriosSeguro();
+    }
+
+    // DS: SeleccionaCliente() -> CU09 Ver detalle de cliente
+    private void IrADetalleCliente(int idCliente)
+    {
+        Navigation.NavigateTo($"/cliente-detalle/{idCliente}");
+    }
+
+    private void PaginaAnterior() { if (paginaActual > 1) paginaActual--; }
+    private void PaginaSiguiente() { if (paginaActual < totalPaginas) paginaActual++; }
+    private void IrAPagina(int pagina) { paginaActual = pagina; }
+
+    // 0 = puntos suspensivos
+    private List<int> PaginasVisibles()
+    {
+        var paginas = new List<int>();
+        for (int p = 1; p <= totalPaginas; p++)
+        {
+            if (p == 1 || p == totalPaginas || Math.Abs(p - paginaActual) <= 1)
+            {
+                if (paginas.Count > 0 && p - paginas[^1] > 1) paginas.Add(0);
+                paginas.Add(p);
+            }
+        }
+        return paginas;
+    }
+
+    private string ClaseOrden(string columna) => columnaOrden == columna ? "activa" : "";
+
+    private static string Hace(DateTime? fecha)
+    {
+        if (fecha is null) return "—";
+        var d = DateTime.Now - fecha.Value;
+        if (d.TotalMinutes < 1) return "Hace instantes";
+        if (d.TotalHours < 1) return $"Hace {(int)d.TotalMinutes} min";
+        if (d.TotalDays < 1) return $"Hace {(int)d.TotalHours} h";
+        if (d.TotalDays < 2) return "Ayer";
+        return $"Hace {(int)d.TotalDays} días";
+    }
+
+    private static string Exacta(DateTime? fecha) => fecha?.ToString("dd/MM/yyyy HH:mm") ?? "Sin registros";
+
+    private static string Iniciales(Cliente c) => Inicial(c.Nombre) + Inicial(c.Apellido);
+
+    private static string Inicial(string texto)
+        => string.IsNullOrWhiteSpace(texto) ? "" : texto.Trim()[..1].ToUpper();
+
+    private static string AvatarClase(Cliente c) => AvatarClases[c.IdCliente % AvatarClases.Length];
 
     private string EstadoClase(string estado) => estado switch
     {
-        "Al día" => "cli-pago-al-dia",
-        "Pendiente" => "cli-pago-pendiente",
-        "Vencido" => "cli-pago-vencido",
+        EstadoPago.AlDia => "cli-pago-al-dia",
+        EstadoPago.Pendiente => "cli-pago-pendiente",
+        EstadoPago.Vencido => "cli-pago-vencido",
         _ => ""
     };
-
-    private void AplicarFiltros()
-    {
-        // El filtrado ya es reactivo vía ClientesFiltrados; acá iría, en un
-        // escenario real, la llamada al backend con los filtros seleccionados.
-    }
-
-    private void IrADetalleCliente(string id)
-    {
-        Navigation.NavigateTo($"/cliente-detalle/{id}");
-    }
 }

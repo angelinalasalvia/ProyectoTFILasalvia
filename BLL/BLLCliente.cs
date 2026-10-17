@@ -174,4 +174,106 @@ public class BLLCliente
         "año" => 365,
         _ => 30
     };
+
+    // ---------------------------------------------------------------------------
+    // CU08 - Ver listado de clientes
+    // ---------------------------------------------------------------------------
+
+    // Un pago "Al día" es uno registrado dentro del último ciclo de facturación.
+    private const int DiasCicloPago = 30;
+
+    // Una fila por cliente con última interacción (uso de app), última visita y estado de pagos,
+    // todo en la misma consulta (sin una consulta por cliente).
+    private const string BaseListado = @"
+SELECT c.IdCliente, c.Nombre, c.Apellido, c.Email, c.EstadoRegistro, c.PlanSocio, c.Sexo, c.Sede, c.Telefono,
+       ev.UltimaInteraccion, ev.UltimaVisita,
+       CASE
+           WHEN ev.UltimoPagoVencido IS NOT NULL
+                AND (ev.UltimoPago IS NULL OR ev.UltimoPagoVencido > ev.UltimoPago) THEN @Vencido
+           WHEN ev.UltimoPago >= @LimiteAlDia THEN @AlDia
+           ELSE @Pendiente
+       END AS HistorialPagos
+FROM Cliente c
+LEFT JOIN (
+    SELECT IdCliente,
+           MAX(CASE WHEN Evento = @UsoApp         THEN Fecha END) AS UltimaInteraccion,
+           MAX(CASE WHEN Evento = @Visita         THEN Fecha END) AS UltimaVisita,
+           MAX(CASE WHEN Evento = @PagoRegistrado THEN Fecha END) AS UltimoPago,
+           MAX(CASE WHEN Evento = @PagoVencido    THEN Fecha END) AS UltimoPagoVencido
+    FROM EventosCliente
+    GROUP BY IdCliente
+) ev ON ev.IdCliente = c.IdCliente";
+
+    // Columnas ordenables (lista cerrada: nunca se concatena texto del usuario en el ORDER BY).
+    private static readonly Dictionary<string, string> ColumnasOrden = new()
+    {
+        ["nombre"] = "l.Nombre, l.Apellido",
+        ["plan"] = "l.PlanSocio, l.Nombre, l.Apellido",
+        ["interaccion"] = "CASE WHEN l.UltimaInteraccion IS NULL THEN 1 ELSE 0 END, l.UltimaInteraccion DESC, l.Nombre",
+        ["visita"] = "CASE WHEN l.UltimaVisita IS NULL THEN 1 ELSE 0 END, l.UltimaVisita DESC, l.Nombre",
+        ["pagos"] = $"CASE l.HistorialPagos WHEN '{EstadoPago.Vencido}' THEN 0 WHEN '{EstadoPago.Pendiente}' THEN 1 ELSE 2 END, l.Nombre, l.Apellido"
+    };
+
+    private static Dictionary<string, object?> ParametrosListado() => new()
+    {
+        ["UsoApp"] = TipoEvento.UsoApp,
+        ["Visita"] = TipoEvento.VisitaGimnasio,
+        ["PagoRegistrado"] = TipoEvento.PagoRegistrado,
+        ["PagoVencido"] = TipoEvento.PagoVencido,
+        ["Vencido"] = EstadoPago.Vencido,
+        ["AlDia"] = EstadoPago.AlDia,
+        ["Pendiente"] = EstadoPago.Pendiente,
+        ["LimiteAlDia"] = DateTime.Now.AddDays(-DiasCicloPago)
+    };
+
+    private async Task<List<Cliente>> LeerListado(string where, string orderBy,
+        Dictionary<string, object?> parametros, CancellationToken ct)
+    {
+        var sql = $"SELECT l.* FROM ({BaseListado}) l {where} ORDER BY {orderBy}";
+        var filas = await _accesoDatos.Leer<Cliente>(sql, parametros, ct: ct);
+        return filas.ToList();
+    }
+
+    // DS: ObtenerClientes(): List<Cliente>  (orden alfabético por nombre, CU08 paso 4)
+    public Task<List<Cliente>> ObtenerClientes(CancellationToken ct = default)
+        => LeerListado("", ColumnasOrden["nombre"], ParametrosListado(), ct);
+
+    // DS: ObtenerClientesOrdenados(string columna): List<Cliente>
+    public Task<List<Cliente>> ObtenerClientesOrdenados(string columna, CancellationToken ct = default)
+    {
+        var orden = ColumnasOrden.GetValueOrDefault(columna ?? "", ColumnasOrden["nombre"]);
+        return LeerListado("", orden, ParametrosListado(), ct);
+    }
+
+    // DS: BuscarCliente(string criterio): List<Cliente>  (por nombre, apellido o email)
+    public Task<List<Cliente>> BuscarCliente(string criterio, CancellationToken ct = default)
+    {
+        var parametros = ParametrosListado();
+        parametros["Patron"] = "%" + (criterio ?? "").Trim()
+            .Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]") + "%";
+
+        const string where = @"WHERE (l.Nombre LIKE @Patron OR l.Apellido LIKE @Patron
+                              OR (l.Nombre + ' ' + l.Apellido) LIKE @Patron OR l.Email LIKE @Patron)";
+        return LeerListado(where, ColumnasOrden["nombre"], parametros, ct);
+    }
+
+    public Task<List<Cliente>> ObtenerClientesSegunFiltro(string? plan, string? estadoPago, CancellationToken ct = default)
+    {
+        var parametros = ParametrosListado();
+        var condiciones = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(plan))
+        {
+            condiciones.Add("l.PlanSocio = @Plan");
+            parametros["Plan"] = plan;
+        }
+        if (!string.IsNullOrWhiteSpace(estadoPago))
+        {
+            condiciones.Add("l.HistorialPagos = @EstadoPagoFiltro");
+            parametros["EstadoPagoFiltro"] = estadoPago;
+        }
+
+        var where = condiciones.Count == 0 ? "" : "WHERE " + string.Join(" AND ", condiciones);
+        return LeerListado(where, ColumnasOrden["nombre"], parametros, ct);
+    }
 }

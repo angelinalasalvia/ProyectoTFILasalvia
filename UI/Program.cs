@@ -35,6 +35,7 @@ builder.Services.AddScoped<BLLRol>();
 builder.Services.AddScoped<BLLTokenRecuperacion>();
 builder.Services.AddScoped<BLLBitacora>();
 builder.Services.AddScoped<BLLTokenActivacion>();
+builder.Services.AddScoped<BLLEventosCliente>();
 
 // UI
 builder.Services.AddScoped<GeneradorPdf>();

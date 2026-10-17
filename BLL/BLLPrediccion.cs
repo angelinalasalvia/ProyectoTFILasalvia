@@ -124,4 +124,13 @@ public class BLLPrediccion
             prediccion.FactorRiesgo = factor;
         }
     }
+    public async Task<Prediccion?> ObtenerScoreChurn(int idCliente, CancellationToken ct = default)
+    {
+        var resultado = await _accesoDatos.Leer<Prediccion>(
+            @"SELECT IdPrediccion, IdCliente, IdFactorRiesgo, IdModelo, NivelRiesgo, ProbabilidadAbandono
+          FROM Prediccion WHERE IdCliente = @idCliente",
+            new { idCliente }, ct: ct);
+
+        return resultado.FirstOrDefault();
+    }
 }

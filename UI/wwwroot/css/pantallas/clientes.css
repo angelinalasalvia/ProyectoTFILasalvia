@@ -1,11 +1,4 @@
-﻿/* ==========================================================================
-   Pantalla: Clientes (Pages/Clientes.razor)
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: CLIENTES (Pages/Clientes.razor)
-   ========================================================================== */
-.cli-filtros-card {
+﻿.cli-filtros-card {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
     gap: 20px;
@@ -136,7 +129,7 @@
     background: #fdeaea;
     color: #d63939;
 }
-/* --- Link de plan --- */
+
 .cli-plan-link {
     color: #2f6fed;
     font-weight: 700;
@@ -147,7 +140,65 @@
         text-decoration: underline;
     }
 
-/* ==========================================================================
-   FIN PANTALLA: CLIENTES
-   ========================================================================== */
+.cli-filtros-botones {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-limpiar-filtros {
+    background: #fff;
+    color: #555b6a;
+    border: 1px solid #dfe4eb;
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .btn-limpiar-filtros:hover {
+        background: #f6f7fa;
+    }
+
+.cli-th-ordenable {
+    cursor: pointer;
+    user-select: none;
+}
+
+    .cli-th-ordenable:hover,
+    .cli-th-ordenable.activa {
+        color: #1e2432;
+    }
+
+        .cli-th-ordenable.activa::after {
+            content: " ▾";
+        }
+
+.cli-vacio {
+    padding: 28px 16px;
+    text-align: center;
+    color: #7c8495;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.cli-vacio-acciones {
+    display: flex;
+    gap: 10px;
+}
+
+.cli-mensaje-error {
+    margin-bottom: 14px;
+    padding: 11px 14px;
+    border-radius: 7px;
+    background: #fdeaea;
+    border: 1px solid #f5caca;
+    color: #d63939;
+    font-size: 13px;
+}
 

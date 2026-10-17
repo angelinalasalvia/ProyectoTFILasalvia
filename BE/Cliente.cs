@@ -31,5 +31,18 @@ public class Cliente
     public string Sede { get; set; } = string.Empty;
     public ICollection<EventoCliente> Eventos { get; set; } = new List<EventoCliente>();
     public string? Telefono { get; set; }
+
+    [NotMapped] public DateTime? UltimaInteraccion { get; set; }
+    [NotMapped] public DateTime? UltimaVisita { get; set; }
+    [NotMapped] public string HistorialPagos { get; set; } = string.Empty;
+    // Fecha de inicio de membresía: la tabla no la guarda; se toma del primer evento registrado.
+    [NotMapped]
+    public DateTime? FechaInicio => Eventos.Count == 0 ? null : Eventos.Min(e => e.Fecha);
 }
 
+public static class EstadoPago
+{
+    public const string AlDia = "Al día";
+    public const string Pendiente = "Pendiente";
+    public const string Vencido = "Vencido";
+}

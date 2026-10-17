@@ -187,7 +187,7 @@
 
 .detcli-kpi-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 18px;
 }
 
@@ -223,3 +223,112 @@
     color: #8a90a2;
 }
 
+@media (max-width: 1100px) {
+    .detcli-kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.detcli-dot-rojo {
+    background: #d63939;
+}
+
+.detcli-dot-verde {
+    background: #2f9e5c;
+}
+
+.detcli-status-inactivo {
+    background: #c7ccd6;
+}
+
+.detcli-kpi-delta-pos {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2f9e5c;
+}
+
+.detcli-timeline-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.detcli-mas-eventos {
+    display: block;
+    margin: 12px auto 0;
+    background: #fff;
+    border: 1px solid #dfe4eb;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #555b6a;
+    cursor: pointer;
+}
+
+    .detcli-mas-eventos:hover {
+        background: #f6f7fa;
+    }
+
+    .detcli-mas-eventos:disabled {
+        opacity: .6;
+        cursor: default;
+    }
+
+.detcli-aviso {
+    padding: 22px 16px;
+    text-align: center;
+    color: #7c8495;
+    font-size: 13px;
+    background: #f6f7fa;
+    border-radius: 8px;
+}
+
+.detcli-mensaje-error {
+    margin-bottom: 14px;
+    padding: 11px 14px;
+    border-radius: 7px;
+    background: #fdeaea;
+    border: 1px solid #f5caca;
+    color: #d63939;
+    font-size: 13px;
+}
+
+.detcli-leyenda {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: #8a90a2;
+}
+
+.detcli-leyenda-cuadro {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: #f2b0a8;
+}
+
+.detcli-riesgo {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-left: 6px;
+}
+
+.detcli-riesgo-alto {
+    background: #fdeaea;
+    color: #d63939;
+}
+
+.detcli-riesgo-medio {
+    background: #fff0d8;
+    color: #8a5a00;
+}
+
+.detcli-riesgo-bajo {
+    background: #e3f7ea;
+    color: #1f7a44;
+}

@@ -70,6 +70,93 @@ public class BLLHistorialAcciones
         };
     }
 
+    // CU13 - ObtenerMetricasEfectividad. Trae el período pedido y el anterior (misma duración) en una sola consulta.
+    // Las acciones "Pendiente" (programadas que todavía no salieron) no cuentan.
+    public async Task<MetricasEfectividad> ObtenerMetricasEfectividad(DateTime desde, DateTime hasta, CancellationToken ct = default)
+    {
+        var desdeInclusive = desde.Date;
+        var hastaExclusive = hasta.Date.AddDays(1);
+        var desdeAnterior = desdeInclusive - (hastaExclusive - desdeInclusive);
+
+        var filas = (await _accesoDatos.Leer<HistorialAccion>(
+            @"SELECT ha.IdCliente, ha.EstadoEnvio, ha.Resultado, ha.FechaEnvio, ca.Nombre AS Canal
+          FROM HistorialAcciones ha
+          JOIN Campaña camp ON camp.IdCampaña = ha.IdCampaña
+          JOIN Canal ca ON ca.IdCanal = camp.IdCanal
+          WHERE ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusive
+            AND ha.EstadoEnvio <> @pendiente",
+            new { desdeAnterior, hastaExclusive, pendiente = HistorialAccion.EnvioPendiente }, ct: ct)).ToList();
+
+        var actuales = filas.Where(f => f.FechaEnvio >= desdeInclusive).ToList();
+        var anteriores = filas.Where(f => f.FechaEnvio < desdeInclusive).ToList();
+
+        static bool Entregada(HistorialAccion h) =>
+            h.EstadoEnvio == HistorialAccion.EnvioEntregado || h.EstadoEnvio == HistorialAccion.EnvioLeido;
+        static bool Rescatada(HistorialAccion h) => h.Resultado == HistorialAccion.ResultadoRescatado;
+
+        return new MetricasEfectividad
+        {
+            TotalAcciones = actuales.Count,
+            TotalAccionesAnterior = anteriores.Count,
+            Entregadas = actuales.Count(Entregada),
+            EntregadasAnterior = anteriores.Count(Entregada),
+            Rescatados = actuales.Count(Rescatada),
+            RescatadosAnterior = anteriores.Count(Rescatada),
+            Canales = actuales.GroupBy(h => h.Canal).OrderBy(g => g.Key)
+                .Select(g => new MetricasCanal
+                {
+                    Canal = g.Key,
+                    Entregadas = g.Count(Entregada),
+                    Leidas = g.Count(h => h.EstadoEnvio == HistorialAccion.EnvioLeido),
+                    Clics = g.Count(h => h.Resultado == HistorialAccion.ResultadoClic),
+                    Rescatados = g.Count(Rescatada)
+                }).ToList()
+        };
+    }
+
+    // CU14 - ObtenerMetricasRetencion(periodo, segmento). Período = últimos "dias" días (incluye hoy) contra los "dias" anteriores.
+    // Clientes recuperados = clientes distintos con Resultado = Rescatado. MRR salvado = precio del plan de esos clientes.
+    public async Task<MetricasRetencion> ObtenerMetricasRetencion(int dias, string? segmento = null, CancellationToken ct = default)
+    {
+        var hastaExclusivo = DateTime.Today.AddDays(1);
+        var desde = hastaExclusivo.AddDays(-dias);
+        var desdeAnterior = desde.AddDays(-dias);
+        var (condicion, valor) = SegmentoRetencion.Resolver(segmento);
+
+        var rescates = (await _accesoDatos.Leer<RescateRetencion>(
+            $@"SELECT ha.IdCliente, ha.FechaEnvio, ha.FechaConversion, p.Precio
+           FROM HistorialAcciones ha
+           JOIN Cliente c ON c.IdCliente = ha.IdCliente
+           JOIN [Plan] p ON p.Nombre = c.PlanSocio
+           WHERE ha.Resultado = @rescatado
+             AND ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusivo
+             AND {condicion}",
+            new { rescatado = HistorialAccion.ResultadoRescatado, desdeAnterior, hastaExclusivo, segmentoValor = valor },
+            ct: ct)).ToList();
+
+        var actuales = rescates.Where(r => r.FechaEnvio >= desde).ToList();
+        var anteriores = rescates.Where(r => r.FechaEnvio < desde).ToList();
+
+        static int Clientes(List<RescateRetencion> l) => l.Select(r => r.IdCliente).Distinct().Count();
+        static decimal Mrr(List<RescateRetencion> l) => l.GroupBy(r => r.IdCliente).Sum(g => g.First().Precio);
+
+        return new MetricasRetencion
+        {
+            ClientesRecuperados = Clientes(actuales),
+            ClientesRecuperadosAnterior = Clientes(anteriores),
+            RecuperadosHoy = actuales.Where(r => r.FechaConversion?.Date == DateTime.Today).Select(r => r.IdCliente).Distinct().Count(),
+            MrrSalvado = Mrr(actuales),
+            MrrSalvadoAnterior = Mrr(anteriores)
+        };
+    }
+
+    private class RescateRetencion
+    {
+        public int IdCliente { get; set; }
+        public DateTime FechaEnvio { get; set; }
+        public DateTime? FechaConversion { get; set; }
+        public decimal Precio { get; set; }
+    }
     private class CampanaConCanal
     {
         public int IdCampania { get; set; }

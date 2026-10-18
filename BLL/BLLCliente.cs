@@ -276,4 +276,101 @@ LEFT JOIN (
         var where = condiciones.Count == 0 ? "" : "WHERE " + string.Join(" AND ", condiciones);
         return LeerListado(where, ColumnasOrden["nombre"], parametros, ct);
     }
+    // CU13 - ObtenerDatosFinancierosRetencion.
+    // MRR recuperado = suma del precio del plan de los clientes rescatados en el período.
+    // LTV recuperado = MRR x meses de vida esperada (constante de abajo).
+    public const int MesesVidaEsperadaLtv = 12;
+
+    public async Task<DatosFinancieros> ObtenerDatosFinancierosRetencion(DateTime desde, DateTime hasta, CancellationToken ct = default)
+    {
+        var desdeInclusive = desde.Date;
+        var hastaExclusive = hasta.Date.AddDays(1);
+        var desdeAnterior = desdeInclusive - (hastaExclusive - desdeInclusive);
+
+        var rescates = (await _accesoDatos.Leer<RescateConPrecio>(
+            @"SELECT ha.FechaEnvio, p.Precio
+          FROM HistorialAcciones ha
+          JOIN Cliente c ON c.IdCliente = ha.IdCliente
+          JOIN [Plan] p ON p.Nombre = c.PlanSocio
+          WHERE ha.Resultado = @rescatado
+            AND ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusive",
+            new { rescatado = HistorialAccion.ResultadoRescatado, desdeAnterior, hastaExclusive }, ct: ct)).ToList();
+
+        var mrr = rescates.Where(r => r.FechaEnvio >= desdeInclusive).Sum(r => r.Precio);
+        var mrrAnterior = rescates.Where(r => r.FechaEnvio < desdeInclusive).Sum(r => r.Precio);
+
+        return new DatosFinancieros
+        {
+            MrrRecuperado = mrr,
+            MrrRecuperadoAnterior = mrrAnterior,
+            LtvRecuperado = mrr * MesesVidaEsperadaLtv,
+            LtvRecuperadoAnterior = mrrAnterior * MesesVidaEsperadaLtv
+        };
+    }
+
+    private class RescateConPrecio
+    {
+        public DateTime FechaEnvio { get; set; }
+        public decimal Precio { get; set; }
+    }
+
+    private static readonly string[] NombresMeses =
+    { "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+
+    // CU14 - CalcularAnalisisCohortes(periodo, segmento).
+    // Cohorte = mes del primer evento del cliente. El período define cuántos meses hacia atrás se muestran (30d: 3, 90d: 6, Año: 12).
+    // Celda "Mes N" = % de la cohorte que seguía sin darse de baja al comenzar el N-ésimo mes después del mes de alta.
+    // Si ese momento todavía no llegó, la celda queda vacía (null). Las cohortes sin clientes no se muestran.
+    public async Task<List<CohorteRetencion>> CalcularAnalisisCohortes(int dias, string? segmento = null, CancellationToken ct = default)
+    {
+        const int columnas = 6; // Mes 0 a Mes 5
+        var mesesAtras = dias <= 30 ? 3 : dias <= 90 ? 6 : 12;
+        var hoy = DateTime.Today;
+        var primerMes = new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-(mesesAtras - 1));
+
+        var clientes = await ObtenerCiclosDeVidaAsync(_accesoDatos, segmento, ct);
+        var cohortes = new List<CohorteRetencion>();
+
+        for (var inicio = primerMes; inicio <= hoy; inicio = inicio.AddMonths(1))
+        {
+            var desdeMes = inicio;
+            var hastaMes = inicio.AddMonths(1);
+            var miembros = clientes.Where(c => c.PrimerEvento >= desdeMes && c.PrimerEvento < hastaMes).ToList();
+            if (miembros.Count == 0) continue;
+
+            var valores = new List<int?>();
+            for (var n = 0; n < columnas; n++)
+            {
+                var referencia = desdeMes.AddMonths(n);
+                if (referencia > hoy) { valores.Add(null); continue; }
+
+                var retenidos = miembros.Count(c => c.FechaBaja is null || c.FechaBaja.Value >= referencia);
+                valores.Add((int)Math.Round(retenidos * 100.0 / miembros.Count));
+            }
+
+            cohortes.Add(new CohorteRetencion
+            {
+                Nombre = $"{NombresMeses[desdeMes.Month - 1]} {desdeMes.Year}",
+                Tamano = miembros.Count,
+                Valores = valores
+            });
+        }
+
+        return cohortes;
+    }
+    public static async Task<List<ClienteCicloVida>> ObtenerCiclosDeVidaAsync(
+    AccesoDatos accesoDatos, string? segmento, CancellationToken ct = default)
+    {
+        var (condicion, valor) = SegmentoRetencion.Resolver(segmento);
+
+        var filas = await accesoDatos.Leer<ClienteCicloVida>(
+            $@"SELECT c.IdCliente, c.EstadoRegistro, MIN(e.Fecha) AS PrimerEvento, MAX(e.Fecha) AS UltimoEvento
+           FROM Cliente c
+           JOIN EventosCliente e ON e.IdCliente = c.IdCliente
+           WHERE {condicion}
+           GROUP BY c.IdCliente, c.EstadoRegistro",
+            new { segmentoValor = valor }, ct: ct);
+
+        return filas.ToList();
+    }
 }

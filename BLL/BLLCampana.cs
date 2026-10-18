@@ -97,4 +97,52 @@ public class BLLCampana
     }
 
     private class IdSolamente { public int Id { get; set; } }
+
+    // CU13 - ObtenerEfectividadIncentivos.
+    // Costo total = suma del costo del incentivo de la campaña por cada cliente rescatado.
+    // "Sin incentivo" no entra en el ranking.
+    public async Task<DatosIncentivos> ObtenerEfectividadIncentivos(DateTime desde, DateTime hasta, CancellationToken ct = default)
+    {
+        var desdeInclusive = desde.Date;
+        var hastaExclusive = hasta.Date.AddDays(1);
+        var desdeAnterior = desdeInclusive - (hastaExclusive - desdeInclusive);
+
+        var filas = (await _accesoDatos.Leer<AccionConIncentivo>(
+            @"SELECT i.Nombre AS Incentivo, i.Costo, ha.FechaEnvio, ha.Resultado
+          FROM HistorialAcciones ha
+          JOIN Campaña camp ON camp.IdCampaña = ha.IdCampaña
+          JOIN Incentivo i ON i.IdIncentivo = camp.IdIncentivo
+          WHERE ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusive
+            AND ha.EstadoEnvio <> @pendiente AND ha.EstadoEnvio <> @fallido",
+            new { desdeAnterior, hastaExclusive, pendiente = HistorialAccion.EnvioPendiente, fallido = HistorialAccion.EnvioFallido },
+            ct: ct)).ToList();
+
+        var actuales = filas.Where(f => f.FechaEnvio >= desdeInclusive).ToList();
+        var anteriores = filas.Where(f => f.FechaEnvio < desdeInclusive).ToList();
+        bool Rescatada(AccionConIncentivo a) => a.Resultado == HistorialAccion.ResultadoRescatado;
+
+        return new DatosIncentivos
+        {
+            CostoTotal = actuales.Where(Rescatada).Sum(a => a.Costo),
+            CostoTotalAnterior = anteriores.Where(Rescatada).Sum(a => a.Costo),
+            Incentivos = actuales.Where(a => a.Incentivo != "Sin incentivo")
+                .GroupBy(a => a.Incentivo)
+                .Select(g => new EfectividadIncentivo
+                {
+                    Nombre = g.Key,
+                    Enviados = g.Count(),
+                    Rescatados = g.Count(Rescatada)
+                })
+                .OrderByDescending(x => x.Rescatados).ThenByDescending(x => x.Enviados)
+                .ToList()
+        };
+    }
+
+    private class AccionConIncentivo
+    {
+        public string Incentivo { get; set; } = string.Empty;
+        public decimal Costo { get; set; }
+        public DateTime FechaEnvio { get; set; }
+        public string Resultado { get; set; } = string.Empty;
+    }
 }

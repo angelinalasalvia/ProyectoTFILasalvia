@@ -1,4 +1,14 @@
 ﻿@page "/reportes/retencion"
+@inject BLL.BLLHistorialAcciones BLLHistorialAcciones
+@inject BLL.BLLEventosCliente BLLEventosCliente
+@inject BLL.BLLCliente BLLCliente
+@inject BLL.BLLPlanSocio BLLPlanSocio
+@inject BLL.BLLSede BLLSede
+@inject UI.Services.GeneradorPdf GeneradorPdf
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+@using BE
+@using UI.Services
 
 <PageTitle>Reporte de Retención</PageTitle>
 
@@ -15,55 +25,77 @@
     </div>
     <div class="retencion-actions">
         <div class="toggle-group">
-            <button class="toggle @(periodoSeleccionado == "30 días" ? "active" : "")" @onclick='() => periodoSeleccionado = "30 días"'>
-                Últimos 30 días
-            </button>
-            <button class="toggle @(periodoSeleccionado == "90 días" ? "active" : "")" @onclick='() => periodoSeleccionado = "90 días"'>
-                90 días
-            </button>
-            <button class="toggle @(periodoSeleccionado == "Año" ? "active" : "")" @onclick='() => periodoSeleccionado = "Año"'>
-                Año
-            </button>
+            <button class="toggle @(dias == 30 ? "active" : "")" disabled="@cargando" @onclick="() => CambiarPeriodo(30)">Últimos 30 días</button>
+            <button class="toggle @(dias == 90 ? "active" : "")" disabled="@cargando" @onclick="() => CambiarPeriodo(90)">90 días</button>
+            <button class="toggle @(dias == 365 ? "active" : "")" disabled="@cargando" @onclick="() => CambiarPeriodo(365)">Año</button>
         </div>
-        <button class="btn-cancelar">▽ Filtrar Segmento</button>
-        <button class="btn-confirmar" @onclick="Exportar">⬇ Exportar</button>
+    
+        <select class="filtro-select" value="@segmento" disabled="@cargando" @onchange="CambiarSegmento">
+            <option value="@SegmentoRetencion.Todos">Todos los segmentos</option>
+            <optgroup label="Plan">
+                @foreach (var p in planes)
+                {
+                    <option value="@(SegmentoRetencion.PrefijoPlan + p.Nombre)">@p.Nombre</option>
+                }
+            </optgroup>
+            <optgroup label="Sede">
+                @foreach (var s in sedes)
+                {
+                    <option value="@(SegmentoRetencion.PrefijoSede + s.Nombre)">@s.Nombre</option>
+                }
+            </optgroup>
+        </select>
+        <button class="btn-confirmar" @onclick="Exportar" disabled="@(exportando || !reporteVisible)">
+            @(exportando ? "Generando..." : "⬇ Exportar")
+        </button>
     </div>
 </div>
+@if (!string.IsNullOrEmpty(mensajeError)) { <div class="login-alerta">@mensajeError</div> }
+@if (!string.IsNullOrEmpty(mensajeInfo)) { <div class="login-alerta">@mensajeInfo</div> }
 
-<!-- KPIs principales -->
-<div class="ret-kpi-row">
-    <div class="card ret-kpi-card">
-        <div class="ret-kpi-top">
-            <span class="ret-kpi-titulo">CHURN HISTÓRICO</span>
-            <span class="ret-kpi-badge ret-badge-negativo">↘0.8%</span>
+@if (cargando && !reporteVisible)
+{
+    <p>Cargando...</p>
+}
+else if (reporteVisible && tendencia is not null && metricas is not null)
+{
+    <!-- KPIs principales -->
+    <div class="ret-kpi-row">
+        <div class="card ret-kpi-card">
+            <div class="ret-kpi-top">
+                <span class="ret-kpi-titulo">CHURN HISTÓRICO</span>
+                <span class="ret-kpi-badge @bChurn.Clase">@bChurn.Texto</span>
+            </div>
+            <div class="ret-kpi-valor-row">
+                <span class="ret-kpi-valor">@($"{tendencia.ChurnHistorico:0.0}%")</span>
+                <span class="ret-kpi-sub">@tendencia.Bajas bajas en el período</span>
+            </div>
+            <div class="ret-kpi-extra">vs. @($"{tendencia.ChurnHistoricoAnterior:0.0}%") período anterior</div>
         </div>
-        <div class="ret-kpi-valor-row">
-            <span class="ret-kpi-valor">2.4%</span>
-            <span class="ret-kpi-sub">promedio mensual</span>
+        <div class="card ret-kpi-card">
+            <div class="ret-kpi-top">
+                <span class="ret-kpi-titulo">CLIENTES RECUPERADOS</span>
+                <span class="ret-kpi-badge @bRec.Clase">@bRec.Texto</span>
+            </div>
+            <div class="ret-kpi-valor-row">
+                <span class="ret-kpi-valor">@metricas.ClientesRecuperados</span>
+                <span class="ret-kpi-sub">en el período</span>
+            </div>
+            <div class="ret-kpi-extra">+@metricas.RecuperadosHoy recuperados hoy</div>
+        </div>
+        <div class="card ret-kpi-card">
+            <div class="ret-kpi-top">
+                <span class="ret-kpi-titulo">INGRESOS SALVADOS (MRR)</span>
+                <span class="ret-kpi-badge @bMrr.Clase">@bMrr.Texto</span>
+            </div>
+            <div class="ret-kpi-valor-row">
+                <span class="ret-kpi-valor">$@metricas.MrrSalvado.ToString("N0")</span>
+                <span class="ret-kpi-sub">por mes</span>
+            </div>
+            <div class="ret-kpi-extra">vs. $@metricas.MrrSalvadoAnterior.ToString("N0") período anterior</div>
         </div>
     </div>
-    <div class="card ret-kpi-card">
-        <div class="ret-kpi-top">
-            <span class="ret-kpi-titulo">CLIENTES RECUPERADOS</span>
-            <span class="ret-kpi-badge ret-badge-positivo">↗12%</span>
-        </div>
-        <div class="ret-kpi-valor-row">
-            <span class="ret-kpi-valor">142</span>
-            <span class="ret-kpi-sub">este trimestre</span>
-        </div>
-        <div class="ret-kpi-extra">+24 recuperados hoy</div>
-    </div>
-    <div class="card ret-kpi-card">
-        <div class="ret-kpi-top">
-            <span class="ret-kpi-titulo">INGRESOS SALVADOS (MRR)</span>
-        </div>
-        <div class="ret-kpi-valor-row">
-            <span class="ret-kpi-valor">$42,500</span>
-            <span class="ret-kpi-sub">USD / mes</span>
-        </div>
-    </div>
-</div>
-
+}
 <!-- Tendencias de churn -->
 <div class="card ret-tendencia-card">
     <div class="ret-tendencia-header">
@@ -76,31 +108,31 @@
 
     <div class="ret-chart-wrap">
         <div class="ret-chart-eje-y">
-            <span>4%</span><span>3%</span><span>2%</span><span>1%</span><span>0%</span>
+            @foreach (var tick in ticksY)
+            {
+                <span>@tick</span>
+            }
         </div>
         <div class="ret-chart-main">
             <svg viewBox="0 0 700 240" preserveAspectRatio="none" class="ret-trend-svg">
-                <!-- Líneas de grilla -->
                 <line x1="0" y1="20" x2="700" y2="20" class="ret-grid-line" />
                 <line x1="0" y1="70" x2="700" y2="70" class="ret-grid-line" />
                 <line x1="0" y1="120" x2="700" y2="120" class="ret-grid-line" />
                 <line x1="0" y1="170" x2="700" y2="170" class="ret-grid-line" />
                 <line x1="0" y1="220" x2="700" y2="220" class="ret-grid-line" />
 
-                <!-- Período anterior (punteada, gris) -->
-                <polyline fill="none" class="ret-linea-anterior"
-                          points="40,115 166,115 292,120 418,90 544,95 670,85" />
-
-                <!-- Período actual (sólida, azul) -->
-                <polyline fill="none" class="ret-linea-actual"
-                          points="40,170 166,155 292,130 418,95 544,110 670,90" />
+                <polyline fill="none" class="ret-linea-anterior" points="@polilineaAnterior" />
+                <polyline fill="none" class="ret-linea-actual" points="@polilineaActual" />
                 @foreach (var p in puntosActual)
                 {
                     <circle cx="@p.X" cy="@p.Y" r="4" class="ret-punto-actual" />
                 }
             </svg>
-            <div class="chart-months ret-chart-meses">
-                <span>ENE</span><span>FEB</span><span>MAR</span><span>ABR</span><span>MAY</span><span>JUN</span>
+            <div class="ret-chart-meses">
+                @for (var i = 0; i < etiquetasX.Count && i < puntosActual.Count; i++)
+                {
+                    <span style="left:calc(@(puntosActual[i].X) * 100% / 700)">@etiquetasX[i]</span>
+                }
             </div>
         </div>
     </div>
@@ -129,7 +161,7 @@
             @foreach (var fila in cohortes)
             {
                 <tr>
-                    <td class="ret-cohorte-nombre">@fila.Nombre</td>
+                    <td class="ret-cohorte-nombre">@fila.Nombre <small>(@fila.Tamano)</small></td>
                     @foreach (var valor in fila.Valores)
                     {
                         <td>
@@ -149,32 +181,183 @@
     </table>
 </div>
 
-<p class="ret-footer-nota">Reporte generado el: 24 May 2024, 09:45 AM</p>
+@if (fechaReporte is not null)
+{
+    <p class="ret-footer-nota">Reporte generado el: @fechaReporte.Value.ToString("dd/MM/yyyy HH:mm")</p>
+}
 
 @code {
-    private string periodoSeleccionado = "30 días";
+    private int dias = 30;
+    private string segmento = SegmentoRetencion.Todos;
+    private bool cargando, exportando, reporteVisible;
+    private string mensajeError = "", mensajeInfo = "";
+    private DateTime? fechaReporte;
+
+    private List<PlanSocio> planes = new();
+    private List<Sede> sedes = new();
+
+    private MetricasRetencion? metricas;
+    private TendenciaChurn? tendencia;
+    private List<CohorteRetencion> cohortes = new();
+
+    private (string Texto, string Clase) bChurn = ("—", "ret-badge-neutro");
+    private (string Texto, string Clase) bRec = ("—", "ret-badge-neutro");
+    private (string Texto, string Clase) bMrr = ("—", "ret-badge-neutro");
 
     private record Punto(int X, int Y);
+    private List<Punto> puntosActual = new();
+    private List<string> ticksY = new();
+    private List<string> etiquetasX = new();
+    private string polilineaActual = "", polilineaAnterior = "";
 
-    // Coordenadas de los puntos de la línea "Periodo Actual" (deben coincidir
-    // con el atributo points del polyline de arriba).
-    private List<Punto> puntosActual = new()
+    private bool SinDatosEnPeriodo => tendencia is not null && metricas is not null
+        && tendencia.ActivosAlInicio == 0 && tendencia.Bajas == 0 && metricas.ClientesRecuperados == 0;
+
+    private string DescripcionPeriodo => dias switch
     {
-        new(40, 170), new(166, 155), new(292, 130),
-        new(418, 95), new(544, 110), new(670, 90),
+        30 => "Últimos 30 días",
+        90 => "Últimos 90 días",
+        _ => "Último año"
     };
 
-    private record FilaCohorte(string Nombre, List<int?> Valores);
-
-    private List<FilaCohorte> cohortes = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("Enero 2024", new List<int?> { 100, 92, 88, 84, 81, 78 }),
-        new("Febrero 2024", new List<int?> { 100, 94, 91, 88, 85, null }),
-        new("Marzo 2024", new List<int?> { 100, 90, 85, 82, null, null }),
-        new("Abril 2024", new List<int?> { 100, 95, 93, null, null, null }),
-    };
+        try
+        {
+            planes = await BLLPlanSocio.ObtenerPlanes();
+            sedes = await BLLSede.ObtenerSedes();
+        }
+        catch { /* sin catálogos queda solo "Todos los segmentos" */ }
 
-    // Escala de color tipo "heatmap" según el % de retención de la celda.
+        await CargarReporte();
+    }
+
+    private async Task CambiarPeriodo(int nuevoDias)
+    {
+        if (dias == nuevoDias) return;
+        dias = nuevoDias;
+        await CargarReporte();
+    }
+
+    private async Task CambiarSegmento(ChangeEventArgs e)
+    {
+        segmento = e.Value?.ToString() ?? SegmentoRetencion.Todos;
+        await CargarReporte();
+    }
+
+    private async Task CargarReporte()
+    {
+        cargando = true;
+        mensajeError = mensajeInfo = "";
+        fechaReporte = null;
+        try
+        {
+            var m = await BLLHistorialAcciones.ObtenerMetricasRetencion(dias, segmento);
+            var t = await BLLEventosCliente.ObtenerTendenciasChurn(dias, segmento);
+            var c = await BLLCliente.CalcularAnalisisCohortes(dias, segmento);
+
+            metricas = m;
+            tendencia = t;
+            cohortes = c;
+
+            if (!t.HistorialSuficiente)
+            {
+                // CU 2.1: no se muestran métricas
+                reporteVisible = false;
+                mensajeError = "No hay datos suficientes para generar el reporte de retención.";
+                return;
+            }
+
+            reporteVisible = true;
+            RecalcularMetricasYGraficos();
+
+            if (t.ClientesEnSegmento == 0)
+                mensajeInfo = "No hay datos disponibles para el segmento seleccionado.";
+            else if (SinDatosEnPeriodo)
+                mensajeInfo = "No existen registros para el período seleccionado.";
+        }
+        catch
+        {
+            reporteVisible = false;
+            mensajeError = "No fue posible obtener la información.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void RecalcularMetricasYGraficos()
+    {
+        var t = tendencia!;
+        var m = metricas!;
+
+        // En churn, que baje es una mejora (verde); en recuperados y MRR, que suba.
+        bChurn = Variacion(t.ChurnHistorico, t.ChurnHistoricoAnterior, menorEsMejor: true);
+        bRec = Variacion(m.ClientesRecuperados, m.ClientesRecuperadosAnterior);
+        bMrr = Variacion(m.MrrSalvado, m.MrrSalvadoAnterior);
+
+        var maxValor = t.Puntos.Concat(t.PuntosAnterior).Select(p => p.Churn).DefaultIfEmpty(0).Max();
+        var yMax = maxValor <= 1 ? 1 : maxValor <= 2 ? 2 : (int)Math.Ceiling(maxValor / 4m) * 4;
+        ticksY = Enumerable.Range(0, 5).Select(i => (yMax * (4 - i) / 4m).ToString("0.##") + "%").ToList();
+
+        puntosActual = Coordenadas(t.Puntos, yMax);
+        polilineaActual = Polilinea(t.Puntos, yMax);
+        polilineaAnterior = Polilinea(t.PuntosAnterior, yMax);
+        etiquetasX = t.Puntos.Select(p => p.Desde.ToString("dd/MM")).ToList();
+    }
+
+    // Eje X del SVG: de 40 a 670. Eje Y: 220 = 0%, 20 = máximo.
+    private static List<Punto> Coordenadas(List<PuntoChurn> serie, int yMax)
+    {
+        var n = serie.Count;
+        return serie.Select((p, i) => new Punto(
+            n == 1 ? 355 : 40 + (int)Math.Round(i * 630.0 / (n - 1)),
+            220 - (int)Math.Round((double)p.Churn / yMax * 200))).ToList();
+    }
+
+    private static string Polilinea(List<PuntoChurn> serie, int yMax) =>
+        string.Join(" ", Coordenadas(serie, yMax).Select(p => $"{p.X},{p.Y}"));
+
+    private static (string Texto, string Clase) Variacion(decimal actual, decimal anterior, bool menorEsMejor = false)
+    {
+        if (anterior == 0) return ("—", "ret-badge-neutro");
+        var pct = Math.Round((actual - anterior) * 100m / anterior, 1);
+        if (pct == 0) return ("0%", "ret-badge-neutro");
+        var mejora = (pct > 0) != menorEsMejor;
+        return ((pct > 0 ? "↗" : "↘") + Math.Abs(pct).ToString("0.0") + "%",
+                mejora ? "ret-badge-positivo" : "ret-badge-negativo");
+    }
+
+    private async Task Exportar()
+    {
+        if (!reporteVisible || tendencia is null || metricas is null) return;
+
+        exportando = true;
+        mensajeError = mensajeInfo = "";
+        try
+        {
+            var generado = DateTime.Now;
+            var pdf = GeneradorPdf.GenerarReporteRetencion(generado, DescripcionPeriodo,
+                SegmentoRetencion.Descripcion(segmento), metricas, tendencia, cohortes);
+
+            await JS.InvokeVoidAsync("descargarArchivo",
+                $"Reporte_Retencion_{generado:yyyyMMdd_HHmm}.pdf", Convert.ToBase64String(pdf));
+
+            mensajeInfo = "El PDF se generó con éxito.";
+            fechaReporte = generado;   // MostrarFechaYHoraReporte()
+        }
+        catch
+        {
+            mensajeError = "No fue posible generar el archivo de exportación. Podés reintentar o seguir navegando el detalle normalmente.";
+        }
+        finally
+        {
+            exportando = false;
+        }
+    }
+
+    // Escala de color tipo "heatmap" según el % de retención de la celda (sin cambios).
     private string ColorClase(int pct) => pct switch
     {
         >= 100 => "ret-cohorte-100",
@@ -184,11 +367,4 @@
         >= 75 => "ret-cohorte-75",
         _ => "ret-cohorte-baja",
     };
-
-    private void Exportar()
-    {
-        // TODO: generar y descargar el reporte real.
-    }
 }
-
-

@@ -77,4 +77,53 @@ public class BLLEventosCliente
             new { IdCliente = idCliente, Desde = DateTime.Today.AddDays(-(dias - 1)) }, ct: ct);
         return filas.ToList();
     }
+
+    /// <summary>CU14 2.1: historial mínimo (días desde el primer evento registrado) para poder armar el reporte de retención.</summary>
+    public const int MinDiasHistorialReporte = 30;
+
+    // CU14 - ObtenerTendenciasChurn(periodo, segmento).
+    // Churn de un tramo = bajas del tramo / clientes activos al inicio del tramo.
+    // Baja = cliente "Inactivo"; su fecha de baja es su último evento (misma aproximación que FeatureEngineering).
+    public async Task<TendenciaChurn> ObtenerTendenciasChurn(int dias, string? segmento = null, CancellationToken ct = default)
+    {
+        var hastaExclusivo = DateTime.Today.AddDays(1);
+        var desde = hastaExclusivo.AddDays(-dias);
+        var desdeAnterior = desde.AddDays(-dias);
+        var tramos = dias <= 90 ? 6 : 12;
+
+        // La suficiencia de historial es global: no depende del segmento ni del período elegidos.
+        var primero = (await _accesoDatos.Leer<EventoCliente>(
+            "SELECT MIN(Fecha) AS Fecha FROM EventosCliente", ct: ct)).FirstOrDefault();
+        var historialSuficiente = primero is not null && primero.Fecha != default
+            && primero.Fecha <= DateTime.Today.AddDays(-MinDiasHistorialReporte);
+
+        var clientes = await BLLCliente.ObtenerCiclosDeVidaAsync(_accesoDatos, segmento, ct);
+
+        int Activos(DateTime fecha) => clientes.Count(c => c.ActivoEn(fecha));
+        int Bajas(DateTime a, DateTime b) => clientes.Count(c => c.FechaBaja >= a && c.FechaBaja < b);
+
+        List<PuntoChurn> Serie(DateTime inicio)
+        {
+            var puntos = new List<PuntoChurn>();
+            for (var i = 0; i < tramos; i++)
+            {
+                var a = inicio.AddDays(dias * i / tramos);
+                var b = inicio.AddDays(dias * (i + 1) / tramos);
+                puntos.Add(new PuntoChurn { Desde = a, Hasta = b.AddDays(-1), ActivosAlInicio = Activos(a), Bajas = Bajas(a, b) });
+            }
+            return puntos;
+        }
+
+        return new TendenciaChurn
+        {
+            HistorialSuficiente = historialSuficiente,
+            ClientesEnSegmento = clientes.Count,
+            ActivosAlInicio = Activos(desde),
+            Bajas = Bajas(desde, hastaExclusivo),
+            ActivosAlInicioAnterior = Activos(desdeAnterior),
+            BajasAnterior = Bajas(desdeAnterior, desde),
+            Puntos = Serie(desde),
+            PuntosAnterior = Serie(desdeAnterior)
+        };
+    }
 }

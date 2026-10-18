@@ -1,18 +1,11 @@
-﻿/* ==========================================================================
-   Pantalla: Reporte de Retención (Pages/ReporteRetencion.razor)
-   ========================================================================== */
-
-/* ==========================================================================
-   PANTALLA: REPORTE DE RETENCIÓN 
-   ========================================================================== */
-.ret-subtitulo {
+﻿.ret-subtitulo {
     max-width: 420px;
 }
 
 .rep-dot-gris {
     background: #c7ccd6;
 }
-/* --- KPIs --- */
+
 .ret-kpi-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -75,7 +68,7 @@
     font-size: 12px;
     color: #8a90a2;
 }
-/* --- Tendencias de churn --- */
+
 .ret-tendencia-card {
     margin-bottom: 18px;
 }
@@ -142,9 +135,19 @@
 }
 
 .ret-chart-meses {
+    position: relative;
+    height: 20px;
     margin-top: 4px;
 }
-/* --- Análisis de cohortes --- */
+
+    .ret-chart-meses span {
+        position: absolute;
+        transform: translateX(-50%);
+        font-size: 11px;
+        color: #8a90a2;
+        white-space: nowrap;
+    }
+
 .ret-cohortes-card {
     margin-bottom: 14px;
 }
@@ -229,12 +232,45 @@
     background: #f4f5f8;
     color: #c7ccd6;
 }
-/* --- Footer --- */
+
 .ret-footer-nota {
     font-size: 12px;
     color: #8a90a2;
     margin: 4px 2px 0 2px;
 }
-/* ==========================================================================
-   FIN PANTALLA: REPORTE DE RETENCIÓN
-   ========================================================================== */
+.ret-badge-neutro {
+    color: #8a90a2;
+}
+.toggle-group {
+    display: flex;
+    gap: 2px;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.toggle {
+    border: none;
+    background: transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555b6a;
+    cursor: pointer;
+}
+
+    .toggle:hover {
+        background: #f6f7fa;
+    }
+
+    .toggle.active {
+        background: #111;
+        color: #fff;
+    }
+
+    .toggle:disabled {
+        cursor: default;
+        opacity: .7;
+    }

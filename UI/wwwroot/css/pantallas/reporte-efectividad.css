@@ -314,5 +314,17 @@
     letter-spacing: .4px;
     color: #8a90a2;
 }
+.rep-filtro-fecha {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+    .rep-filtro-fecha input {
+        padding: 6px 8px;
+        border: 1px solid #d0d5dd;
+        border-radius: 6px;
+    }
 
 

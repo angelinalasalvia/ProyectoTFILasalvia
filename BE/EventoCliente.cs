@@ -17,9 +17,6 @@ public class EventoCliente
 
     [Required]
     public int IdCliente { get; set; }
-
-    [ForeignKey(nameof(IdCliente))]
-    public Cliente? Cliente { get; set; }
 }
 
 public static class TipoEvento

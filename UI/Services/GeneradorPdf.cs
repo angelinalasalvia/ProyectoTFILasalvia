@@ -170,7 +170,7 @@ public class GeneradorPdf
                     if (incentivos.Count == 0)
                         col.Item().Text("Sin datos en el período.");
                     foreach (var i in incentivos)
-                        col.Item().Text($"{i.Nombre}: {i.Clientes} clientes");
+                        col.Item().Text($"{i.Nombre}: {i.Clientes} clientes ({i.Efectividad} de efectividad)");
 
                     col.Item().Text("ROI de retención").FontSize(13).Bold();
                     col.Item().Text($"Costo de incentivos: ${costo:N0}");

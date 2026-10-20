@@ -100,7 +100,7 @@ else if (datosAcciones is not null)
                     <li class="rep-incentivo-item">
                         <div class="rep-incentivo-top">
                             <span class="rep-incentivo-nombre">@inc.Nombre</span>
-                            <span class="rep-incentivo-clientes">@inc.Clientes Clientes</span>
+                            <span class="rep-incentivo-clientes">@inc.Clientes Clientes · @inc.Efectividad efectividad</span>
                         </div>
                         <div class="rep-incentivo-barra-fondo">
                             <div class="rep-incentivo-barra-fill" style="width:@(inc.PctBarra)%"></div>
@@ -147,6 +147,8 @@ else if (datosAcciones is not null)
             <div class="rep-roi-margen-badge">@margenTexto</div>
             <div class="rep-roi-margen-label">MARGEN NETO</div>
         </div>
+
+        <div class="rep-roi-stats-label">$@((ltv - costo).ToString("N0"))</div>
     </div>
 }
 
@@ -251,7 +253,9 @@ else if (datosAcciones is not null)
 
         var max = datosIncentivos.Incentivos.Select(i => i.Rescatados).DefaultIfEmpty(0).Max();
         incentivos = datosIncentivos.Incentivos.Take(5)
-            .Select(i => new IncentivoReporte(i.Nombre, i.Rescatados, max == 0 ? 0 : (int)(100.0 * i.Rescatados / max)))
+            .Select(i => new IncentivoReporte(i.Nombre, i.Rescatados,
+            max == 0 ? 0 : (int)(100.0 * i.Rescatados / max),
+            i.Enviados == 0 ? "0%" : $"{i.Rescatados * 100.0 / i.Enviados:0.0}%"))
             .ToList();
 
         pctCosto = costo + ltv == 0 ? 0 : (int)(100.0 * (double)costo / (double)(costo + ltv));
@@ -277,7 +281,7 @@ else if (datosAcciones is not null)
         try
         {
             var pdf = GeneradorPdf.GenerarReporteEfectividad(desde, hasta, kpis, canales, incentivos,
-                costo, ltv, margenTexto);
+                costo, ltv, $"{margenTexto} (${ltv - costo:N0})");
             await JS.InvokeVoidAsync("descargarArchivo",
                 $"Reporte_Efectividad_{DateTime.Now:yyyyMMdd_HHmm}.pdf", Convert.ToBase64String(pdf));
             mensajeInfo = "El PDF se generó correctamente.";

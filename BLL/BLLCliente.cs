@@ -288,7 +288,7 @@ LEFT JOIN (
         var desdeAnterior = desdeInclusive - (hastaExclusive - desdeInclusive);
 
         var rescates = (await _accesoDatos.Leer<RescateConPrecio>(
-            @"SELECT ha.FechaEnvio, p.Precio
+            @"SELECT ha.IdCliente, ha.FechaEnvio, p.Precio
           FROM HistorialAcciones ha
           JOIN Cliente c ON c.IdCliente = ha.IdCliente
           JOIN [Plan] p ON p.Nombre = c.PlanSocio
@@ -296,8 +296,12 @@ LEFT JOIN (
             AND ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusive",
             new { rescatado = HistorialAccion.ResultadoRescatado, desdeAnterior, hastaExclusive }, ct: ct)).ToList();
 
-        var mrr = rescates.Where(r => r.FechaEnvio >= desdeInclusive).Sum(r => r.Precio);
-        var mrrAnterior = rescates.Where(r => r.FechaEnvio < desdeInclusive).Sum(r => r.Precio);
+        // Un cliente rescatado dos veces en el período cuenta una sola vez.
+        static decimal Mrr(IEnumerable<RescateConPrecio> l) =>
+            l.GroupBy(r => r.IdCliente).Sum(g => g.First().Precio);
+
+        var mrr = Mrr(rescates.Where(r => r.FechaEnvio >= desdeInclusive));
+        var mrrAnterior = Mrr(rescates.Where(r => r.FechaEnvio < desdeInclusive));
 
         return new DatosFinancieros
         {
@@ -310,6 +314,7 @@ LEFT JOIN (
 
     private class RescateConPrecio
     {
+        public int IdCliente { get; set; }
         public DateTime FechaEnvio { get; set; }
         public decimal Precio { get; set; }
     }

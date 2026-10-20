@@ -32,6 +32,11 @@ public class ChurnDbContext : DbContext
         modelBuilder.Entity<PrediccionFactorRiesgo>()
             .Property(f => f.Impacto)
             .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<Cliente>()
+            .HasMany(c => c.Eventos)
+            .WithOne()
+            .HasForeignKey(e => e.IdCliente);
     }
 }
 

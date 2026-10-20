@@ -11,12 +11,27 @@
     </div>
 
     <nav class="flex-column">
-        
+        @if (Puede("Integraciones"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="integraciones" title="Integraciones">
+                    <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
+                </NavLink>
+            </div>
+        }
         @if (Puede("Clientes"))
         {
             <div class="nav-item">
                 <NavLink class="nav-link" href="clientes" title="Clientes">
                 <span class="icon">👥</span> <span class="nav-text">Clientes</span>
+            </NavLink>
+        </div>
+        }        
+        @if (Puede("Predicciones"))
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link" href="predicciones" title="Predicciones">
+                <span class="icon">🎯</span> <span class="nav-text">Predicciones</span>
             </NavLink>
         </div>
         }
@@ -28,14 +43,6 @@
                 </NavLink>
             </div>
         }
-        @if (Puede("Predicciones"))
-        {
-            <div class="nav-item">
-                <NavLink class="nav-link" href="predicciones" title="Predicciones">
-                <span class="icon">🎯</span> <span class="nav-text">Predicciones</span>
-            </NavLink>
-        </div>
-        }
         @if (Puede("Automatización"))
         {
             <div class="nav-item">
@@ -44,8 +51,6 @@
             </NavLink>
         </div>
         }
-
-        <!-- Reportes: ítem padre con submenú desplegable -->
         @if (Puede("Reportes"))
         {
             <div class="nav-item">
@@ -74,14 +79,7 @@
             </div>
         }
 
-        @if (Puede("Integraciones"))
-        {
-            <div class="nav-item">
-                <NavLink class="nav-link" href="integraciones" title="Integraciones">
-                <span class="icon">🗄️</span> <span class="nav-text">Integraciones</span>
-            </NavLink>
-        </div>
-        }
+        
 
         <!-- Administración: ítem padre con submenú desplegable (Usuarios / Roles) -->
         @if (Puede("Administración"))

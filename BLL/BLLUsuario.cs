@@ -3,7 +3,6 @@ using DAL;
 
 namespace BLL
 {
-    /// <summary>Lifeline ":Usuario" de los DS.</summary>
     public class BLLUsuario
     {
         private readonly AccesoDatos _dal;
@@ -15,17 +14,10 @@ namespace BLL
             _dal = dal;
         }
 
-        /// <summary>
-        /// DS CU18: ObtenerUsuario(string email, string contraseña): Usuario.
-        /// La contraseña NO filtra la consulta: el DS la valida después (ValidarContraseña), una vez
-        /// descartados usuario inexistente / inactivo / cuenta bloqueada, y como el hash lleva salt
-        /// no se puede comparar en SQL. El parámetro se conserva solo para respetar la firma del DS.
-        /// </summary>
         public Task<Usuario?> ObtenerUsuario(string email, string contraseña)
             => ObtenerUsuario(email);
 
 
-        /// <summary>DS CU19: ObtenerUsuario(string email): Usuario.</summary>
         public async Task<Usuario?> ObtenerUsuario(string email)
         {
             var sql = $"SELECT {Columnas} FROM Usuario WHERE Email = @Email AND Estado <> @Eliminado";
@@ -33,20 +25,18 @@ namespace BLL
             return filas.FirstOrDefault();
         }
 
-        /// <summary>DS CU19: ActualizarContraseña(string email, string nuevaClave). Guarda el hash, nunca el texto plano.</summary>
-        /// <summary>nuevaClave llega YA hasheada desde la UI (CifradoService.Hashear).</summary>
         public async Task ActualizarContraseña(string email, string nuevaClave)
         {
             const string sql = "UPDATE Usuario SET Contrasena = @Contrasena WHERE Email = @Email";
             await _dal.Modificar(sql, new { Contrasena = nuevaClave, Email = (email ?? "").Trim() });
         }
-        // Usuario interno de los envíos automáticos: no se lista.
+        
         private const string EmailUsuarioSistema = "sistema@mailtest.com";
 
         private const string ColumnasListado = "IdUsuario AS Id, Nombre, Apellido, Email, IdRol, Estado";
         private const string FiltroListado = "Estado <> @Eliminado AND Email <> @EmailSistema";
 
-        // DS: ObtenerUsuarios(): List<Usuario>  (orden alfabético por nombre completo, CU20 paso 4)
+        
         public async Task<List<Usuario>> ObtenerUsuarios()
         {
             var sql = $"SELECT {ColumnasListado} FROM Usuario WHERE {FiltroListado} ORDER BY Nombre, Apellido";
@@ -54,7 +44,7 @@ namespace BLL
             return filas.ToList();
         }
 
-        // DS: ObtenerUsuariosPorRol(int idRol): List<Usuario>
+        
         public async Task<List<Usuario>> ObtenerUsuariosPorRol(int idRol)
         {
             var sql = $"SELECT {ColumnasListado} FROM Usuario WHERE {FiltroListado} AND IdRol = @IdRol ORDER BY Nombre, Apellido";
@@ -62,7 +52,7 @@ namespace BLL
             return filas.ToList();
         }
 
-        // DS: BuscarUsuario(string dato): List<Usuario>  (por nombre, apellido o correo)
+        
         public async Task<List<Usuario>> BuscarUsuario(string dato)
         {
             var patron = "%" + (dato ?? "").Trim().Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]") + "%";
@@ -75,7 +65,7 @@ namespace BLL
             return filas.ToList();
         }
 
-        // DS: EliminarUsuario(int idUsuario) -> DAL.Eliminar(...): int  (baja lógica + invalida enlaces pendientes)
+        
         public async Task<int> EliminarUsuario(int idUsuario)
         {
             const string sql = @"
@@ -93,31 +83,66 @@ namespace BLL
             });
         }
 
+        private const string NombreRolAdministrador = "Administrador";
+
+        // DS: ValidarEliminacion(int idUsuario, int idUsuarioSesion): ResultadoValidacion
+        // Consulta la BD en el momento: no depende de la lista que tiene cargada la pantalla.
+        public async Task<ResultadoValidacion> ValidarEliminacion(int idUsuario, int idUsuarioSesion)
+        {
+            var usuario = await ObtenerUsuario(idUsuario);
+            if (usuario is null)
+                return ResultadoValidacion.No("El usuario ya no existe.");
+
+            if (idUsuario == idUsuarioSesion)
+                return ResultadoValidacion.No("Es el usuario con el que iniciaste sesión.");
+
+            // CU20 14.1: único administrador activo
+            const string sqlEsAdminActivo = @"
+                SELECT COUNT(*) AS Valor FROM Usuario u
+                INNER JOIN Rol r ON r.IdRol = u.IdRol
+                WHERE u.IdUsuario = @IdUsuario AND u.Estado = @Activo AND r.Nombre = @Rol";
+            var esAdminActivo = ((await _dal.Leer<ValorEscalar>(sqlEsAdminActivo,
+                new { IdUsuario = idUsuario, Activo = EstadoUsuario.Activo, Rol = NombreRolAdministrador }))
+                .FirstOrDefault()?.Valor ?? 0) > 0;
+
+            if (esAdminActivo)
+            {
+                const string sqlTotalAdmins = @"
+                    SELECT COUNT(*) AS Valor FROM Usuario u
+                    INNER JOIN Rol r ON r.IdRol = u.IdRol
+                    WHERE u.Estado = @Activo AND r.Nombre = @Rol";
+                var adminsActivos = (await _dal.Leer<ValorEscalar>(sqlTotalAdmins,
+                    new { Activo = EstadoUsuario.Activo, Rol = NombreRolAdministrador }))
+                    .FirstOrDefault()?.Valor ?? 0;
+
+                if (adminsActivos <= 1)
+                    return ResultadoValidacion.No("Es el único administrador activo.");
+            }
+
+            return ResultadoValidacion.Ok();
+        }
+
         private const string ContrasenaPendiente = "SIN_ACCESO";
 
-        // DS CU22: ObtenerUsuario(int idUsuario): Usuario
         public async Task<Usuario?> ObtenerUsuario(int idUsuario)
         {
             var sql = $"SELECT {ColumnasListado} FROM Usuario WHERE IdUsuario = @IdUsuario AND Estado <> @Eliminado";
             var filas = await _dal.Leer<Usuario>(sql, new { IdUsuario = idUsuario, Eliminado = EstadoUsuario.Eliminado });
             return filas.FirstOrDefault();
         }
-
-        // DS CU21: VerificarEmailRegistrado(string email): bool
         public async Task<bool> VerificarEmailRegistrado(string email)
         {
-            const string sql = "SELECT COUNT(*) AS Valor FROM Usuario WHERE Email = @Email AND Estado <> @Eliminado";
-            var filas = await _dal.Leer<ValorEscalar>(sql, new { Email = (email ?? "").Trim(), Eliminado = EstadoUsuario.Eliminado });
+            const string sql = "SELECT COUNT(*) AS Valor FROM Usuario WHERE Email = @Email";
+            var filas = await _dal.Leer<ValorEscalar>(sql, new { Email = (email ?? "").Trim() });
             return (filas.FirstOrDefault()?.Valor ?? 0) > 0;
         }
 
-        // DS CU21: CrearUsuarioInactivo(string nombreCompleto, string email, int rol)
         public async Task<int> CrearUsuarioInactivo(string nombreCompleto, string email, int rol)
         {
             var (nombre, apellido) = SepararNombreCompleto(nombreCompleto);
             const string sql = @"
-INSERT INTO Usuario (Nombre, Apellido, Email, Contrasena, IdRol, Estado)
-VALUES (@Nombre, @Apellido, @Email, @Contrasena, @IdRol, @Estado)";
+            INSERT INTO Usuario (Nombre, Apellido, Email, Contrasena, IdRol, Estado)
+            VALUES (@Nombre, @Apellido, @Email, @Contrasena, @IdRol, @Estado)";
             return await _dal.Escribir(sql, new
             {
                 Nombre = nombre,
@@ -129,20 +154,18 @@ VALUES (@Nombre, @Apellido, @Email, @Contrasena, @IdRol, @Estado)";
             });
         }
 
-        // DS CU22: ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
         public async Task<int> ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
         {
             var actual = await ObtenerUsuario(idUsuario)
                 ?? throw new InvalidOperationException("El usuario no existe.");
 
-            // Si el nombre no cambió se conserva cómo estaba separado en la base.
             var (nombre, apellido) = Normalizar(nombreCompleto) == Normalizar(actual.NombreCompleto)
                 ? (actual.Nombre, actual.Apellido)
                 : SepararNombreCompleto(nombreCompleto);
 
             const string sql = @"
-UPDATE Usuario SET Nombre = @Nombre, Apellido = @Apellido, IdRol = @IdRol
-WHERE IdUsuario = @IdUsuario AND Estado <> @Eliminado";
+            UPDATE Usuario SET Nombre = @Nombre, Apellido = @Apellido, IdRol = @IdRol
+            WHERE IdUsuario = @IdUsuario AND Estado <> @Eliminado";
             return await _dal.Modificar(sql, new
             {
                 Nombre = nombre,
@@ -153,7 +176,6 @@ WHERE IdUsuario = @IdUsuario AND Estado <> @Eliminado";
             });
         }
 
-        // Al establecer la contraseña desde el enlace de activación la cuenta pasa a Activo.
         public async Task ActivarUsuario(string email)
         {
             const string sql = "UPDATE Usuario SET Estado = @Activo WHERE Email = @Email AND Estado = @Inactivo";

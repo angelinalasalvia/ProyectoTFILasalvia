@@ -85,8 +85,6 @@ namespace BLL
 
         private const string NombreRolAdministrador = "Administrador";
 
-        // DS: ValidarEliminacion(int idUsuario, int idUsuarioSesion): ResultadoValidacion
-        // Consulta la BD en el momento: no depende de la lista que tiene cargada la pantalla.
         public async Task<ResultadoValidacion> ValidarEliminacion(int idUsuario, int idUsuarioSesion)
         {
             var usuario = await ObtenerUsuario(idUsuario);
@@ -95,8 +93,7 @@ namespace BLL
 
             if (idUsuario == idUsuarioSesion)
                 return ResultadoValidacion.No("Es el usuario con el que iniciaste sesión.");
-
-            // CU20 14.1: único administrador activo
+                        
             const string sqlEsAdminActivo = @"
                 SELECT COUNT(*) AS Valor FROM Usuario u
                 INNER JOIN Rol r ON r.IdRol = u.IdRol
@@ -196,5 +193,10 @@ namespace BLL
 
         private static string Normalizar(string texto)
             => string.Join(' ', (texto ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToLowerInvariant();
+    }
+    public record ResultadoValidacion(bool Valido, string Motivo = "")
+    {
+        public static ResultadoValidacion Ok() => new(true);
+        public static ResultadoValidacion No(string motivo) => new(false, motivo);
     }
 }

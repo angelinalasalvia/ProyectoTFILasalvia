@@ -177,7 +177,6 @@
 
 @code {
     private const int TamanoPagina = 10;
-    private const string NombreAdministrador = "Administrador";
     private static readonly string[] AvatarClases = { "cli-avatar-azul", "cli-avatar-ambar", "cli-avatar-rojo" };
 
     private string textoBusqueda = "";
@@ -187,11 +186,10 @@
 
     private string mensajeExito = "";
     private string mensajeError = "";
-    private string motivoNoEliminable = "";
 
     private List<Rol> rolesDisponibles = new();
-    private List<Usuario> todosLosUsuarios = new();   // lo que devuelve ObtenerUsuarios()
-    private List<UsuarioItem> usuarios = new();       // lo que queda tras filtrar y buscar
+    private List<Usuario> todosLosUsuarios = new();   
+    private List<UsuarioItem> usuarios = new();      
     private UsuarioItem? usuarioAEliminar;
 
     private int totalUsuarios => todosLosUsuarios.Count;
@@ -296,14 +294,18 @@
 
         usuarioAEliminar = null;
 
-        if (!ValidarEliminacion(usuario.Id))
-        {
-            mensajeError = $"No es posible eliminar el usuario: {motivoNoEliminable}";
-            return;
-        }
-
         try
         {
+            // DS: ValidarEliminacion(idUsuario, idUsuarioSesion) -> :Usuario (BLL)
+            var idSesion = SessionManager.GetInstance().Usuario?.Id ?? 0;
+            var validacion = await UsuarioBLL.ValidarEliminacion(usuario.Id, idSesion);
+
+            if (!validacion.Valido)
+            {
+                mensajeError = $"No es posible eliminar el usuario: {validacion.Motivo}";
+                return;
+            }
+
             await UsuarioBLL.EliminarUsuario(usuario.Id);
             await CargarUsuarios();   // DS: ObtenerUsuarios() + MostrarTablaUsuarios()
             mensajeExito = "El usuario fue eliminado correctamente.";
@@ -314,39 +316,7 @@
         }
     }
 
-    // DS: ValidarEliminacion(int idUsuario): bool
-    private bool ValidarEliminacion(int idUsuario)
-    {
-        motivoNoEliminable = "";
-
-        var usuario = todosLosUsuarios.FirstOrDefault(u => u.Id == idUsuario);
-        if (usuario is null)
-        {
-            motivoNoEliminable = "El usuario ya no existe.";
-            return false;
-        }
-
-        // CU20 14.1: único administrador activo
-        var idRolAdmin = rolesDisponibles.FirstOrDefault(r => r.Nombre == NombreAdministrador)?.IdRol;
-        if (idRolAdmin is not null && usuario.IdRol == idRolAdmin && EsActivo(usuario.Estado))
-        {
-            var adminsActivos = todosLosUsuarios.Count(u => u.IdRol == idRolAdmin && EsActivo(u.Estado));
-            if (adminsActivos <= 1)
-            {
-                motivoNoEliminable = "Es el único administrador activo.";
-                return false;
-            }
-        }
-
-        // Agregado: no eliminar al usuario con la sesión iniciada.
-        if (SessionManager.GetInstance().Usuario?.Id == idUsuario)
-        {
-            motivoNoEliminable = "Es el usuario con el que iniciaste sesión.";
-            return false;
-        }
-
-        return true;
-    }
+    
 
     // DS: CancelarEliminacion() -> MantenerVistaSinCambios()
     private void CancelarEliminacion() => MantenerVistaSinCambios();

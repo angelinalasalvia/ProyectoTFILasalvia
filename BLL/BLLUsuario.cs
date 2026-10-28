@@ -1,5 +1,6 @@
 ﻿using BE;
 using DAL;
+using System.Text.RegularExpressions;
 
 namespace BLL
 {
@@ -93,7 +94,16 @@ namespace BLL
 
             if (idUsuario == idUsuarioSesion)
                 return ResultadoValidacion.No("Es el usuario con el que iniciaste sesión.");
-                        
+
+            // CU20 14.1: único administrador activo
+            if (await EsUnicoAdministradorActivo(idUsuario))
+                return ResultadoValidacion.No("Es el único administrador activo.");
+
+            return ResultadoValidacion.Ok();
+        }
+
+        private async Task<bool> EsUnicoAdministradorActivo(int idUsuario)
+        {
             const string sqlEsAdminActivo = @"
                 SELECT COUNT(*) AS Valor FROM Usuario u
                 INNER JOIN Rol r ON r.IdRol = u.IdRol
@@ -101,20 +111,27 @@ namespace BLL
             var esAdminActivo = ((await _dal.Leer<ValorEscalar>(sqlEsAdminActivo,
                 new { IdUsuario = idUsuario, Activo = EstadoUsuario.Activo, Rol = NombreRolAdministrador }))
                 .FirstOrDefault()?.Valor ?? 0) > 0;
+            if (!esAdminActivo) return false;
 
-            if (esAdminActivo)
-            {
-                const string sqlTotalAdmins = @"
-                    SELECT COUNT(*) AS Valor FROM Usuario u
-                    INNER JOIN Rol r ON r.IdRol = u.IdRol
-                    WHERE u.Estado = @Activo AND r.Nombre = @Rol";
-                var adminsActivos = (await _dal.Leer<ValorEscalar>(sqlTotalAdmins,
-                    new { Activo = EstadoUsuario.Activo, Rol = NombreRolAdministrador }))
-                    .FirstOrDefault()?.Valor ?? 0;
+            const string sqlTotalAdmins = @"
+                SELECT COUNT(*) AS Valor FROM Usuario u
+                INNER JOIN Rol r ON r.IdRol = u.IdRol
+                WHERE u.Estado = @Activo AND r.Nombre = @Rol";
+            var adminsActivos = (await _dal.Leer<ValorEscalar>(sqlTotalAdmins,
+                new { Activo = EstadoUsuario.Activo, Rol = NombreRolAdministrador }))
+                .FirstOrDefault()?.Valor ?? 0;
+            return adminsActivos <= 1;
+        }
 
-                if (adminsActivos <= 1)
-                    return ResultadoValidacion.No("Es el único administrador activo.");
-            }
+        // DS CU22: ValidarModificacion(int idUsuario, int idRol): ResultadoValidacion
+        public async Task<ResultadoValidacion> ValidarModificacion(int idUsuario, int idRolNuevo)
+        {
+            var actual = await ObtenerUsuario(idUsuario);
+            if (actual is null)
+                return ResultadoValidacion.No("El usuario ya no existe.");
+
+            if (actual.IdRol != idRolNuevo && await EsUnicoAdministradorActivo(idUsuario))
+                return ResultadoValidacion.No("Es el único administrador activo: no se puede cambiar su rol.");
 
             return ResultadoValidacion.Ok();
         }
@@ -184,6 +201,10 @@ namespace BLL
             });
         }
 
+        private static readonly Regex RegexEmail = new(@"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        public static bool EsEmailValido(string? email)
+            => !string.IsNullOrWhiteSpace(email) && RegexEmail.IsMatch(email.Trim());
         public static (string Nombre, string Apellido) SepararNombreCompleto(string nombreCompleto)
         {
             var partes = (nombreCompleto ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

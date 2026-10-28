@@ -349,9 +349,16 @@
         return true;
     }
 
-    // DS CU22: ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
+    // DS CU22: ValidarModificacion + ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
     private async Task<bool> ModificarUsuario()
     {
+        var validacion = await UsuarioBLL.ValidarModificacion(UsuarioId!.Value, rolSeleccionado);
+        if (!validacion.Valido)
+        {
+            mensajeError = $"No es posible modificar el usuario: {validacion.Motivo}";
+            return false;
+        }
+
         await UsuarioBLL.ModificarUsuario(UsuarioId!.Value, nombreCompleto, rolSeleccionado);
         mensajeConfirmacion = "La modificación fue realizada correctamente.";
         return true;
@@ -377,8 +384,7 @@
             return false;
         }
 
-        // En edición el correo no se modifica, así que no se vuelve a validar.
-        if (!EsEdicion && !EsEmailValido(email.Trim()))
+        if (!EsEdicion && !BLLUsuario.EsEmailValido(email))
         {
             errores.Add("email");
             mensajeError = "El formato del correo electrónico no es válido.";

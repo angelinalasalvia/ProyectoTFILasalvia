@@ -4,192 +4,202 @@
 @inject BLLRol RolBLL
 @using BE
 @using BLL
+@using Servicios
 
 <PageTitle>Gestión de Roles y Permisos</PageTitle>
 
-<!-- Barra superior -->
-<div class="usr-topbar">
-    <div class="search-box usr-search-box">
-        <span class="search-icon">🔍</span>
+@if (sinPermiso)
+{
+    <h3>Acceso denegado</h3>
+    <p>No tenés permisos para ver esta pantalla.</p>
+}
+else
+{
 
-        <input type="text"
-               placeholder="Buscar permisos..."
-               @bind="textoBusqueda"
-               @bind:event="oninput" />
+    <!-- Barra superior -->
+    <div class="usr-topbar">
+        <div class="search-box usr-search-box">
+            <span class="search-icon">🔍</span>
+
+            <input type="text"
+                   placeholder="Buscar permisos..."
+                   @bind="textoBusqueda"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="usr-topbar-icons">
+
+            <button class="usr-icon-btn" title="Notificaciones">
+                🔔
+            </button>
+
+            <button class="usr-icon-btn" title="Ayuda">
+                ❓
+            </button>
+
+            <button class="usr-icon-btn" title="Configuración">
+                ⚙️
+            </button>
+
+        </div>
     </div>
 
-    <div class="usr-topbar-icons">
 
-        <button class="usr-icon-btn" title="Notificaciones">
-            🔔
-        </button>
+    <!-- Encabezado -->
+    <div class="page-header">
 
-        <button class="usr-icon-btn" title="Ayuda">
-            ❓
-        </button>
+        <div>
+            <h1>Gestión de Roles y Permisos</h1>
 
-        <button class="usr-icon-btn" title="Configuración">
-            ⚙️
+            <p class="camp-subtitle">
+                Define y administra el nivel de acceso para cada tipo de usuario en el sistema.
+            </p>
+        </div>
+
+        <button class="btn-crear-campana"
+                @onclick="CrearRolPersonalizado">
+
+            <span>＋</span>
+            Nuevo Rol Personalizado
+
         </button>
 
     </div>
-</div>
 
 
-<!-- Encabezado -->
-<div class="page-header">
+    <!-- Roles -->
+    <div class="roles-grid">
 
-    <div>
-        <h1>Gestión de Roles y Permisos</h1>
+        @foreach (var rol in roles)
+        {
+            <div class="card rol-card">
 
-        <p class="camp-subtitle">
-            Define y administra el nivel de acceso para cada tipo de usuario en el sistema.
-        </p>
-    </div>
+                <div class="rol-card-header">
 
-    <button class="btn-crear-campana"
-            @onclick="CrearRolPersonalizado">
-
-        <span>＋</span>
-        Nuevo Rol Personalizado
-
-    </button>
-
-</div>
-
-
-<!-- Roles -->
-<div class="roles-grid">
-
-    @foreach (var rol in roles)
-    {
-        <div class="card rol-card">
-
-            <div class="rol-card-header">
-
-                <div class="rol-icon @rol.ClaseIcono">
-                    @rol.Icono
-                </div>
-
-                <div class="rol-nombre">
-                    @rol.Nombre
-                </div>
-
-                @if (rol.EsAdministrador)
-                {
-                    <div class="rol-lock"
-                         title="Rol con permisos obligatorios">
-                        🛡
+                    <div class="rol-icon @rol.ClaseIcono">
+                        @rol.Icono
                     </div>
-                }
+
+                    <div class="rol-nombre">
+                        @rol.Nombre
+                    </div>
+
+                    @if (rol.EsAdministrador)
+                    {
+                        <div class="rol-lock"
+                             title="Rol con permisos obligatorios">
+                            🛡
+                        </div>
+                    }
+
+                </div>
+
+                <p class="rol-descripcion">
+                    @rol.Descripcion
+                </p>
+
+            </div>
+        }
+
+    </div>
+
+
+    <!-- Matriz -->
+    <div class="card roles-matriz-card">
+
+        <div class="roles-matriz-header">
+
+            <div>
+                <h2>Matriz de Permisos Específicos</h2>
+
+                <p>
+                    Configura granularmente qué puede hacer cada rol dentro del ecosistema.
+                </p>
+            </div>
+
+            <div class="roles-matriz-actions">
+
+                <button class="btn-cancelar"
+                        @onclick="Cancelar">
+                    Cancelar
+                </button>
+
+                <button class="btn-confirmar"
+                        @onclick="GuardarCambios">
+                    Guardar Cambios
+                </button>
 
             </div>
 
-            <p class="rol-descripcion">
-                @rol.Descripcion
-            </p>
-
-        </div>
-    }
-
-</div>
-
-
-<!-- Matriz -->
-<div class="card roles-matriz-card">
-
-    <div class="roles-matriz-header">
-
-        <div>
-            <h2>Matriz de Permisos Específicos</h2>
-
-            <p>
-                Configura granularmente qué puede hacer cada rol dentro del ecosistema.
-            </p>
         </div>
 
-        <div class="roles-matriz-actions">
 
-            <button class="btn-cancelar"
-                    @onclick="Cancelar">
-                Cancelar
-            </button>
+        <!-- Tabla -->
+        <div class="roles-table-container">
 
-            <button class="btn-confirmar"
-                    @onclick="GuardarCambios">
-                Guardar Cambios
-            </button>
+            <table class="roles-permisos-table">
 
-        </div>
-
-    </div>
-
-
-    <!-- Tabla -->
-    <div class="roles-table-container">
-
-        <table class="roles-permisos-table">
-
-            <thead>
-                <tr>
-
-                    <th>PERMISO</th>
-
-                    @foreach (var rol in roles)
-                    {
-                        <th>
-                            @rol.Nombre
-                        </th>
-                    }
-
-                </tr>
-            </thead>
-
-            <tbody>
-
-                @foreach (var permiso in PermisosFiltrados)
-                {
+                <thead>
                     <tr>
 
-                        <td>
-                            <div class="permiso-nombre">
-
-                                <span class="permiso-icon">
-                                    @permiso.Icono
-                                </span>
-
-                                <span>
-                                    @permiso.Nombre
-                                </span>
-
-                            </div>
-                        </td>
-
+                        <th>PERMISO</th>
 
                         @foreach (var rol in roles)
                         {
-                            <td>
-
-                                <input type="checkbox"
-                                       class="permiso-checkbox"
-                                       checked="@TienePermiso(rol, permiso)"
-                                       disabled="@EsPermisoObligatorio(rol, permiso)"
-                                       @onchange="e => CambiarPermiso(rol, permiso, e)" />
-
-                            </td>
+                            <th>
+                                @rol.Nombre
+                            </th>
                         }
 
                     </tr>
-                }
+                </thead>
 
-            </tbody>
+                <tbody>
 
-        </table>
+                    @foreach (var permiso in PermisosFiltrados)
+                    {
+                        <tr>
+
+                            <td>
+                                <div class="permiso-nombre">
+
+                                    <span class="permiso-icon">
+                                        @permiso.Icono
+                                    </span>
+
+                                    <span>
+                                        @permiso.Nombre
+                                    </span>
+
+                                </div>
+                            </td>
+
+
+                            @foreach (var rol in roles)
+                            {
+                                <td>
+
+                                    <input type="checkbox"
+                                           class="permiso-checkbox"
+                                           checked="@TienePermiso(rol, permiso)"
+                                           @onchange="e => CambiarPermiso(rol, permiso, e)" />
+
+                                </td>
+                            }
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
 
     </div>
 
-</div>
 
+}
 
 @if (!string.IsNullOrWhiteSpace(mensaje))
 {
@@ -204,7 +214,20 @@
 
 @code {
     private const string NombreAdministrador = "Administrador";
+    private const string PermisoGestionRoles = "Roles";
 
+    // CU23 11: dependencias entre permisos (permiso -> permiso que requiere).
+    // Coinciden con lo que exige MainLayout/NavMenu: sin "Administración" no se llega a /administracion/*,
+    // y sin "Reportes" no se llega a /reportes/*.
+    private static readonly Dictionary<string, string> Dependencias = new()
+    {
+        ["Reporte de Efectividad"] = "Reportes",
+        ["Reporte de Retención"] = "Reportes",
+        ["Usuarios"] = "Administración",
+        ["Roles"] = "Administración",
+    };
+
+    private bool sinPermiso;
     private string textoBusqueda = "";
     private string mensaje = "";
     private string mensajeError = "";
@@ -228,18 +251,29 @@
             ? permisos
             : permisos.Where(p => p.Nombre.Contains(textoBusqueda.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    // DS: Accede a "Gestión de Roles y Permisos"
+    // DS: Accede a "Gestión de Roles y Permisos"  (CU23 pasos 1 a 6)
     protected override async Task OnInitializedAsync()
     {
+        // DS: ValidarPermisoGestionRoles()  (CU23 paso 2 / 2.1)
+        if (!ValidarPermisoGestionRoles())
+        {
+            sinPermiso = true;
+            return;
+        }
+
         try
         {
             await CargarConfiguracion();   // luego el markup hace MostrarFormulario / MostrarConfiguracionActual
         }
         catch (Exception)
         {
-            mensajeError = "No se pudo cargar la configuración de roles y permisos.";
+            mensajeError = "No se pudo cargar la configuración de roles y permisos.";   // CU23 3.1
         }
     }
+
+    // DS: ValidarPermisoGestionRoles(): bool
+    private static bool ValidarPermisoGestionRoles()
+        => SessionManager.GetInstance().TienePermiso(PermisoGestionRoles);
 
     // DS: ObtenerRoles() + ObtenerPermisosAsociados() + ActualizarInformacionMostrada()
     private async Task CargarConfiguracion()
@@ -277,14 +311,8 @@
     private bool TienePermiso(RolItem rol, PermisoItem permiso)
         => asignados.TryGetValue(rol.Id, out var set) && set.Contains(permiso.Id);
 
-    // CU23 9.2: los permisos del Administrador son obligatorios (checkbox deshabilitado).
-    private bool EsPermisoObligatorio(RolItem rol, PermisoItem permiso)
-        => rol.EsAdministrador;
-
     private void CambiarPermiso(RolItem rol, PermisoItem permiso, ChangeEventArgs e)
     {
-        if (EsPermisoObligatorio(rol, permiso)) return;
-
         var asignado = e.Value is bool valor && valor;
         var set = asignados[rol.Id];
         if (asignado) set.Add(permiso.Id); else set.Remove(permiso.Id);
@@ -300,13 +328,13 @@
         mensajeError = "";
     }
 
-    // DS: ModificaAsignacionPermisos(int idRol, List<Permiso> listaPermisosModificados)
+    // DS: ModificaAsignacionPermisos(int idRol, List<Permiso> listaPermisosModificados)  (CU23 pasos 8 y 9)
     private void ModificaAsignacionPermisos(int idRol, List<Permiso> listaPermisosModificados)
     {
         modificaciones[idRol] = listaPermisosModificados;
     }
 
-    // DS: Selecciona botón "Guardar"()
+    // DS: Selecciona botón "Guardar"()  (CU23 pasos 10 a 15)
     private async Task GuardarCambios()
     {
         mensaje = "";
@@ -314,56 +342,79 @@
 
         if (modificaciones.Count == 0)
         {
-            mensaje = "No hay cambios para guardar.";
+            mensaje = "No hay cambios para guardar.";   // CU23 10.2
             return;
         }
 
         try
         {
-            // Se valida todo antes de guardar nada.
-            foreach (var (idRol, lista) in modificaciones.ToList())
+            // Paso 11: consistencia de TODOS los roles modificados, antes de guardar nada.
+            var detalles = new List<string>();
+            foreach (var (idRol, lista) in modificaciones)
             {
                 if (!ValidarConsistenciaConfiguracion(lista))
-                {
-                    mensajeError = "La configuración seleccionada es inconsistente. Verifique los campos indicados: "
-                                   + string.Join(", ", permisosAInformar) + ".";
-                    return;
-                }
+                    detalles.Add($"{NombreRol(idRol)}: {string.Join("; ", permisosAInformar)}");
+            }
 
+            if (detalles.Count > 0)
+            {
+                // CU23 11.1: se informa qué permisos corregir; las modificaciones pendientes se conservan.
+                mensajeError = "La configuración seleccionada es inconsistente. Verifique los campos indicados — "
+                               + string.Join(" | ", detalles) + ".";
+                return;
+            }
+
+            // Paso 12: permisos obligatorios del Administrador.
+            foreach (var (idRol, lista) in modificaciones)
+            {
                 if (!ValidarPermisosObligatoriosAdmin(idRol, lista))
                 {
                     mensajeError = "No es posible eliminar permisos obligatorios del rol Administrador.";
-                    await CargarConfiguracion();   // 9.2.2: se cancela la modificación
+                    await CargarConfiguracion();   // CU23 12.1.2: se cancela la modificación (descarta pendientes)
                     return;
                 }
             }
 
-            foreach (var (idRol, lista) in modificaciones)
-                await RolBLL.ActualizarPermisosRol(idRol, lista);
+            // Paso 13: un solo guardado atómico para todos los roles modificados.
+            await RolBLL.ActualizarPermisosRoles(modificaciones);
 
-            await CargarConfiguracion();           // vuelve a leer y refresca lo mostrado
+            // Paso 14: vuelve a leer y refresca lo mostrado.
+            await CargarConfiguracion();
+
+            // Paso 15
             mensaje = "La configuración fue actualizada correctamente.";
         }
         catch (Exception)
         {
+            // CU23 13.1: la transacción hizo rollback, la BD no cambió; los cambios pendientes siguen en pantalla.
             mensajeError = "Ocurrió un error inesperado al guardar. Intentá nuevamente.";
         }
     }
 
     // DS: ValidarConsistenciaConfiguracion(List<Permiso> listaPermisosModificados): bool
+    // Deja en permisosAInformar los permisos que deben corregirse.
     private bool ValidarConsistenciaConfiguracion(List<Permiso> listaPermisosModificados)
     {
         permisosAInformar.Clear();
         var idsCatalogo = permisos.Select(p => p.Id).ToHashSet();
+        var seleccionados = listaPermisosModificados
+            .Select(p => p.Nombre)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // Permisos que no existen en el catálogo.
         foreach (var p in listaPermisosModificados)
             if (!idsCatalogo.Contains(p.Id))
                 permisosAInformar.Add(string.IsNullOrEmpty(p.Nombre) ? $"#{p.Id}" : p.Nombre);
 
+        // Permisos repetidos.
         foreach (var repetido in listaPermisosModificados.GroupBy(p => p.Id).Where(g => g.Count() > 1))
-            permisosAInformar.Add(repetido.First().Nombre);
+            permisosAInformar.Add($"{repetido.First().Nombre} repetido");
 
-        // Si el profe define dependencias entre permisos (ej. "Reglas" requiere "Campañas"), se agregan acá.
+        // Dependencias: un permiso no puede estar sin el permiso que requiere.
+        foreach (var p in listaPermisosModificados)
+            if (Dependencias.TryGetValue(p.Nombre, out var requerido) && !seleccionados.Contains(requerido))
+                permisosAInformar.Add($"\"{p.Nombre}\" requiere \"{requerido}\"");
+
         return permisosAInformar.Count == 0;
     }
 
@@ -378,7 +429,10 @@
         return permisos.All(p => ids.Contains(p.Id));
     }
 
-    // CU23 8.1: descartar modificaciones y volver a la configuración guardada.
+    private string NombreRol(int idRol)
+        => roles.FirstOrDefault(r => r.Id == idRol)?.Nombre ?? $"Rol #{idRol}";
+
+    // CU23 10.1: descartar modificaciones y volver a la configuración guardada.
     private async Task Cancelar()
     {
         try
@@ -407,13 +461,14 @@
         _ => ("◆", "rol-icon-gerente")
     };
 
+    // Nombres alineados con la tabla Permiso de la BD.
     private static string IconoPermiso(string nombre) => nombre switch
     {
         "Reportes" => "▣",
         "Campañas" => "☷",
-        "Reglas" => "♧",
+        "Automatización" => "♧",
         "Predicciones" => "✥",
-        "Gestión de Usuarios" => "♢",
+        "Administración" => "♢",
         _ => "•"
     };
 

@@ -183,7 +183,7 @@
             return false;
         }
 
-        if (!Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        if (!BLLUsuario.EsEmailValido(email))
         {
             errores.Add("email");
             mensajeError = "El formato del email ingresado no es válido.";

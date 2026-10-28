@@ -1,9 +1,9 @@
-﻿using BE;
+﻿using System.Text;
+using BE;
 using DAL;
 
 namespace BLL
 {
-    /// <summary>Lifeline ":Rol" del DS de CU18.</summary>
     public class BLLRol
     {
         private readonly AccesoDatos _dal;
@@ -12,7 +12,6 @@ namespace BLL
         {
             _dal = dal;
         }
-        // DS CU21/CU22: TraerPermisosRol(int id): List<Permiso>
         public async Task<List<Permiso>> TraerPermisosRol(int idRol)
         {
             const string sql = @"
@@ -24,7 +23,6 @@ namespace BLL
             var filas = await _dal.Leer<Permiso>(sql, new { IdRol = idRol });
             return filas.ToList();
         }
-        /// <summary>DS: ObtenerRolYPermisos(idUsuario): Rol — el rol del usuario con sus permisos.</summary>
         public async Task<Rol> ObtenerRolYPermisos(int idUsuario)
         {
             const string sqlRol = @"
@@ -43,7 +41,6 @@ namespace BLL
             rol.Permisos = (await _dal.Leer<Permiso>(sqlPermisos, new { rol.IdRol })).ToList();
             return rol;
         }
-        // DS: ObtenerRoles(): List<Rol>  -> cada rol viene con sus permisos asignados
         public async Task<List<Rol>> ObtenerRoles()
         {
             var roles = (await _dal.Leer<Rol>(
@@ -64,7 +61,6 @@ namespace BLL
             return roles;
         }
 
-        // DS: ObtenerPermisosAsociados(): List<Permiso>  -> catálogo completo (las filas de la matriz)
         public async Task<List<Permiso>> ObtenerPermisosAsociados()
         {
             var filas = await _dal.Leer<Permiso>(
@@ -72,26 +68,31 @@ namespace BLL
             return filas.ToList();
         }
 
-        // DS: ActualizarPermisosRol(int idRol, List<Permiso> listaPermisosModificados): int
-        // Reemplaza las asignaciones del rol en una sola transacción. Los ids son int (no hay texto del usuario en el SQL).
-        public async Task<int> ActualizarPermisosRol(int idRol, List<Permiso> listaPermisosModificados)
+        public async Task<int> ActualizarPermisosRoles(Dictionary<int, List<Permiso>> listaModificaciones)
         {
-            var ids = listaPermisosModificados.Select(p => p.Id).Distinct().ToList();
+            if (listaModificaciones.Count == 0) return 0;
 
-            var sql = @"
-            SET XACT_ABORT ON;
-            BEGIN TRANSACTION;
-            DELETE FROM Rol_Permiso WHERE RolID = @IdRol;";
+            var parametros = new Dictionary<string, object?>();
+            var sql = new StringBuilder("SET XACT_ABORT ON;\n");
 
-            if (ids.Count > 0)
-                sql += $@"
-            INSERT INTO Rol_Permiso (RolID, PermisoID)
-            SELECT @IdRol, IdPermiso FROM Permiso WHERE IdPermiso IN ({string.Join(",", ids)});";
+            var i = 0;
+            foreach (var (idRol, permisos) in listaModificaciones)
+            {
+                var pRol = $"Rol{i}";
+                parametros[pRol] = idRol;
+                sql.AppendLine($"DELETE FROM Rol_Permiso WHERE RolID = @{pRol};");
 
-            sql += @"
-            COMMIT TRANSACTION;";
+                var j = 0;
+                foreach (var idPermiso in permisos.Select(p => p.Id).Distinct())
+                {
+                    var pPer = $"Per{i}_{j++}";
+                    parametros[pPer] = idPermiso;
+                    sql.AppendLine($"INSERT INTO Rol_Permiso (RolID, PermisoID) VALUES (@{pRol}, @{pPer});");
+                }
+                i++;
+            }
 
-            return await _dal.Modificar(sql, new { IdRol = idRol });
+            return await _dal.Modificar(sql.ToString(), parametros);
         }
 
         private class AsignacionRolPermiso

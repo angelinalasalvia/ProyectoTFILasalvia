@@ -35,7 +35,6 @@
     <div class="camp-form-error">⚠ @mensajeError</div>
 }
 
-<!-- Nombre de la regla -->
 <div class="card regla-card">
     <label class="form-label">NOMBRE DE LA REGLA</label>
     <input class="campana-select @(errores.Contains("nombre") ? "input-error" : "")"
@@ -62,7 +61,6 @@
     }
 </div>
 
-<!-- 1. Definir condición -->
 <div class="card regla-card">
     <div class="regla-section-header">
         <div class="regla-section-titulo">
@@ -146,7 +144,6 @@
     </p>
 </div>
 
-<!-- 2. Definir acción -->
 <div class="card regla-card">
     <div class="regla-section-header">
         <div class="regla-section-titulo">
@@ -208,7 +205,6 @@
     }
 </div>
 
-<!-- 3. Segmentación adicional -->
 <div class="card regla-card">
     <div class="regla-section-header">
         <div class="regla-section-titulo">
@@ -256,7 +252,6 @@
     private bool guardando = false;
     private HashSet<string> errores = new();
 
-    // --- Segmentación adicional (CU11, pasos 8-9) ---
     private List<BE.Sede> sedesDisponibles = new();
     private List<BE.PlanSocio> planesDisponibles = new();
     private int? sedeSeleccionadaId;
@@ -264,22 +259,17 @@
 
     private int? estimacion;
 
-    // --- Condiciones: se editan directamente como BE.Condicion (mismo formato que la BD) ---
-    // Operador = conector de la condición con la SIGUIENTE. El botón Y/O que se ve entre dos
-    // condiciones es el Operador de la de arriba.
     private List<BE.Condicion> condiciones = new()
     {
         new BE.Condicion { Atributo = BE.Condicion.NivelRiesgo, Valor = "Alto" },
     };
 
-    // Los atributos válidos (y sus valores) están definidos en BE.Condicion.Atributos.
     private static (string Nombre, bool EsNumerico, string Unidad, string[] Opciones, bool PermiteMultiples) AtributoDef(string nombre)
     {
         var def = BE.Condicion.BuscarAtributo(nombre);
-        return def.Nombre is null ? BE.Condicion.Atributos[0] : def; // atributo desconocido (dato viejo): se usa el primero
+        return def.Nombre is null ? BE.Condicion.Atributos[0] : def;
     }
 
-    // --- Campañas existentes disponibles para asociar (CU11, paso 5) ---
     private List<BE.Campana> campañasDisponibles = new();
     private Dictionary<int, string> nombresIncentivo = new();
     private int? campañaSeleccionadaId;
@@ -321,7 +311,6 @@
         planSeleccionadoId = regla.IdPlan;
         condiciones = regla.Condiciones;
 
-        // Dato viejo: un atributo que ya no existe se reemplaza por el primero con su valor inicial.
         foreach (var c in condiciones.Where(c => BE.Condicion.BuscarAtributo(c.Atributo).Nombre is null))
         {
             AlCambiarAtributo(c);
@@ -335,18 +324,17 @@
 
     private async Task AgregarCondicion()
     {
-        condiciones[^1].Operador = BE.Condicion.Y; // conector con la nueva condición (por defecto Y)
+        condiciones[^1].Operador = BE.Condicion.Y; 
         condiciones.Add(new BE.Condicion { Atributo = BE.Condicion.Inactividad, Valor = "15" });
         await ActualizarEstimacion();
     }
 
     private async Task EliminarCondicion(BE.Condicion c)
     {
-        // Siempre debe quedar al menos una condición.
         if (condiciones.Count > 1)
         {
             condiciones.Remove(c);
-            condiciones[^1].Operador = BE.Condicion.Y; // la última no conecta con nada
+            condiciones[^1].Operador = BE.Condicion.Y; 
             await ActualizarEstimacion();
         }
     }
@@ -362,7 +350,7 @@
         var def = AtributoDef(c.Atributo);
         var elegidos = BE.Condicion.SepararValores(c.Valor).ToHashSet();
         if (!elegidos.Remove(valor)) elegidos.Add(valor);
-        c.Valor = BE.Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); // siempre en el orden de las opciones
+        c.Valor = BE.Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); 
         await ActualizarEstimacion();
     }
 
@@ -372,7 +360,6 @@
         await ActualizarEstimacion();
     }
 
-    // CU11, pasos 6, 5.1, 5.2 y 8.1: estimación real calculada en la BLL.
     private async Task ActualizarEstimacion()
     {
         try
@@ -385,8 +372,6 @@
         }
     }
 
-    // Al cambiar el atributo se descarta el valor del anterior (evita guardar un valor
-    // que pertenece a otro atributo, ej. "Alto" en Historial de Pagos).
     private void AlCambiarAtributo(BE.Condicion c)
     {
         var def = AtributoDef(c.Atributo);
@@ -394,16 +379,10 @@
         c.Valor = def.EsNumerico ? "15" : def.Opciones[0];
     }
 
-    // Botones de los atributos que admiten varios valores (ej. Nivel de Riesgo = Medio o Alto).
     private static bool EstaElegido(BE.Condicion c, string valor) =>
         BE.Condicion.SepararValores(c.Valor).Contains(valor);
 
         
-
-    /// <summary>
-    /// Estimación en tiempo real de clientes impactados (CU11, pasos 4, 7 y 9).
-    /// Cálculo simulado: en un escenario real vendría del backend / modelo de IA.
-    /// </summary>
     
     private bool Validar()
     {
@@ -429,17 +408,15 @@
         return errores.Count == 0;
     }
 
-    // Vista previa de cómo se va a leer la regla (mismo texto que se ve en el listado).
     private string ResumenActual() => BLLRegla.ArmarResumen(condiciones);
 
     private async Task GuardarRegla()
     {
-        // Evita crear la regla dos veces si se hace doble clic mientras espera la redirección.
         if (guardando) return;
 
-        // Alterno 5.1: no hay campañas creadas en el sistema.
         if (campañasDisponibles.Count == 0)
         {
+            mensajeError = "Necesitás al menos una campaña para poder guardar una regla.";
             return;
         }
 
@@ -453,7 +430,6 @@
         guardando = true;
         try
         {
-            // CU11, 11.2: el nombre no puede repetirse (en edición el nombre no se modifica).
             if (!EsEdicion && await BLLRegla.ExisteReglaConNombre(nombreRegla))
             {
                 errores.Add("nombreDuplicado");
@@ -477,7 +453,6 @@
         }
         catch (ArgumentException ex)
         {
-            // Mensajes de validación de la BLL (ya están redactados para el usuario).
             guardando = false;
             mensajeConfirmacion = "";
             mensajeError = ex.Message;
@@ -503,7 +478,6 @@
 
     private void Cancelar()
     {
-        // Alterno 10.1: descarta los cambios y vuelve al listado de reglas (CU10).
         Navigation.NavigateTo("/automatizacion");
     }
 }

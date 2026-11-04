@@ -130,6 +130,12 @@ internal class ImportadorDatos
         public int? IdIntegracion { get; set; }
     }
 
+    public class FilaCatalogo
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+    }
+
     public async Task<ResultadoImportacion> Importar(int idIntegracion, MapeoIntegracion mapeo,
         TransformadorMapeo.Resultado datos, CancellationToken ct)
     {
@@ -147,6 +153,11 @@ internal class ImportadorDatos
         foreach (var e in existentes.Where(e => e.IdIntegracion is null || e.IdIntegracion == idIntegracion))
             porEmail.TryAdd(e.Email.Trim().ToLowerInvariant(), e);
 
+        var planes = (await _accesoDatos.Leer<FilaCatalogo>("SELECT IdPlan AS Id, Nombre FROM [Plan]", ct: ct))
+    .ToDictionary(f => f.Nombre, f => f.Id, StringComparer.OrdinalIgnoreCase);
+        var sedes = (await _accesoDatos.Leer<FilaCatalogo>("SELECT IdSede AS Id, Nombre FROM Sede", ct: ct))
+            .ToDictionary(f => f.Nombre, f => f.Id, StringComparer.OrdinalIgnoreCase);
+
         int nuevos = 0, actualizados = 0;
 
         foreach (var c in datos.Clientes)
@@ -156,6 +167,15 @@ internal class ImportadorDatos
                 porIdExterno.TryGetValue(c.Clave, out existente);
             existente ??= porEmail.GetValueOrDefault(c.Email.ToLowerInvariant());
 
+
+            int? idPlan = c.Plan is null ? null : await ObtenerOCrearId(planes, c.Plan, true, ct);
+            int? idSede = c.Sede is null ? null : await ObtenerOCrearId(sedes, c.Sede, false, ct);
+            if (existente is null)
+            {
+                idPlan ??= await ObtenerOCrearId(planes, SinDefinir, true, ct);
+                idSede ??= await ObtenerOCrearId(sedes, SinDefinir, false, ct);
+            }
+
             var parametros = new
             {
                 id = existente?.IdCliente,
@@ -164,29 +184,27 @@ internal class ImportadorDatos
                 email = c.Email,
                 telefono = c.Telefono,
                 estado = c.Estado,
-                plan = c.Plan,
+                idPlan,
                 sexo = c.Sexo,
-                sede = c.Sede,
+                idSede,
                 idExterno = c.IdExterno,
                 idIntegracion,
-                estadoNuevo = c.Estado ?? "Socio Activo",
-                planNuevo = c.Plan ?? SinDefinir,
-                sexoNuevo = c.Sexo ?? SinDefinir,
-                sedeNuevo = c.Sede ?? SinDefinir
+                estadoNuevo = c.Estado ?? "Socio Activo",                
+                sexoNuevo = c.Sexo ?? SinDefinir
             };
 
             if (existente is not null)
             {
-                // Los datos que la fuente no trae (o no están mapeados) se conservan como estaban.
+                
                 await _accesoDatos.Modificar(
                     @"UPDATE Cliente
                          SET Nombre = @nombre, Email = @email,
                              Apellido = CASE WHEN @apellido = '' THEN Apellido ELSE @apellido END,
                              Telefono = COALESCE(@telefono, Telefono),
                              EstadoRegistro = COALESCE(@estado, EstadoRegistro),
-                             PlanSocio = COALESCE(@plan, PlanSocio),
+                             IdPlan = COALESCE(@idPlan, IdPlan),
                              Sexo = COALESCE(@sexo, Sexo),
-                             Sede = COALESCE(@sede, Sede),
+                             IdSede = COALESCE(@idSede, IdSede),
                              IdExterno = COALESCE(@idExterno, IdExterno),
                              IdIntegracion = @idIntegracion
                        WHERE IdCliente = @id", parametros, ct: ct);
@@ -195,8 +213,8 @@ internal class ImportadorDatos
             else
             {
                 await _accesoDatos.Escribir(
-                    @"INSERT INTO Cliente (Nombre, Apellido, Email, EstadoRegistro, PlanSocio, Sexo, Sede, Telefono, IdExterno, IdIntegracion)
-                      VALUES (@nombre, @apellido, @email, @estadoNuevo, @planNuevo, @sexoNuevo, @sedeNuevo, @telefono, @idExterno, @idIntegracion)",
+                    @"INSERT INTO Cliente (Nombre, Apellido, Email, EstadoRegistro, IdPlan, Sexo, IdSede, Telefono, IdExterno, IdIntegracion)
+                    VALUES (@nombre, @apellido, @email, @estadoNuevo, @idPlan, @sexoNuevo, @idSede, @telefono, @idExterno, @idIntegracion)",
                     parametros, ct: ct);
                 nuevos++;
             }
@@ -230,7 +248,26 @@ internal class ImportadorDatos
         return new ResultadoImportacion(nuevos, actualizados, eventosNuevos, sinCliente);
     }
 
-    // Inserta solo los eventos que todavía no existen (mismo cliente, tipo y fecha).
+    private async Task<int> ObtenerOCrearId(Dictionary<string, int> catalogo, string nombre, bool esPlan, CancellationToken ct)
+    {
+        if (catalogo.TryGetValue(nombre, out var id)) return id;
+
+        if (esPlan)
+        {
+            await _accesoDatos.Escribir("INSERT INTO [Plan] (Nombre, Precio) VALUES (@nombre, 0)", new { nombre }, ct: ct);
+            id = (await _accesoDatos.Leer<FilaCatalogo>(
+                "SELECT IdPlan AS Id, Nombre FROM [Plan] WHERE Nombre = @nombre", new { nombre }, ct: ct)).First().Id;
+        }
+        else
+        {
+            await _accesoDatos.Escribir("INSERT INTO Sede (Nombre) VALUES (@nombre)", new { nombre }, ct: ct);
+            id = (await _accesoDatos.Leer<FilaCatalogo>(
+                "SELECT IdSede AS Id, Nombre FROM Sede WHERE Nombre = @nombre", new { nombre }, ct: ct)).First().Id;
+        }
+
+        catalogo[nombre] = id;
+        return id;
+    }
     private async Task<int> InsertarLoteEventos((int IdCliente, string Evento, DateTime Fecha)[] lote, CancellationToken ct)
     {
         var sql = new StringBuilder(

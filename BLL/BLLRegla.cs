@@ -48,16 +48,12 @@ public class BLLRegla
         return await CompletarCondiciones(reglas, ct);
     }
 
-    // Whitelist: nunca se concatena texto de la UI en el ORDER BY.
     private static string OrdenSql(string criterio) => criterio switch
     {
         "Alfabético" => "r.Nombre ASC",
         "Más ejecutadas" => "VecesEjecutada DESC, r.FechaCreacion DESC",
-        _ => "r.FechaCreacion DESC" // "Más recientes"
+        _ => "r.FechaCreacion DESC" 
     };
-
-
-    //public bool RequiereAccionAdicional(Regla regla) => false;
 
 
     public Task CambiarEstado(int idRegla, string nuevoEstado, CancellationToken ct = default)
@@ -143,12 +139,6 @@ public class BLLRegla
         regla.CondicionResumen = ArmarResumen(regla.Condiciones);
         return regla;
     }
-
-    // CU11, pasos 6 y 9 (y 5.1/5.2): estimación en tiempo real de la cantidad de socios activos con predicción
-    // que cumplen hoy las condiciones y la segmentación (plan / sede), con la misma evaluación (CumpleRegla)
-    // que usa el motor. No aplica los topes de frecuencia del motor (30 días entre envíos, bloqueo post-rescate,
-    // máximo 3 intentos): responde "quién califica", no "a quién se le enviaría hoy".
-    // Devuelve null si la configuración está incompleta (todavía no se puede estimar).
     public async Task<int?> EstimarClientes(List<Condicion> condiciones, int? idSede = null, int? idPlan = null, CancellationToken ct = default)
     {
         List<Condicion> filas;
@@ -156,17 +146,7 @@ public class BLLRegla
         catch (ArgumentException) { return null; }
 
         var ahora = DateTime.Now;
-
-        string? nombrePlan = null;
-        string? nombreSede = null;
-        if (idPlan is not null)
-            nombrePlan = (await _accesoDatos.Leer<NombreSolamente>(
-                "SELECT Nombre FROM [Plan] WHERE IdPlan = @idPlan", new { idPlan }, ct: ct)).FirstOrDefault()?.Nombre;
-        if (idSede is not null)
-            nombreSede = (await _accesoDatos.Leer<NombreSolamente>(
-                "SELECT Nombre FROM Sede WHERE IdSede = @idSede", new { idSede }, ct: ct)).FirstOrDefault()?.Nombre;
-
-        var regla = new Regla { Condiciones = filas, NombrePlan = nombrePlan, NombreSede = nombreSede };
+        var regla = new Regla { Condiciones = filas, IdPlan = idPlan, IdSede = idSede };
 
         var predicciones = (await _accesoDatos.Leer<Prediccion>(
             @"SELECT p.IdCliente, p.NivelRiesgo
@@ -175,7 +155,7 @@ public class BLLRegla
               WHERE c.EstadoRegistro = N'Socio Activo'", ct: ct)).ToList();
 
         var clientes = (await _accesoDatos.Leer<Cliente>(
-            "SELECT IdCliente, PlanSocio, Sede FROM Cliente WHERE EstadoRegistro = N'Socio Activo'", ct: ct))
+            "SELECT IdCliente, IdPlan, IdSede FROM Cliente WHERE EstadoRegistro = N'Socio Activo'", ct: ct))
             .ToDictionary(c => c.IdCliente);
 
         var ultimaVisita = await UltimaFechaPorCliente(TipoEvento.VisitaGimnasio, null, ct);
@@ -233,7 +213,6 @@ public class BLLRegla
         return total;
     }
 
-    // CU11, paso 11: el nombre de la regla no puede repetirse (se ignoran espacios en los extremos).
     public async Task<bool> ExisteReglaConNombre(string nombre, CancellationToken ct = default)
     {
         var resultado = await _accesoDatos.Leer<IdSolamente>(
@@ -243,7 +222,6 @@ public class BLLRegla
     }
 
     private class IdSolamente { public int Id { get; set; } }
-    private class NombreSolamente { public string Nombre { get; set; } = string.Empty; }
 
     public static string ArmarResumen(List<Condicion> condiciones)
     {
@@ -262,31 +240,17 @@ public class BLLRegla
         return string.Join(" O ", grupos.Select(g => g.Count > 1 ? $"({string.Join(" Y ", g)})" : g[0]));
     }
 
-    // ------------------------------------------------------------------------------------
-    // Motor de reglas
-    // ------------------------------------------------------------------------------------
-    private const int DiasEntreEnvios = 30;         // máximo 1 envío por cliente cada 30 días (de cualquier regla)
-    private const int DiasBloqueoPostRescate = 60;  // el modelo tarda ~60 días en reflejar una recuperación
-    private const int MaxIntentosPorEpisodio = 3;   // episodio = desde el último "Rescatado"; al llegar a 3 pasa a gestión manual
+    private const int DiasEntreEnvios = 30;        
+    private const int DiasBloqueoPostRescate = 60;  
+    private const int MaxIntentosPorEpisodio = 3;  
     private const int DiasPagoVencidoVigente = 60;
 
-    // Evalúa las reglas activas sobre las predicciones vigentes y registra un envío simulado por cada cliente
-    // que corresponda. Devuelve los envíos realizados (cliente, regla, campaña).
-    //
-    // Por cada cliente activo con predicción:
-    //   1) Si recibió una campaña hace menos de 30 días, se lo saltea.
-    //   2) Si fue rescatado hace menos de 60 días, se lo saltea.
-    //   3) Si ya tuvo 3 intentos en el episodio actual, se lo saltea (gestión manual).
-    //   4) Gana la primera regla que cumple, de menor a mayor Prioridad (a igual prioridad, la más antigua).
-    // 'fechaReferencia' permite simular otra fecha (pruebas); por defecto es ahora.
     public async Task<(List<(int IdCliente, int IdRegla, int IdCampania)> Enviados, int Cerrados)> EjecutarReglas(
     DateTime? fechaReferencia = null, CancellationToken ct = default)
     {
         var ahora = fechaReferencia ?? DateTime.Now;
         var enviados = new List<(int IdCliente, int IdRegla, int IdCampania)>();
-
-        // Primero se cierran los envíos cuya ventana de 7 días terminó (define Rescatado / Sin acción),
-        // porque de eso depende el bloqueo y el conteo de intentos.
+                
         var cerrados = await _historial.CerrarAccionesPendientes(ahora, ct);
 
         var reglas = (await ObtenerReglas(ct))
@@ -297,7 +261,6 @@ public class BLLRegla
 
         var idUsuarioSistema = await _historial.ObtenerIdUsuarioSistema(ct);
 
-        // --- Datos (una consulta por tema; se cruzan en memoria) ---
         var predicciones = (await _accesoDatos.Leer<Prediccion>(
             @"SELECT p.IdCliente, p.NivelRiesgo
               FROM Prediccion p
@@ -305,14 +268,13 @@ public class BLLRegla
               WHERE c.EstadoRegistro = N'Socio Activo'", ct: ct)).ToList();
 
         var clientes = (await _accesoDatos.Leer<Cliente>(
-            "SELECT IdCliente, PlanSocio, Sede FROM Cliente WHERE EstadoRegistro = N'Socio Activo'", ct: ct))
+            "SELECT IdCliente, IdPlan, IdSede FROM Cliente WHERE EstadoRegistro = N'Socio Activo'", ct: ct))
             .ToDictionary(c => c.IdCliente);
 
         var ultimaVisita = await UltimaFechaPorCliente(TipoEvento.VisitaGimnasio, null, ct);
         var ultimoPagoVencido = await UltimaFechaPorCliente(TipoEvento.PagoVencido, ahora.AddDays(-(DiasPagoVencidoVigente + 2)), ct);
         var ultimoPago = await UltimaFechaPorCliente(TipoEvento.PagoRegistrado, null, ct);
 
-        // Solo si alguna regla usa "Actividad" (caída de visitas: últimos 30 días vs 30 anteriores).
         var usaActividad = reglas.Any(r => r.Condiciones.Any(c => c.Atributo == Condicion.Actividad));
         var visitas60 = usaActividad
             ? (await _accesoDatos.Leer<EventoCliente>(
@@ -331,19 +293,15 @@ public class BLLRegla
 
             var historial = acciones[prediccion.IdCliente].OrderBy(a => a.FechaEnvio).ToList();
 
-            // 1) Tope de frecuencia
             if (historial.Count > 0 && (ahora - historial[^1].FechaEnvio).Days < DiasEntreEnvios) continue;
 
-            // 2) Bloqueo posterior a un rescate
             var ultimoRescate = historial.LastOrDefault(a => a.Resultado == HistorialAccion.ResultadoRescatado);
             if (ultimoRescate is not null &&
                 (ahora - (ultimoRescate.FechaConversion ?? ultimoRescate.FechaEnvio)).Days < DiasBloqueoPostRescate) continue;
 
-            // 3) Intentos del episodio actual (campañas enviadas después del último rescate)
             var intentos = historial.Count(a => ultimoRescate is null || a.FechaEnvio > ultimoRescate.FechaEnvio);
             if (intentos >= MaxIntentosPorEpisodio) continue;
 
-            // 4) Atributos del cliente y evaluación de reglas
             var inactividad = ultimaVisita.TryGetValue(prediccion.IdCliente, out var fechaVisita) ? (ahora - fechaVisita).Days : 9999;
 
             var vencido = ultimoPagoVencido.TryGetValue(prediccion.IdCliente, out var fechaVencido)
@@ -365,7 +323,6 @@ public class BLLRegla
                 CumpleRegla(r, cliente, prediccion.NivelRiesgo, inactividad, vencido, caidaActividad, textoIntentos));
             if (regla is null) continue;
 
-            // 5) Envío simulado
             await _historial.RegistrarAccion(prediccion.IdCliente, regla.IdCampania, regla.IdRegla, idUsuarioSistema,
                 HistorialAccion.TipoEnvioAutomatico, ahora, ct);
             enviados.Add((prediccion.IdCliente, regla.IdRegla, regla.IdCampania));
@@ -374,12 +331,6 @@ public class BLLRegla
         return (enviados, cerrados);
     }
 
-    // CU03, paso 4: sugiere una campaña para el cliente según su nivel de riesgo.
-    // Toma la primera regla ACTIVA (menor Prioridad; a igual prioridad, la más antigua) cuya segmentación
-    // (plan / sede) incluye al cliente y que tiene una condición de "Nivel de Riesgo" que abarca el nivel
-    // del cliente. A diferencia del motor (EjecutarReglas) no evalúa inactividad, pagos ni intentos previos:
-    // la sugerencia se basa solo en el riesgo y el usuario puede elegir otra campaña.
-    // Si ninguna regla aplica, sugiere la campaña con mayor tasa de éxito.
     public async Task<(Campana? Campana, string Motivo)> SugerirCampana(
         Cliente cliente, string nivelRiesgo, List<Campana> campanas, CancellationToken ct = default)
     {
@@ -391,8 +342,8 @@ public class BLLRegla
 
         foreach (var regla in reglas)
         {
-            if (regla.NombrePlan is not null && regla.NombrePlan != cliente.PlanSocio) continue;
-            if (regla.NombreSede is not null && regla.NombreSede != cliente.Sede) continue;
+            if (regla.IdPlan is not null && regla.IdPlan != cliente.IdPlan) continue;
+            if (regla.IdSede is not null && regla.IdSede != cliente.IdSede) continue;
 
             var abarcaElNivel = regla.Condiciones.Any(c =>
                 c.Atributo == Condicion.NivelRiesgo && Condicion.SepararValores(c.Valor).Contains(nivelRiesgo));
@@ -409,7 +360,6 @@ public class BLLRegla
             $"No hay ninguna regla activa para clientes con riesgo {nivelRiesgo.ToLower()}: se sugiere la campaña con mayor tasa de éxito.");
     }
 
-    // Fecha del último evento de un tipo por cliente (opcionalmente desde una fecha).
     private async Task<Dictionary<int, DateTime>> UltimaFechaPorCliente(string evento, DateTime? desde, CancellationToken ct)
     {
         var filtroDesde = desde is null ? string.Empty : " AND Fecha >= @desde";
@@ -419,14 +369,11 @@ public class BLLRegla
         return filas.ToDictionary(f => f.IdCliente, f => f.Fecha);
     }
 
-    // Una regla se cumple si el cliente está en el plan / sede de la segmentación (si tiene) Y se cumplen sus condiciones.
     private static bool CumpleRegla(Regla regla, Cliente cliente, string nivelRiesgo, int inactividad, bool vencido, int caidaActividad, string intentos)
     {
-        if (regla.NombrePlan is not null && regla.NombrePlan != cliente.PlanSocio) return false;
-        if (regla.NombreSede is not null && regla.NombreSede != cliente.Sede) return false;
+        if (regla.IdPlan is not null && regla.IdPlan != cliente.IdPlan) return false;
+        if (regla.IdSede is not null && regla.IdSede != cliente.IdSede) return false;
 
-        // El Y se evalúa antes que el O: las condiciones consecutivas unidas por Y forman un grupo,
-        // y la regla se cumple si se cumple algún grupo. Operador = conector con la SIGUIENTE condición.
         var grupoCumple = true;
         for (int i = 0; i < regla.Condiciones.Count; i++)
         {
@@ -438,7 +385,7 @@ public class BLLRegla
                 Condicion.HistorialPagos => (vencido ? "Vencido" : "Al día") == c.Valor,
                 Condicion.Actividad => caidaActividad > int.Parse(c.Valor),
                 Condicion.IntentosPrevios => Condicion.SepararValores(c.Valor).Contains(intentos),
-                _ => false // atributo desconocido: la condición no se cumple
+                _ => false 
             };
 
             var cierraGrupo = i == regla.Condiciones.Count - 1 || c.Operador == Condicion.O;
@@ -452,12 +399,11 @@ public class BLLRegla
         return false;
     }
 
-    // --- Helpers privados ---
 
     private static string DescribirCondicion(Condicion c)
     {
         var def = Condicion.BuscarAtributo(c.Atributo);
-        if (def.Nombre is null) return $"{c.Atributo}: {c.Valor}"; // atributo desconocido (dato viejo): se muestra tal cual
+        if (def.Nombre is null) return $"{c.Atributo}: {c.Valor}"; 
 
         if (def.EsNumerico) return $"{c.Atributo} > {c.Valor} {def.Unidad}".TrimEnd();
 
@@ -474,8 +420,6 @@ public class BLLRegla
             throw new ArgumentException($"La prioridad debe estar entre {Regla.PrioridadMinima} y {Regla.PrioridadMaxima}.");
     }
 
-    // Valida cada condición contra el vocabulario de BE.Condicion y devuelve las filas ya normalizadas
-    // (valores múltiples ordenados y sin repetidos; conector de la última = "Y").
     private static List<Condicion> ValidarYNormalizarCondiciones(List<Condicion> condiciones)
     {
         if (condiciones is null || condiciones.Count == 0)
@@ -508,7 +452,7 @@ public class BLLRegla
                 if (elegidos.Count > 1 && !def.PermiteMultiples)
                     throw new ArgumentException($"La condición {i + 1} ({def.Nombre}) admite un solo valor.");
 
-                valorFinal = Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); // orden canónico
+                valorFinal = Condicion.UnirValores(def.Opciones.Where(elegidos.Contains)); 
             }
 
             var esUltima = i == condiciones.Count - 1;

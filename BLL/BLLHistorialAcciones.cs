@@ -7,8 +7,6 @@ public class BLLHistorialAcciones
 {
     private readonly AccesoDatos _accesoDatos;
 
-    //public BLLHistorialAcciones(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
-
     private readonly ServicioEnvio _envio;
 
     public BLLHistorialAcciones(AccesoDatos accesoDatos, ServicioEnvio envio)
@@ -17,11 +15,6 @@ public class BLLHistorialAcciones
         _envio = envio;
     }
 
-    // CU04 - Métricas globales de las campañas con acciones enviadas dentro del período [desde, hasta].
-    // El rango es inclusivo por día: se consulta hasta el final del día "hasta" (si no, un "hasta" elegido
-    // desde un selector de fecha, que llega a las 00:00, dejaría afuera todas las acciones de ese día).
-    // - Éxito global y canal más efectivo se calculan sobre las campañas que ya tienen TasaExito.
-    // - KPI objetivo: una campaña lo alcanza cuando ClientesAlcanzados >= Meta (solo cuenta las que tienen Meta).
     public async Task<MetricasCampana> ObtenerMetricasGlobalesXPeriodo(DateTime desde, DateTime hasta, CancellationToken ct = default)
     {
         var desdeInclusive = desde.Date;
@@ -46,7 +39,6 @@ public class BLLHistorialAcciones
         var conTasa = campanasDelPeriodo.Where(c => c.TasaExito.HasValue).ToList();
         if (conTasa.Count == 0)
         {
-            // Hubo campañas, pero todavía ninguna tiene tasa de éxito calculada.
             return new MetricasCampana
             {
                 HayCampanasEnPeriodo = true,
@@ -70,8 +62,6 @@ public class BLLHistorialAcciones
         };
     }
 
-    // CU13 - ObtenerMetricasEfectividad. Trae el período pedido y el anterior (misma duración) en una sola consulta.
-    // Las acciones "Pendiente" (programadas que todavía no salieron) no cuentan.
     public async Task<MetricasEfectividad> ObtenerMetricasEfectividad(DateTime desde, DateTime hasta, CancellationToken ct = default)
     {
         var desdeInclusive = desde.Date;
@@ -114,8 +104,6 @@ public class BLLHistorialAcciones
         };
     }
 
-    // CU14 - ObtenerMetricasRetencion(periodo, segmento). Período = últimos "dias" días (incluye hoy) contra los "dias" anteriores.
-    // Clientes recuperados = clientes distintos con Resultado = Rescatado. MRR salvado = precio del plan de esos clientes.
     public async Task<MetricasRetencion> ObtenerMetricasRetencion(int dias, string? segmento = null, CancellationToken ct = default)
     {
         var hastaExclusivo = DateTime.Today.AddDays(1);
@@ -127,7 +115,7 @@ public class BLLHistorialAcciones
             $@"SELECT ha.IdCliente, ha.FechaEnvio, ha.FechaConversion, p.Precio
            FROM HistorialAcciones ha
            JOIN Cliente c ON c.IdCliente = ha.IdCliente
-           JOIN [Plan] p ON p.Nombre = c.PlanSocio
+           JOIN [Plan] p ON p.IdPlan = c.IdPlan
            WHERE ha.Resultado = @rescatado
              AND ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusivo
              AND {condicion}",
@@ -170,11 +158,12 @@ public class BLLHistorialAcciones
         SELECT ha.IdHistorial, ha.EstadoEnvio, ha.FechaEnvio, ha.FechaLectura, ha.FechaConversion,
                ha.TipoAccion, ha.IdCampaña AS IdCampania, ha.IdCliente, ha.IdUsuario, ha.Resultado, ha.Estado,
                COALESCE(ha.FechaConversion, ha.FechaLectura, ha.FechaEnvio) AS FechaAccion,
-               c.Nombre AS NombreCliente, c.Apellido AS ApellidoCliente, c.PlanSocio AS PlanCliente
+               c.Nombre AS NombreCliente, c.Apellido AS ApellidoCliente, pl.Nombre AS PlanCliente
         FROM HistorialAcciones ha
-        JOIN Cliente c ON c.IdCliente = ha.IdCliente";
+        JOIN Cliente c ON c.IdCliente = ha.IdCliente
+        JOIN [Plan] pl ON pl.IdPlan = c.IdPlan";
 
-    // Paso 2 y 6-7: historial completo de la campaña, ordenado por fecha de acción (más reciente primero).
+    
     public async Task<List<HistorialAccion>> ObtenerHistorialCampania(int idCampania, CancellationToken ct = default)
     {
         var resultado = await _accesoDatos.Leer<HistorialAccion>(
@@ -183,17 +172,14 @@ public class BLLHistorialAcciones
         return resultado.ToList();
     }
 
-    // Whitelist de columnas ordenables - evita concatenar texto arbitrario del usuario
-    // directo en el ORDER BY (eso sería una puerta abierta a SQL injection).
     private static readonly Dictionary<string, string> ColumnasOrdenables = new()
     {
         ["nombre"] = "c.Nombre",
-        ["plan"] = "c.PlanSocio",
+        ["plan"] = "pl.Nombre",
         ["resultado"] = "ha.Resultado",
         ["fecha"] = "FechaAccion",
     };
 
-    // Pasos 8-9: reordenar según la columna elegida.
     public async Task<List<HistorialAccion>> OrdenarHistorialCampania(int idCampania, string columna, CancellationToken ct = default)
     {
         var columnaSql = ColumnasOrdenables.GetValueOrDefault(columna, "FechaAccion");
@@ -203,7 +189,6 @@ public class BLLHistorialAcciones
         return resultado.ToList();
     }
 
-    // Pasos 10-11: filtro por resultado y/o plan (agregué idCampania, ver nota arriba).
     public async Task<List<HistorialAccion>> FiltrarPorClientes(int idCampania, string? resultado, string? plan, CancellationToken ct = default)
     {
         var condiciones = new List<string> { "ha.IdCampaña = @idCampania" };
@@ -216,7 +201,7 @@ public class BLLHistorialAcciones
         }
         if (!string.IsNullOrWhiteSpace(plan) && plan != "Todos")
         {
-            condiciones.Add("c.PlanSocio = @plan");
+            condiciones.Add("pl.Nombre = @plan");
             parametros["plan"] = plan;
         }
 
@@ -227,15 +212,9 @@ public class BLLHistorialAcciones
         return resultadoLista.ToList();
     }
 
-    // ------------------------------------------------------------------------------------
-    // Envíos automáticos (motor de reglas)
-    // ------------------------------------------------------------------------------------
-
     private const string EmailUsuarioSistema = "sistema@mailtest.com";
-    private const int DiasVentanaResultado = 7; // igual a la ventana que muestra CampanaDetalle
+    private const int DiasVentanaResultado = 7; 
 
-    // Los envíos automáticos se registran con el usuario "Sistema" (HistorialAcciones.IdUsuario es obligatorio).
-    // Se lee sobre HistorialAccion porque solo interesa IdUsuario (todavía no hay clase Usuario en BE).
     public async Task<int> ObtenerIdUsuarioSistema(CancellationToken ct = default)
     {
         var usuario = (await _accesoDatos.Leer<HistorialAccion>(
@@ -246,8 +225,6 @@ public class BLLHistorialAcciones
             ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}). Ejecutá el script de datos.");
     }
 
-    // Envía el mensaje y registra la acción. Devuelve el resultado del envío (los envíos fallidos
-    // también quedan registrados, con EstadoEnvio = Fallido).
     public async Task<ResultadoEnvio> RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
                                       CancellationToken ct = default)
     {
@@ -306,11 +283,6 @@ public class BLLHistorialAcciones
         return new ResultadoEnvio(false, $"Canal no soportado: {campania.Canal}");
     }
 
-    // ------------------------------------------------------------------------------------
-    // Acciones de retención manuales (CU03)
-    // ------------------------------------------------------------------------------------
-
-    // Paso 2: historial de acciones de retención del cliente, la más reciente primero.
     public async Task<List<HistorialAccion>> ObtenerHistorialCliente(int idCliente, CancellationToken ct = default)
     {
         var resultado = await _accesoDatos.Leer<HistorialAccion>(
@@ -326,8 +298,6 @@ public class BLLHistorialAcciones
         return resultado.ToList();
     }
 
-    // Pasos 6 y 12: fecha del último envío efectivo de la campaña a ese cliente (null si nunca se envió).
-    // No cuentan los envíos fallidos ni los programados que todavía no salieron.
     public DateTime? ObtenerFechaEnvioPrevio(List<HistorialAccion> historial, int idCampania)
         => historial
             .Where(h => h.IdCampania == idCampania
@@ -336,8 +306,6 @@ public class BLLHistorialAcciones
             .Select(h => (DateTime?)h.FechaEnvio)
             .Max();
 
-    // Pasos 13 a 15. Sin fecha: envío inmediato (se envía y se registra). Con fecha: se registra como
-    // "Programada" y la envía EnvioProgramadoBackgroundService cuando llegue la hora.
     public async Task<ResultadoAccionManual> RegistrarAccionManual(
         int idCliente, int idCampania, int idUsuario, DateTime? fechaProgramada = null, CancellationToken ct = default)
     {
@@ -371,8 +339,6 @@ public class BLLHistorialAcciones
         return new ResultadoAccionManual(true, HistorialAccion.EstadoProgramada, null);
     }
 
-    // Envía las acciones programadas cuya fecha y hora ya llegó (lo ejecuta EnvioProgramadoBackgroundService).
-    // Devuelve cuántas procesó. El "AND Estado = @programada" del UPDATE evita procesar dos veces la misma acción.
     public async Task<int> EnviarAccionesProgramadas(DateTime ahora, CancellationToken ct = default)
     {
         var pendientes = (await _accesoDatos.Leer<HistorialAccion>(
@@ -411,11 +377,6 @@ public class BLLHistorialAcciones
         return pendientes.Count;
     }
 
-    // Cierra los envíos (automáticos y manuales) cuya ventana de observación (7 días) ya terminó y devuelve cuántos cerró.
-    //  - Rescatado: el cliente tuvo una visita o un pago registrado después del envío, dentro de la ventana
-    //    (sale de EventosCliente, no de una API).
-    //  - Si no volvió, la lectura y el clic se simulan (mientras no haya API real). La semilla es el IdHistorial,
-    //    así que el mismo envío siempre da el mismo resultado y las pruebas son repetibles.
     public async Task<int> CerrarAccionesPendientes(DateTime ahora, CancellationToken ct = default)
     {
         var pendientes = (await _accesoDatos.Leer<HistorialAccion>(
@@ -430,7 +391,6 @@ public class BLLHistorialAcciones
 
         foreach (var accion in pendientes)
         {
-            // MIN() devuelve una fila con NULL si no hubo eventos: Fecha queda en su valor por defecto.
             var vuelta = (await _accesoDatos.Leer<EventoCliente>(
                 @"SELECT MIN(Fecha) AS Fecha
                   FROM EventosCliente
@@ -458,19 +418,19 @@ public class BLLHistorialAcciones
             else
             {
                 var azar = new Random(accion.IdHistorial).NextDouble();
-                if (azar < 0.15)      // 15 %: hizo clic
+                if (azar < 0.15)      
                 {
                     resultado = HistorialAccion.ResultadoClic;
                     estadoEnvio = HistorialAccion.EnvioLeido;
                     fechaLectura = accion.FechaEnvio.AddHours(2);
                 }
-                else if (azar < 0.60) // 45 %: lo leyó pero no hizo nada
+                else if (azar < 0.60) 
                 {
                     resultado = HistorialAccion.ResultadoSinAccion;
                     estadoEnvio = HistorialAccion.EnvioLeido;
                     fechaLectura = accion.FechaEnvio.AddHours(3);
                 }
-                else                  // 40 %: solo llegó a entregarse
+                else                  
                 {
                     resultado = HistorialAccion.ResultadoSinAccion;
                     estadoEnvio = HistorialAccion.EnvioEntregado;
@@ -497,6 +457,4 @@ public class BLLHistorialAcciones
     }
 }
 
-// Resultado de ejecutar una acción de retención manual (CU03).
-// Estado: "Enviada", "Programada" o "Fallida" (en ese caso, Error trae el motivo).
 public record ResultadoAccionManual(bool Exito, string Estado, string? Error);

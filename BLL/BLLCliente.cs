@@ -13,6 +13,14 @@ public class BLLCliente
 
     private const string EstadoSocioActivo = "Socio Activo";
 
+    // SELECT base de Cliente: trae el nombre del plan y de la sede con alias PlanSocio / Sede.
+    public const string SelectClienteConPlanYSede = @"
+        SELECT c.IdCliente, c.Nombre, c.Apellido, c.Email, c.EstadoRegistro, c.Sexo, c.Telefono,
+               c.IdPlan, p.Nombre AS PlanSocio, c.IdSede, s.Nombre AS Sede
+        FROM Cliente c
+        JOIN [Plan] p ON p.IdPlan = c.IdPlan
+        JOIN Sede s ON s.IdSede = c.IdSede";
+
     // --- Parámetros del Engagement Score (0 a 100) ---
     private const double PesoVisitas = 50.0;
     private const double PesoApp = 30.0;
@@ -23,7 +31,7 @@ public class BLLCliente
 
     public static async Task<List<Cliente>> ObtenerClientesConEventosAsync(AccesoDatos accesoDatos, CancellationToken ct = default)
     {
-        var clientes = (await accesoDatos.Leer<Cliente>("SELECT * FROM Cliente", ct: ct)).ToList();
+        var clientes = (await accesoDatos.Leer<Cliente>(SelectClienteConPlanYSede, ct: ct)).ToList();
         var eventos = (await accesoDatos.Leer<EventoCliente>("SELECT * FROM EventosCliente", ct: ct)).ToList();
 
         var eventosPorCliente = eventos.ToLookup(e => e.IdCliente);
@@ -36,7 +44,7 @@ public class BLLCliente
     public async Task<Cliente?> ObtenerCliente(int idCliente, CancellationToken ct = default)
     {
         var resultado = await _accesoDatos.Leer<Cliente>(
-            "SELECT * FROM Cliente WHERE IdCliente = @idCliente",
+            $"{SelectClienteConPlanYSede} WHERE c.IdCliente = @idCliente",
             new { idCliente }, ct: ct);
 
         var cliente = resultado.FirstOrDefault();
@@ -50,8 +58,6 @@ public class BLLCliente
         return cliente;
     }
 
-    // Compara al cliente contra la media de los socios activos de su mismo plan (últimos 30 días).
-    // Solo se cargan los clientes y eventos del plan del cliente, no toda la base.
     public async Task<(double UsoInstalaciones, double InteraccionesApp)> ObtenerMetricasRelativasMedia(
         int idCliente, CancellationToken ct = default)
     {
@@ -78,14 +84,15 @@ public class BLLCliente
         var parametros = new { planSocio, estado = EstadoSocioActivo };
 
         var clientes = (await _accesoDatos.Leer<Cliente>(
-            "SELECT * FROM Cliente WHERE PlanSocio = @planSocio AND EstadoRegistro = @estado",
+            $"{SelectClienteConPlanYSede} WHERE p.Nombre = @planSocio AND c.EstadoRegistro = @estado",
             parametros, ct: ct)).ToList();
         if (clientes.Count == 0) return clientes;
 
         var eventos = (await _accesoDatos.Leer<EventoCliente>(
-            @"SELECT e.* FROM EventosCliente e
+              @"SELECT e.* FROM EventosCliente e
               INNER JOIN Cliente c ON c.IdCliente = e.IdCliente
-              WHERE c.PlanSocio = @planSocio AND c.EstadoRegistro = @estado",
+              INNER JOIN [Plan] p ON p.IdPlan = c.IdPlan
+              WHERE p.Nombre = @planSocio AND c.EstadoRegistro = @estado",
             parametros, ct: ct)).ToList();
 
         var eventosPorCliente = eventos.ToLookup(e => e.IdCliente);
@@ -101,8 +108,6 @@ public class BLLCliente
         return Math.Round((valorCliente - media) / media * 100, 1);
     }
 
-    // Una anomalía es que el uso de instalaciones o de la app esté al menos
-    // UmbralAnomalia % por debajo de la media del segmento.
     public (bool HayAnomalia, string Detalle) VerificarAnomalias(
         (double UsoInstalaciones, double InteraccionesApp) metricas)
     {
@@ -127,8 +132,6 @@ public class BLLCliente
         .Where(e => e.Evento == TipoEvento.PagoRegistrado)
         .Select(e => (DateTime?)e.Fecha).Max();
 
-    // Evolución del Engagement Score en CantidadBuckets tramos del período elegido.
-    // Una lista vacía significa que el cliente no tiene historial en ese período.
     public List<(string Etiqueta, double Score)> ObtenerEvolucionEngagement(Cliente cliente, string periodo)
     {
         var ahora = DateTime.Now;
@@ -175,17 +178,10 @@ public class BLLCliente
         _ => 30
     };
 
-    // ---------------------------------------------------------------------------
-    // CU08 - Ver listado de clientes
-    // ---------------------------------------------------------------------------
-
-    // Un pago "Al día" es uno registrado dentro del último ciclo de facturación.
     private const int DiasCicloPago = 30;
 
-    // Una fila por cliente con última interacción (uso de app), última visita y estado de pagos,
-    // todo en la misma consulta (sin una consulta por cliente).
     private const string BaseListado = @"
-SELECT c.IdCliente, c.Nombre, c.Apellido, c.Email, c.EstadoRegistro, c.PlanSocio, c.Sexo, c.Sede, c.Telefono,
+        SELECT c.IdCliente, c.Nombre, c.Apellido, c.Email, c.EstadoRegistro, c.IdPlan, p.Nombre AS PlanSocio, c.Sexo, c.IdSede, s.Nombre AS Sede, c.Telefono,
        ev.UltimaInteraccion, ev.UltimaVisita,
        CASE
            WHEN ev.UltimoPagoVencido IS NOT NULL
@@ -193,9 +189,11 @@ SELECT c.IdCliente, c.Nombre, c.Apellido, c.Email, c.EstadoRegistro, c.PlanSocio
            WHEN ev.UltimoPago >= @LimiteAlDia THEN @AlDia
            ELSE @Pendiente
        END AS HistorialPagos
-FROM Cliente c
-LEFT JOIN (
-    SELECT IdCliente,
+        FROM Cliente c
+        JOIN [Plan] p ON p.IdPlan = c.IdPlan
+        JOIN Sede s ON s.IdSede = c.IdSede
+        LEFT JOIN (
+            SELECT IdCliente,
            MAX(CASE WHEN Evento = @UsoApp         THEN Fecha END) AS UltimaInteraccion,
            MAX(CASE WHEN Evento = @Visita         THEN Fecha END) AS UltimaVisita,
            MAX(CASE WHEN Evento = @PagoRegistrado THEN Fecha END) AS UltimoPago,
@@ -204,7 +202,7 @@ LEFT JOIN (
     GROUP BY IdCliente
 ) ev ON ev.IdCliente = c.IdCliente";
 
-    // Columnas ordenables (lista cerrada: nunca se concatena texto del usuario en el ORDER BY).
+   
     private static readonly Dictionary<string, string> ColumnasOrden = new()
     {
         ["nombre"] = "l.Nombre, l.Apellido",
@@ -234,18 +232,16 @@ LEFT JOIN (
         return filas.ToList();
     }
 
-    // DS: ObtenerClientes(): List<Cliente>  (orden alfabético por nombre, CU08 paso 4)
     public Task<List<Cliente>> ObtenerClientes(CancellationToken ct = default)
         => LeerListado("", ColumnasOrden["nombre"], ParametrosListado(), ct);
 
-    // DS: ObtenerClientesOrdenados(string columna): List<Cliente>
+    
     public Task<List<Cliente>> ObtenerClientesOrdenados(string columna, CancellationToken ct = default)
     {
         var orden = ColumnasOrden.GetValueOrDefault(columna ?? "", ColumnasOrden["nombre"]);
         return LeerListado("", orden, ParametrosListado(), ct);
     }
 
-    // DS: BuscarCliente(string criterio): List<Cliente>  (por nombre, apellido o email)
     public Task<List<Cliente>> BuscarCliente(string criterio, CancellationToken ct = default)
     {
         var parametros = ParametrosListado();
@@ -276,9 +272,7 @@ LEFT JOIN (
         var where = condiciones.Count == 0 ? "" : "WHERE " + string.Join(" AND ", condiciones);
         return LeerListado(where, ColumnasOrden["nombre"], parametros, ct);
     }
-    // CU13 - ObtenerDatosFinancierosRetencion.
-    // MRR recuperado = suma del precio del plan de los clientes rescatados en el período.
-    // LTV recuperado = MRR x meses de vida esperada (constante de abajo).
+
     public const int MesesVidaEsperadaLtv = 12;
 
     public async Task<DatosFinancieros> ObtenerDatosFinancierosRetencion(DateTime desde, DateTime hasta, CancellationToken ct = default)
@@ -291,7 +285,7 @@ LEFT JOIN (
             @"SELECT ha.IdCliente, ha.FechaEnvio, p.Precio
           FROM HistorialAcciones ha
           JOIN Cliente c ON c.IdCliente = ha.IdCliente
-          JOIN [Plan] p ON p.Nombre = c.PlanSocio
+          JOIN [Plan] p ON p.IdPlan = c.IdPlan
           WHERE ha.Resultado = @rescatado
             AND ha.FechaEnvio >= @desdeAnterior AND ha.FechaEnvio < @hastaExclusive",
             new { rescatado = HistorialAccion.ResultadoRescatado, desdeAnterior, hastaExclusive }, ct: ct)).ToList();

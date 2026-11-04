@@ -21,14 +21,15 @@ public class Cliente
     [Required, MaxLength(50)]
     public string EstadoRegistro { get; set; } = string.Empty;
 
-    [Required, MaxLength(100)]
-    public string PlanSocio { get; set; } = string.Empty;
+    public int IdPlan { get; set; }
+    [NotMapped] public string PlanSocio { get; set; } = string.Empty; 
 
     [Required, MaxLength(50)]
     public string Sexo { get; set; } = string.Empty;
 
-    [Required, MaxLength(50)]
-    public string Sede { get; set; } = string.Empty;
+    public int IdSede { get; set; }
+    [NotMapped] public string Sede { get; set; } = string.Empty; 
+
     public ICollection<EventoCliente> Eventos { get; set; } = new List<EventoCliente>();
     public string? Telefono { get; set; }
 

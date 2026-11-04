@@ -32,9 +32,8 @@ builder.Services.AddScoped<BLLPlanSocio>();
 builder.Services.AddScoped<BLLIntegracion>();
 builder.Services.AddScoped<BLLUsuario>();
 builder.Services.AddScoped<BLLRol>();
-builder.Services.AddScoped<BLLTokenRecuperacion>();
+builder.Services.AddScoped<BLLToken>();
 builder.Services.AddScoped<BLLBitacora>();
-builder.Services.AddScoped<BLLTokenActivacion>();
 builder.Services.AddScoped<BLLEventosCliente>();
 
 // UI

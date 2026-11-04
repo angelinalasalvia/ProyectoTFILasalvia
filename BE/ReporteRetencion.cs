@@ -66,8 +66,8 @@ public static class SegmentoRetencion
     public static (string Condicion, string? Valor) Resolver(string? segmento, string alias = "c")
     {
         if (string.IsNullOrWhiteSpace(segmento) || segmento == Todos) return ("1 = 1", null);
-        if (segmento.StartsWith(PrefijoPlan)) return ($"{alias}.PlanSocio = @segmentoValor", segmento[PrefijoPlan.Length..]);
-        if (segmento.StartsWith(PrefijoSede)) return ($"{alias}.Sede = @segmentoValor", segmento[PrefijoSede.Length..]);
+        if (segmento.StartsWith(PrefijoPlan)) return ($"{alias}.IdPlan = (SELECT IdPlan FROM [Plan] WHERE Nombre = @segmentoValor)", segmento[PrefijoPlan.Length..]);
+        if (segmento.StartsWith(PrefijoSede)) return ($"{alias}.IdSede = (SELECT IdSede FROM Sede WHERE Nombre = @segmentoValor)", segmento[PrefijoSede.Length..]);
         return ("1 = 1", null);
     }
 

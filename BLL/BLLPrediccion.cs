@@ -8,14 +8,12 @@ public class BLLPrediccion
     private readonly AccesoDatos _accesoDatos;
     public BLLPrediccion(AccesoDatos accesoDatos) => _accesoDatos = accesoDatos;
 
-    // Clase auxiliar para mapear el resultado del GROUP BY con el DAL genérico.
     private class ConteoNivel
     {
         public string NivelRiesgo { get; set; } = string.Empty;
         public int Total { get; set; }
     }
 
-    // Una sola consulta agregada en lugar de traer todas las predicciones y contarlas en memoria.
     public async Task<(int Alto, int Medio, int Bajo)> ObtenerResumenNivelesRiesgo(CancellationToken ct = default)
     {
         var filas = (await _accesoDatos.Leer<ConteoNivel>(
@@ -27,16 +25,13 @@ public class BLLPrediccion
         return (Contar(NivelesRiesgo.Alto), Contar(NivelesRiesgo.Medio), Contar(NivelesRiesgo.Bajo));
     }
 
-    // Lista por defecto: todos los niveles, ordenada por probabilidad descendente.
     public Task<List<Prediccion>> ObtenerPredicciones(CancellationToken ct = default)
         => ObtenerFiltradasYOrdenadasAsync(NivelesRiesgo.Todos, CriteriosOrden.Probabilidad, ct);
 
-    // Filtro por nivel de riesgo. Respeta el criterio de orden vigente en la pantalla.
     public Task<List<Prediccion>> ObtenerPrediccionesSegunFiltro(
         string nivelRiesgo, string columna = CriteriosOrden.Probabilidad, CancellationToken ct = default)
         => ObtenerFiltradasYOrdenadasAsync(nivelRiesgo, columna, ct);
 
-    // Orden por columna. Respeta el filtro de nivel de riesgo vigente en la pantalla.
     public Task<List<Prediccion>> ObtenerPrediccionesOrdenadas(
         string columna, string nivelRiesgo = NivelesRiesgo.Todos, CancellationToken ct = default)
         => ObtenerFiltradasYOrdenadasAsync(nivelRiesgo, columna, ct);
@@ -49,8 +44,7 @@ public class BLLPrediccion
         if (nivelRiesgo != NivelesRiesgo.Todos)
             consulta = consulta.Where(p => p.NivelRiesgo == nivelRiesgo);
 
-        // En todos los criterios, el desempate es por probabilidad descendente
-        // para que el orden dentro de un mismo nivel / nombre sea estable.
+        
         consulta = columna switch
         {
             CriteriosOrden.Nombre => consulta
@@ -86,8 +80,6 @@ public class BLLPrediccion
         return prediccion;
     }
 
-    // Antes esto lo resolvía EF con .Include(p => p.Cliente).Include(p => p.FactorRiesgo).
-    // Con el DAL genérico, se trae cada tabla por separado y se arma el join en memoria.
     private async Task<List<Prediccion>> ObtenerPrediccionesConDatosAsync(CancellationToken ct)
     {
         var predicciones = (await _accesoDatos.Leer<Prediccion>("SELECT * FROM Prediccion", ct: ct)).ToList();
@@ -106,7 +98,7 @@ public class BLLPrediccion
         var (clausulaFactores, parametrosFactores) = _accesoDatos.ConstruirClausulaIn("idf", idsFactores);
 
         var clientes = (await _accesoDatos.Leer<Cliente>(
-                $"SELECT * FROM Cliente WHERE IdCliente IN ({clausulaClientes})",
+                $"{BLLCliente.SelectClienteConPlanYSede} WHERE c.IdCliente IN ({clausulaClientes})",
                 parametrosClientes, ct: ct))
             .ToDictionary(c => c.IdCliente);
 

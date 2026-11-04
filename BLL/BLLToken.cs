@@ -4,16 +4,17 @@ using Microsoft.Extensions.Configuration;
 
 namespace BLL
 {
-    /// <summary>Lifeline ":TokenRecuperacion" del DS de CU19.</summary>
-    public class BLLTokenRecuperacion
-    {
-        /// <summary>CU19 paso 6: el enlace vale 30 minutos.</summary>
-        public static readonly TimeSpan ValidezEnlace = TimeSpan.FromMinutes(30);
+    
+    public class BLLToken
+    {        
+        public static readonly TimeSpan ValidezRecuperacion = TimeSpan.FromMinutes(30);
+
+        public static readonly TimeSpan ValidezActivacion = TimeSpan.FromHours(24);
 
         private readonly AccesoDatos _dal;
         private readonly string _clave;
 
-        public BLLTokenRecuperacion(AccesoDatos dal, IConfiguration config)
+        public BLLToken(AccesoDatos dal, IConfiguration config)
         {
             _dal = dal;
             var clave = config["Seguridad:ClaveTokens"];
@@ -23,30 +24,28 @@ namespace BLL
             _clave = clave;
         }
 
-        /// <summary>
-        /// DS: GenerarTokenRecuperacion(email): int. Crea el token (Pendiente, 30 min), invalida los
-        /// pendientes anteriores de ese usuario y devuelve el TokenID.
-        /// Usa Leer con OUTPUT en lugar de Escribir porque Escribir devuelve filas afectadas, no el id.
-        /// </summary>
-        public async Task<int> GenerarTokenRecuperacion(string email)
+        private async Task<int> GenerarToken(string email, string tipo, TimeSpan validez)
         {
             const string sql = @"
             SET NOCOUNT ON;
             UPDATE t SET t.Estado = @Invalidado
             FROM Token t
             INNER JOIN Usuario u ON u.IdUsuario = t.UsuarioID
-            WHERE u.Email = @Email AND t.Tipo = @Tipo AND t.Estado = @Pendiente;
+            WHERE u.Email = @Email AND u.Estado <> @Eliminado AND t.Tipo = @Tipo AND t.Estado = @Pendiente;
 
             INSERT INTO Token (Estado, FechaExpiracion, Tipo, UsuarioID)
             OUTPUT INSERTED.TokenID AS Valor
-            SELECT @Pendiente, @FechaExpiracion, @Tipo, IdUsuario FROM Usuario WHERE Email = @Email;";
+            SELECT @Pendiente, @FechaExpiracion, @Tipo, IdUsuario
+            FROM Usuario WHERE Email = @Email AND Estado <> @Eliminado;";
+
             var filas = await _dal.Leer<ValorEscalar>(sql, new
             {
                 Invalidado = EstadoToken.Invalidado,
                 Pendiente = EstadoToken.Pendiente,
-                Tipo = TipoToken.Recuperacion,
-                FechaExpiracion = DateTime.Now.Add(ValidezEnlace),
-                Email = (email ?? "").Trim()
+                Tipo = tipo,
+                FechaExpiracion = DateTime.Now.Add(validez),
+                Email = (email ?? "").Trim(),
+                Eliminado = EstadoUsuario.Eliminado
             });
 
             var fila = filas.FirstOrDefault()
@@ -54,14 +53,21 @@ namespace BLL
             return fila.Valor;
         }
 
-        /// <summary>Arma el enlace que va en el mail: {urlBase}/restablecer-contrasena?token={TokenID.firma}</summary>
+        public Task<int> GenerarTokenRecuperacion(string email)
+            => GenerarToken(email, TipoToken.Recuperacion, ValidezRecuperacion);
+
+        public async Task<string> GenerarTokenActivacion(string email, string urlBase)
+        {
+            var tokenId = await GenerarToken(email, TipoToken.Activacion, ValidezActivacion);
+            return ConstruirTokenLink(tokenId, urlBase);
+        }
+
         public string ConstruirTokenLink(int tokenId, string urlBase)
         {
             var codigo = CodigoRecuperacion.Crear(tokenId, _clave);
             return $"{urlBase.TrimEnd('/')}/restablecer-contrasena?token={Uri.EscapeDataString(codigo)}";
         }
 
-        /// <summary>DS: ValidarToken(tokenLink): bool. False si la firma no es válida, expiró o ya se usó.</summary>
         public async Task<bool> ValidarToken(string tokenLink)
         {
             if (!TryObtenerId(tokenLink, out var tokenId)) return false;
@@ -82,10 +88,6 @@ namespace BLL
             return (filas.FirstOrDefault()?.Valor ?? 0) > 0;
         }
 
-        /// <summary>
-        /// Extra (el DS no lo dibuja): ActualizarContraseña necesita el email y en el enlace solo viaja
-        /// el token. Devuelve null si el enlace no es auténtico.
-        /// </summary>
         public async Task<string?> ObtenerEmailDeToken(string tokenLink)
         {
             if (!TryObtenerId(tokenLink, out var tokenId)) return null;
@@ -98,8 +100,6 @@ namespace BLL
             var fila = (await _dal.Leer<Usuario>(sql, new { TokenID = tokenId })).FirstOrDefault();
             return fila?.Email;
         }
-
-        /// <summary>DS: MarcarTokenComoUtilizado(tokenLink). Devuelve filas afectadas (0 si ya no estaba pendiente).</summary>
         public async Task<int> MarcarTokenComoUtilizado(string tokenLink)
         {
             if (!TryObtenerId(tokenLink, out var tokenId)) return 0;

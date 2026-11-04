@@ -13,7 +13,7 @@
 <PageTitle>Iniciar Sesión</PageTitle>
 
 <div class="login-card">
-    <!-- Panel izquierdo -->
+
     <div class="login-panel-izq">
         <div class="login-panel-contenido">
             <h2>Maximiza tu Retención</h2>
@@ -35,7 +35,6 @@
         </svg>
     </div>
 
-    <!-- Panel derecho: formulario -->
     <div class="login-panel-der">
         <h2>Bienvenido de nuevo</h2>
         <p class="login-subtitulo">Accede a tu panel estratégico de retención.</p>
@@ -87,10 +86,8 @@
     private bool procesando = false;
     private HashSet<string> errores = new();
 
-    // Usuario devuelto por ObtenerUsuario; ValidarContraseña(contraseña) lo usa para comparar.
     private Usuario? usuarioEncontrado;
 
-    // DS CU18: "Selecciona botón Iniciar Sesión()"
     private async Task IniciarSesion()
     {
         if (procesando) return;
@@ -111,9 +108,8 @@
                 return;
             }
 
-            usuarioEncontrado = await UsuarioBLL.ObtenerUsuario(email, password);
+            usuarioEncontrado = await UsuarioBLL.ObtenerUsuario(email);
 
-            // [Usuario no existe]
             if (usuarioEncontrado is null)
             {
                 errores.Add("email");
@@ -121,14 +117,12 @@
                 return;
             }
 
-            // [Usuario Inactivo]
             if (!string.Equals(usuarioEncontrado.Estado, EstadoUsuario.Activo, StringComparison.OrdinalIgnoreCase))
             {
                 mensajeError = "La cuenta se encuentra inactiva. Contacte al administrador.";
                 return;
             }
 
-            // [Usuario Activo] -> ¿cuenta bloqueada?
             var intentos = await BitacoraBLL.ObtenerIntentosFallidosConsecutivos(email);
             if (intentos >= BLLBitacora.MaxIntentosFallidos)
             {
@@ -136,10 +130,9 @@
                 return;
             }
 
-            // [Cuenta no bloqueada]
             if (ValidarContraseña(password))
             {
-                // [Contraseña correcta]
+                
                 var rol = await RolBLL.ObtenerRolYPermisos(usuarioEncontrado.Id);
                 await BitacoraBLL.ReiniciarContadorIntentosFallidos(email);
                 await BitacoraBLL.RegistrarInicioSesion(usuarioEncontrado.Id, AccionBitacora.InicioSesion, DateTime.Now);
@@ -150,13 +143,13 @@
             }
             else
             {
-                // [Contraseña incorrecta]
+                
                 errores.Add("password");
                 password = "";
                 var intentoFallido = await BitacoraBLL.RegistrarIntentoFallido(email);
 
                 if (intentoFallido >= BLLBitacora.MaxIntentosFallidos)
-                    cuentaBloqueada = true;   // "Se ha alcanzado el límite de intentos. La cuenta ha sido bloqueada"
+                    cuentaBloqueada = true;   
                 else
                     mensajeError = "El email o la contraseña son incorrectos.";
             }
@@ -171,7 +164,6 @@
         }
     }
 
-    // DS: ValidarCamposObligatoriosYFormato(string email, string contraseña): bool
     private bool ValidarCamposObligatoriosYFormato(string email, string contraseña)
     {
         if (string.IsNullOrWhiteSpace(email)) errores.Add("email");
@@ -193,46 +185,37 @@
         return true;
     }
 
-    // DS: ValidarContraseña(contraseña): bool  (compara contra el hash del usuario encontrado)
     private bool ValidarContraseña(string contraseña)
     {
         return usuarioEncontrado is not null
             && CifradoService.Verificar(contraseña, usuarioEncontrado.Contrasena);
     }
 
-    // DS: CargarPermisosEnSesion(Rol)
     private void CargarPermisosEnSesion(Rol rol)
     {
-        usuarioEncontrado!.Contrasena = "";   // el hash no se guarda en la sesión
+        usuarioEncontrado!.Contrasena = "";   
         var sesion = SessionManager.GetInstance();
         sesion.Login(usuarioEncontrado);
         sesion.CargarPermisos(rol);
     }
 
-    // DS: RedirigirAMenúPrincipal()
-    // DS: RedirigirAMenúPrincipal()  (a la primera pantalla a la que el usuario tiene acceso)
     private void RedirigirAMenuPrincipal()
     {
         var sesion = SessionManager.GetInstance();
         var destino =
-            sesion.TienePermiso("Predicciones") ? "/predicciones" :
-            sesion.TienePermiso("Reportes") ? "/reportes/efectividad" : 
-            sesion.TienePermiso("Campañas") ? "/campanas" :
-            sesion.TienePermiso("Automatización") ? "/automatizacion" :
-            sesion.TienePermiso("Administración") ? "/administracion/usuarios" :
-                                                         "/clientes";
+        sesion.TienePermiso("Integraciones") ? "/integraciones" :
+        sesion.TienePermiso("Clientes") ? "/clientes" :
+        sesion.TienePermiso("Predicciones") ? "/predicciones" :
+        sesion.TienePermiso("Campañas") ? "/campanas" :
+        sesion.TienePermiso("Automatización") ? "/automatizacion" :
+        sesion.TienePermiso("Reportes") ? "/reportes/efectividad" :
+        sesion.TienePermiso("Administración") ? "/administracion/usuarios" :
+                                                 "/clientes";
         Navigation.NavigateTo(destino);
     }
-
-    // DS: opción "¿Olvidaste tu contraseña?" -> CU19 Recuperar contraseña
     private void IrARecuperarContrasena()
     {
         Navigation.NavigateTo("/recuperar-contrasena");
     }
 
-    /*protected override void OnInitialized()
-    {
-        if (SessionManager.GetInstance().EstaLogueado)
-            Navigation.NavigateTo("/predicciones");
-    }*/
 }

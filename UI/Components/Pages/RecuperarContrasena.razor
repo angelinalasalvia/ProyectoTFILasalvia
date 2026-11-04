@@ -58,7 +58,6 @@
     private string mensajeError = "";
     private string mensajeExito = "";
 
-    // DS CU19: "Selecciona botón Enviar instrucciones()"
     private async Task EnviarInstrucciones()
     {
         if (procesando) return;
@@ -72,12 +71,10 @@
             if (!ValidarFormatoEmail(email))
                 return;
 
-            // Se muestra siempre el mismo mensaje para no revelar qué emails están registrados.
             var mensajeInstrucciones = $"Las instrucciones fueron enviadas a {email.Trim()}. Revise su bandeja de entrada.";
 
             var usuario = await UsuarioBLL.ObtenerUsuario(email);
 
-            // [Usuario no existe o está inactivo]
             if (usuario is null ||
                 !string.Equals(usuario.Estado, EstadoUsuario.Activo, StringComparison.OrdinalIgnoreCase))
             {
@@ -89,11 +86,12 @@
             {
                 var tokenId = await TokenBLL.GenerarTokenRecuperacion(email);
                 var tokenLink = TokenBLL.ConstruirTokenLink(tokenId, Navigation.BaseUri);
-                await Envio.EnviarCorreoRecuperacion(email.Trim(), tokenLink);
+                var envio = await Envio.EnviarCorreoRecuperacion(email.Trim(), tokenLink);
+                if (!envio.Exito)
+                    Logger.LogError("Falló el envío del correo de recuperación: {Motivo}", envio.Mensaje);
             }
             catch (Exception ex)
             {
-                // No se le cuenta al usuario (revelaría que la cuenta existe); queda en el log.
                 Logger.LogError(ex, "Falló el envío del correo de recuperación.");
             }
 
@@ -109,7 +107,6 @@
         }
     }
 
-    // DS: ValidarFormatoEmail(email): bool
     private bool ValidarFormatoEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -119,7 +116,7 @@
             return false;
         }
 
-        if (!Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        if (!BLLUsuario.EsEmailValido(email))
         {
             error = true;
             mensajeError = "El formato del correo electrónico no es válido.";

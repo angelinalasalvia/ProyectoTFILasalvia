@@ -15,10 +15,6 @@ namespace BLL
             _dal = dal;
         }
 
-        public Task<Usuario?> ObtenerUsuario(string email, string contraseña)
-            => ObtenerUsuario(email);
-
-
         public async Task<Usuario?> ObtenerUsuario(string email)
         {
             var sql = $"SELECT {Columnas} FROM Usuario WHERE Email = @Email AND Estado <> @Eliminado";

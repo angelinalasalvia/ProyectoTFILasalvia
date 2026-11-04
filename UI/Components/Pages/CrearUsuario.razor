@@ -53,7 +53,6 @@
 
 <div class="card usr-form-card">
 
-    <!-- Nombre y correo -->
     <div class="usr-form-grid">
 
         <div class="usr-form-field">
@@ -92,7 +91,6 @@
 
     </div>
 
-    <!-- Rol y estado -->
     <div class="usr-form-grid">
 
         <div class="usr-form-field">
@@ -131,7 +129,6 @@
 
     </div>
 
-    <!-- Resumen de permisos -->
     <div class="usr-permissions-card">
 
         <div class="usr-permissions-header">
@@ -218,7 +215,6 @@
     private List<Rol> roles = new();
     private List<Permiso> permisosRol = new();
 
-    // DS: MostrarResumenPermisos()
     private string ResumenPermisos
     {
         get
@@ -234,7 +230,6 @@
         }
     }
 
-    // DS: Ingresa a "Agregar Usuario" / "Modificar Usuario"
     protected override async Task OnInitializedAsync()
     {
         try
@@ -250,13 +245,12 @@
         }
     }
 
-    // DS CU22: ObtenerUsuario(int idUsuario) + MostrarFormularioEdicion()
     private async Task MostrarFormularioEdicion(int idUsuario)
     {
         var usuario = await UsuarioBLL.ObtenerUsuario(idUsuario);
         if (usuario is null)
         {
-            Navigation.NavigateTo("/administracion/usuarios");   // el usuario ya no existe
+            Navigation.NavigateTo("/administracion/usuarios");  
             return;
         }
 
@@ -268,7 +262,6 @@
         await MostrarResumenPermisos();
     }
 
-    // DS: TraerPermisosRol(int id) -> MostrarResumenPermisos()
     private async Task MostrarResumenPermisos()
     {
         try
@@ -284,7 +277,6 @@
         }
     }
 
-    // DS: Selecciona botón "Guardar"()
     private async Task GuardarUsuario()
     {
         if (guardando) return;
@@ -308,7 +300,7 @@
         }
         finally
         {
-            if (!exito) guardando = false;   // si salió bien, el botón queda deshabilitado hasta redirigir
+            if (!exito) guardando = false;  
         }
 
         if (exito)
@@ -318,7 +310,6 @@
         }
     }
 
-    // DS CU21: VerificarEmailRegistrado -> CrearUsuarioInactivo -> GenerarTokenActivacion -> EnviarInstruccionesAcceso
     private async Task<bool> CrearNuevoUsuario()
     {
         if (await UsuarioBLL.VerificarEmailRegistrado(email))
@@ -342,14 +333,12 @@
             correoEnviado = false;
         }
 
-        // CU21 13.1: si falla el correo el usuario igual queda creado.
         mensajeConfirmacion = correoEnviado
             ? "Usuario creado correctamente. Correo enviado."
             : "Usuario creado correctamente. Error al enviar el correo: podés reenviarlo desde Gestión de Usuarios.";
         return true;
     }
 
-    // DS CU22: ValidarModificacion + ModificarUsuario(int idUsuario, string nombreCompleto, int rol)
     private async Task<bool> ModificarUsuario()
     {
         var validacion = await UsuarioBLL.ValidarModificacion(UsuarioId!.Value, rolSeleccionado);
@@ -364,7 +353,6 @@
         return true;
     }
 
-    // DS: ValidarCamposObligatoriosYFormato(string nombreCompleto, string email, int rol): bool
     private bool ValidarCamposObligatoriosYFormato(string nombreCompleto, string email, int rol)
     {
         if (string.IsNullOrWhiteSpace(nombreCompleto)) errores.Add("nombre");
@@ -402,26 +390,12 @@
         _ => campo
     };
 
-    private bool EsEmailValido(string valor)
-    {
-        try
-        {
-            var mail = new System.Net.Mail.MailAddress(valor);
-            return mail.Address == valor;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private async Task RedirigirAGestionUsuarios()
     {
         await Task.Delay(1800);
         Navigation.NavigateTo("/administracion/usuarios");
     }
 
-    // DS: Selecciona botón "Cancelar"() -> vuelve a Gestión de usuarios y descarta lo ingresado
     private void Cancelar()
     {
         Navigation.NavigateTo("/administracion/usuarios");

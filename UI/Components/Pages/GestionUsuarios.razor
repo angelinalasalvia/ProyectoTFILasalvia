@@ -80,6 +80,10 @@
     {
         <div class="usr-vacio">Cargando usuarios…</div>
     }
+    else if (errorCarga)
+    {
+        <div class="usr-vacio">⚠ No se pudo cargar el listado de usuarios.</div>
+    }
     else if (todosLosUsuarios.Count == 0)
     {
         <div class="usr-vacio">No existen usuarios registrados en la plataforma. Podés registrar uno con "Agregar usuario".</div>
@@ -183,6 +187,8 @@
     private string rolFiltro = "";
     private int paginaActual = 1;
     private bool cargando = true;
+    private bool errorCarga = false;
+    private bool enviandoCorreo = false;
 
     private string mensajeExito = "";
     private string mensajeError = "";
@@ -200,10 +206,10 @@
 
     private string MensajeSinResultados =>
         !string.IsNullOrWhiteSpace(textoBusqueda)
-            ? "No se encontraron usuarios que coincidan con el criterio ingresado."   // CU20 8.1
-            : "No se encontraron usuarios para el rol filtrado.";                      // CU20 6.1
+            ? "No se encontraron usuarios que coincidan con el criterio ingresado."   
+            : "No se encontraron usuarios para el rol filtrado.";                      
 
-    // DS: Ingresa a "Gestión de usuarios"
+    
     protected override async Task OnInitializedAsync()
     {
         try
@@ -213,7 +219,7 @@
         }
         catch (Exception)
         {
-            mensajeError = "No se pudo cargar el listado de usuarios.";
+            errorCarga = true;
         }
         finally
         {
@@ -221,14 +227,12 @@
         }
     }
 
-    // DS: ObtenerUsuarios() + MostrarTablaUsuarios()
     private async Task CargarUsuarios()
     {
         todosLosUsuarios = await UsuarioBLL.ObtenerUsuarios();
         await AplicarFiltros();
     }
 
-    // DS: FiltrarTabla() -> ObtenerUsuariosPorRol()  /  Buscar usuario() -> BuscarUsuario(dato)
     private async Task AplicarFiltros()
     {
         IEnumerable<Usuario> resultado = todosLosUsuarios;
@@ -278,7 +282,6 @@
         }
     }
 
-    // DS: Solicita eliminar un usuario(int idUsuario) -> SolicitarConfirmacion()
     private void SolicitarEliminacion(UsuarioItem usuario)
     {
         mensajeExito = "";
@@ -286,7 +289,6 @@
         usuarioAEliminar = usuario;
     }
 
-    // DS: ConfirmarEliminacion()
     private async Task ConfirmarEliminacion()
     {
         var usuario = usuarioAEliminar;
@@ -296,7 +298,6 @@
 
         try
         {
-            // DS: ValidarEliminacion(idUsuario, idUsuarioSesion) -> :Usuario (BLL)
             var idSesion = SessionManager.GetInstance().Usuario?.Id ?? 0;
             var validacion = await UsuarioBLL.ValidarEliminacion(usuario.Id, idSesion);
 
@@ -307,7 +308,7 @@
             }
 
             await UsuarioBLL.EliminarUsuario(usuario.Id);
-            await CargarUsuarios();   // DS: ObtenerUsuarios() + MostrarTablaUsuarios()
+            await CargarUsuarios();  
             mensajeExito = "El usuario fue eliminado correctamente.";
         }
         catch (Exception)
@@ -316,38 +317,39 @@
         }
     }
 
-    
-
-    // DS: CancelarEliminacion() -> MantenerVistaSinCambios()
     private void CancelarEliminacion() => MantenerVistaSinCambios();
 
     private void MantenerVistaSinCambios() => usuarioAEliminar = null;
 
-    // DS: Selecciona "Nuevo Usuario" -> CU21
     private void AbrirFormularioUsuario()
     {
         Navigation.NavigateTo("/administracion/usuarios/nuevo");
     }
 
-    // DS: Selecciona "Modificar Usuario" -> CU22
     private void EditarUsuario(UsuarioItem usuario)
     {
         Navigation.NavigateTo($"/administracion/usuarios/editar/{usuario.Id}");
     }
 
-    // DS: Solicita reenvío de correo de activación(int idUsuario)
     private async Task ReenviarInvitacion(UsuarioItem usuario)
     {
+        if (enviandoCorreo) return;
+        enviandoCorreo = true;
         mensajeExito = "";
         mensajeError = "";
-
-        if (await EnviarCorreoActivacion(usuario.Id))
-            mensajeExito = "Correo de activación reenviado con éxito.";
-        else
-            mensajeError = "No fue posible reenviar el correo de activación.";
+        try
+        {
+            if (await EnviarCorreoActivacion(usuario.Id))
+                mensajeExito = "Correo de activación reenviado con éxito.";
+            else
+                mensajeError = "No fue posible reenviar el correo de activación.";
+        }
+        finally
+        {
+            enviandoCorreo = false;
+        }
     }
 
-    // DS: EnviarCorreoActivacion(int idUsuario): bool
     private async Task<bool> EnviarCorreoActivacion(int idUsuario)
     {
         try

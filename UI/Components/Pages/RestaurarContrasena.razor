@@ -124,10 +124,13 @@
                 enlaceValido = false;
                 return;
             }
+            if (await TokenBLL.MarcarTokenComoUtilizado(link) == 0)
+            {
+                enlaceValido = false;
+                return;
+            }
             await UsuarioBLL.ActualizarContraseña(emailUsuario, CifradoService.Hashear(nuevaClave));
             await UsuarioBLL.ActivarUsuario(emailUsuario);
-            await TokenBLL.MarcarTokenComoUtilizado(link);
-
             // Agregado al DS: si la cuenta estaba bloqueada por intentos fallidos, queda habilitada.
             await BitacoraBLL.ReiniciarContadorIntentosFallidos(emailUsuario);
 

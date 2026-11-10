@@ -91,7 +91,6 @@ namespace BLL
             if (idUsuario == idUsuarioSesion)
                 return ResultadoValidacion.No("Es el usuario con el que iniciaste sesión.");
 
-            // CU20 14.1: único administrador activo
             if (await EsUnicoAdministradorActivo(idUsuario))
                 return ResultadoValidacion.No("Es el único administrador activo.");
 
@@ -119,12 +118,14 @@ namespace BLL
             return adminsActivos <= 1;
         }
 
-        // DS CU22: ValidarModificacion(int idUsuario, int idRol): ResultadoValidacion
-        public async Task<ResultadoValidacion> ValidarModificacion(int idUsuario, int idRolNuevo)
+        public async Task<ResultadoValidacion> ValidarModificacion(int idUsuario, int idRolNuevo, int idUsuarioSesion)
         {
             var actual = await ObtenerUsuario(idUsuario);
             if (actual is null)
                 return ResultadoValidacion.No("El usuario ya no existe.");
+
+            if (idUsuario == idUsuarioSesion)
+                return ResultadoValidacion.No("Es el usuario con el que iniciaste sesión.");
 
             if (actual.IdRol != idRolNuevo && await EsUnicoAdministradorActivo(idUsuario))
                 return ResultadoValidacion.No("Es el único administrador activo: no se puede cambiar su rol.");

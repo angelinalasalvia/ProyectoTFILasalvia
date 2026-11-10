@@ -6,12 +6,13 @@
 @inject BLLToken TokenBLL
 @using BLL
 @using Servicios
+@using BE
 
 <PageTitle>Restablecer contraseña</PageTitle>
 
 <div class="auth-screen">
     <div class="auth-card-simple">
-        <h2 class="auth-card-title">Restablecer contraseña</h2>
+        <h2 class="auth-card-title">@(esActivacion ? "Activar cuenta" : "Restablecer contraseña")</h2>
 
         @if (validandoEnlace)
         {
@@ -19,12 +20,24 @@
         }
         else if (!enlaceValido)
         {
-            <div class="login-alerta">⚠️ El enlace ya no es válido por haber superado el límite de tiempo o por haber sido utilizado.</div>
-            <a href="recuperar-contrasena" class="auth-back-link">Solicitar nuevo enlace</a>
+            if (esActivacion)
+            {
+                <div class="login-alerta">⚠️ El enlace de activación ya no es válido por haber vencido o por haber sido utilizado. Pedile a un administrador que te reenvíe la invitación.</div>
+            }
+            else
+            {
+                <div class="login-alerta">⚠️ El enlace ya no es válido por haber superado el límite de tiempo o por haber sido utilizado.</div>
+                <a href="recuperar-contrasena" class="auth-back-link">Solicitar nuevo enlace</a>
+            }
         }
         else
         {
-            <p class="auth-card-subtitle">Ingresa tu nueva contraseña para acceder a tu cuenta. Mínimo 8 caracteres, una mayúscula y un número.</p>
+            <p class="auth-card-subtitle">
+                @(esActivacion
+                            ? "Creá tu contraseña para activar tu cuenta."
+                            : "Ingresá tu nueva contraseña para acceder a tu cuenta.")
+            Mínimo 8 caracteres, una mayúscula y un número.
+            </p>
 
             @if (!string.IsNullOrEmpty(mensajeExito))
             {
@@ -56,7 +69,7 @@
                 </div>
 
                 <button class="login-btn-submit" disabled="@procesando" @onclick="ActualizarContrasena">
-                    Actualizar contraseña
+                    @(esActivacion ? "Activar cuenta" : "Actualizar contraseña")
                 </button>
             }
         }
@@ -68,7 +81,7 @@
 </div>
 
 @code {
-    // tokenLink: llega en el enlace del correo -> /restablecer-contrasena?token=...
+    
     [SupplyParameterFromQuery(Name = "token")]
     public string? TokenLink { get; set; }
 
@@ -84,13 +97,15 @@
     private string emailUsuario = "";
     private HashSet<string> errores = new();
 
-    // DS: "Selecciona el enlace del correo(tokenLink)" -> ValidarToken(tokenLink): bool
+    private bool esActivacion = false;
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
             var link = TokenLink ?? "";
-            enlaceValido = await TokenBLL.ValidarToken(link);   // [Enlace válido] -> MostrarFormularioNuevaContraseña()
+            esActivacion = await TokenBLL.ObtenerTipoDeToken(link) == TipoToken.Activacion;
+            enlaceValido = await TokenBLL.ValidarToken(link);
             if (enlaceValido)
                 emailUsuario = await TokenBLL.ObtenerEmailDeToken(link) ?? "";
             enlaceValido = enlaceValido && emailUsuario.Length > 0;
@@ -102,7 +117,6 @@
         validandoEnlace = false;
     }
 
-    // DS: "Selecciona botón Actualizar Contraseña()"
     private async Task ActualizarContrasena()
     {
         if (procesando) return;
@@ -118,7 +132,6 @@
 
             var link = TokenLink ?? "";
 
-            // El enlace se vuelve a validar: pudo vencer o usarse mientras el formulario estaba abierto.
             if (!await TokenBLL.ValidarToken(link))
             {
                 enlaceValido = false;
@@ -129,21 +142,27 @@
                 enlaceValido = false;
                 return;
             }
+            
             await UsuarioBLL.ActualizarContraseña(emailUsuario, CifradoService.Hashear(nuevaClave));
-            await UsuarioBLL.ActivarUsuario(emailUsuario);
-            // Agregado al DS: si la cuenta estaba bloqueada por intentos fallidos, queda habilitada.
-            await BitacoraBLL.ReiniciarContadorIntentosFallidos(emailUsuario);
+            
+            if (esActivacion){
+            await UsuarioBLL.ActivarUsuario(emailUsuario);}
+            else{
+            await BitacoraBLL.ReiniciarContadorIntentosFallidos(emailUsuario);}
 
-            mensajeExito = "Tu contraseña fue actualizada correctamente. Ya podés iniciar sesión.";
+            mensajeExito = esActivacion
+                ? "Tu cuenta fue activada correctamente. Ya podés iniciar sesión."
+                : "Tu contraseña fue actualizada correctamente. Ya podés iniciar sesión.";
             StateHasChanged();
 
-            // DS: continúa en el CU18 – Iniciar sesión
             await Task.Delay(2500);
             Navigation.NavigateTo("login");
         }
         catch (Exception)
         {
-            mensajeError = "Ocurrió un error inesperado. Intentá nuevamente en unos minutos.";
+            mensajeError = esActivacion
+                ? "Ocurrió un error inesperado. Si al reintentar el enlace ya no es válido, pedile a un administrador que te reenvíe la invitación."
+                : "Ocurrió un error inesperado. Si al reintentar el enlace ya no es válido, solicitá uno nuevo desde el inicio de sesión.";
         }
         finally
         {
@@ -151,7 +170,6 @@
         }
     }
 
-    // DS: ValidarContraseña(string nuevaClave, string confirmarClave): bool
     private bool ValidarContraseña(string nuevaClave, string confirmarClave)
     {
         if (string.IsNullOrEmpty(nuevaClave)) errores.Add("nueva");

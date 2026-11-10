@@ -339,10 +339,23 @@
         mensajeError = "";
         try
         {
+            var actual = await UsuarioBLL.ObtenerUsuario(usuario.Id);
+            if (actual is not null &&
+                !string.Equals(actual.Estado, EstadoUsuario.Inactivo, StringComparison.OrdinalIgnoreCase))
+            {
+                mensajeError = "El usuario ya se encuentra activo.";
+                await CargarUsuarios();
+                return;
+            }
+
             if (await EnviarCorreoActivacion(usuario.Id))
                 mensajeExito = "Correo de activación reenviado con éxito.";
             else
                 mensajeError = "No fue posible reenviar el correo de activación.";
+        }
+        catch (Exception)
+        {
+            mensajeError = "No fue posible reenviar el correo de activación.";
         }
         finally
         {

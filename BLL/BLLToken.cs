@@ -117,5 +117,14 @@ namespace BLL
 
         private bool TryObtenerId(string tokenLink, out int tokenId)
             => CodigoRecuperacion.TryLeer(CodigoRecuperacion.Extraer(tokenLink), _clave, out tokenId);
+
+        public async Task<string?> ObtenerTipoDeToken(string tokenLink)
+        {
+            if (!TryObtenerId(tokenLink, out var tokenId)) return null;
+
+            const string sql = "SELECT Tipo FROM Token WHERE TokenID = @TokenID";
+            var fila = (await _dal.Leer<Token>(sql, new { TokenID = tokenId })).FirstOrDefault();
+            return fila?.Tipo;
+        }
     }
 }

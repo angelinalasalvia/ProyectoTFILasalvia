@@ -7,6 +7,7 @@
 @inject ServicioEnvio Envio
 @using BE
 @using BLL
+@using Servicios
 
 <PageTitle>@(EsEdicion ? "Editar Usuario" : "Crear Usuario")</PageTitle>
 
@@ -341,7 +342,8 @@
 
     private async Task<bool> ModificarUsuario()
     {
-        var validacion = await UsuarioBLL.ValidarModificacion(UsuarioId!.Value, rolSeleccionado);
+        var idSesion = SessionManager.GetInstance().Usuario?.Id ?? 0;
+        var validacion = await UsuarioBLL.ValidarModificacion(UsuarioId!.Value, rolSeleccionado, idSesion);
         if (!validacion.Valido)
         {
             mensajeError = $"No es posible modificar el usuario: {validacion.Motivo}";

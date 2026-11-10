@@ -13,19 +13,11 @@
     <h3>Acceso denegado</h3>
     <p>No tenés permisos para ver esta pantalla.</p>
 }
-else
+else if (!errorCarga)
 {
 
     <div class="usr-topbar">
-        <div class="search-box usr-search-box">
-            <span class="search-icon">🔍</span>
-
-            <input type="text"
-                   placeholder="Buscar permisos..."
-                   @bind="textoBusqueda"
-                   @bind:event="oninput" />
-        </div>
-
+        <div></div>
         <div class="usr-topbar-icons">
 
             <button class="usr-icon-btn" title="Notificaciones">
@@ -140,7 +132,7 @@ else
 
                 <tbody>
 
-                    @foreach (var permiso in PermisosFiltrados)
+                    @foreach (var permiso in permisos)
                     {
                         <tr>
 
@@ -199,6 +191,7 @@ else
 @code {
     private const string NombreAdministrador = "Administrador";
     private const string PermisoGestionRoles = "Roles";
+    private bool errorCarga;
 
     private static readonly Dictionary<string, string> Dependencias = new()
     {
@@ -209,7 +202,6 @@ else
     };
 
     private bool sinPermiso;
-    private string textoBusqueda = "";
     private string mensaje = "";
     private string mensajeError = "";
 
@@ -224,12 +216,7 @@ else
     private Dictionary<int, List<Permiso>> modificaciones = new();
 
     private List<string> permisosAInformar = new();
-
-    private IEnumerable<PermisoItem> PermisosFiltrados =>
-        string.IsNullOrWhiteSpace(textoBusqueda)
-            ? permisos
-            : permisos.Where(p => p.Nombre.Contains(textoBusqueda.Trim(), StringComparison.OrdinalIgnoreCase));
-
+    
     protected override async Task OnInitializedAsync()
     {
         if (!ValidarPermisoGestionRoles())
@@ -244,7 +231,8 @@ else
         }
         catch (Exception)
         {
-            mensajeError = "No se pudo cargar la configuración de roles y permisos.";  
+            errorCarga = true;
+            mensajeError = "No se pudo cargar la configuración de roles y permisos.";
         }
     }
 
@@ -312,6 +300,11 @@ else
         mensaje = "";
         mensajeError = "";
 
+        if (modificaciones.Count == 0)
+        {
+            mensajeError = "No hay modificaciones para guardar.";
+            return;
+        }
         try
         {
             var detalles = new List<string>();

@@ -26,20 +26,10 @@
         <h2 class="auto-titulo">Reglas de Automatización</h2>
         <p class="auto-subtitulo">Configura disparadores inteligentes que ejecutan acciones de marketing y soporte cuando los modelos de IA detectan riesgos críticos en tus clientes.</p>
     </div>
-    <div class="retencion-actions">
-        <button class="btn-cancelar" @onclick="EjecutarAhora" disabled="@ejecutando">▶ Ejecutar reglas ahora</button>
+    <div class="retencion-actions">        
         <button class="btn-crear-campana" @onclick="NuevaRegla">+ Nueva Regla</button>
     </div>
 </div>
-
-@if (!string.IsNullOrEmpty(mensajeEjecucion))
-{
-    <div class="camp-form-confirmacion regla-confirmacion">✔ @mensajeEjecucion</div>
-}
-@if (!string.IsNullOrEmpty(mensajeErrorEjecucion))
-{
-    <div class="camp-form-error">⚠ @mensajeErrorEjecucion</div>
-}
 
 
 <!-- Listado de reglas -->

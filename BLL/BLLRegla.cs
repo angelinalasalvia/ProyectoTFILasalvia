@@ -259,8 +259,6 @@ public class BLLRegla
             .ToList();
         if (reglas.Count == 0) return (enviados, cerrados);
 
-        var idUsuarioSistema = await _historial.ObtenerIdUsuarioSistema(ct);
-
         var predicciones = (await _accesoDatos.Leer<Prediccion>(
             @"SELECT p.IdCliente, p.NivelRiesgo
               FROM Prediccion p
@@ -323,7 +321,7 @@ public class BLLRegla
                 CumpleRegla(r, cliente, prediccion.NivelRiesgo, inactividad, vencido, caidaActividad, textoIntentos));
             if (regla is null) continue;
 
-            await _historial.RegistrarAccion(prediccion.IdCliente, regla.IdCampania, regla.IdRegla, idUsuarioSistema,
+            await _historial.RegistrarAccion(prediccion.IdCliente, regla.IdCampania, regla.IdRegla, null,
                 HistorialAccion.TipoEnvioAutomatico, ahora, ct);
             enviados.Add((prediccion.IdCliente, regla.IdRegla, regla.IdCampania));
         }

@@ -10,7 +10,12 @@ public class BLLCampana
 
     private const string SelectBase = @"
         SELECT camp.IdCampaña AS IdCampania, camp.Asunto AS Nombre, ca.Nombre AS Canal, ca.IdCanal,
-               camp.Objetivo, camp.TasaExito, camp.ClientesAlcanzados, camp.Meta,
+                              camp.Objetivo, camp.ClientesAlcanzados, camp.Meta,
+               -- Tasa de éxito = socios rescatados / socios alcanzados con resultado definido (excluye envíos fallidos y acciones aún abiertas).
+               (SELECT CAST(100.0 * COUNT(DISTINCT CASE WHEN h.Resultado = N'Rescatado' THEN h.IdCliente END)
+                               / NULLIF(COUNT(DISTINCT h.IdCliente), 0) AS decimal(5,1))
+                  FROM HistorialAcciones h
+                 WHERE h.IdCampaña = camp.IdCampaña AND h.Resultado IS NOT NULL AND h.Resultado <> N'Error de envío') AS TasaExito,
                camp.AsuntoEmail, camp.Mensaje, camp.IdIncentivo
         FROM Campaña camp
         JOIN Canal ca ON ca.IdCanal = camp.IdCanal";

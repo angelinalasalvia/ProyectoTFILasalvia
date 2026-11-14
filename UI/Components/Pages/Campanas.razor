@@ -113,7 +113,7 @@ else
                             <td class="camp-nombre">@c.Nombre</td>
                             <td><span class="camp-canal-cell">@c.Canal</span></td>
                             <td class="camp-objetivo">@c.Objetivo</td>
-                            <td><span class="camp-tasa-badge">@(c.TasaExito?.ToString("0.0") ?? "-")%</span></td>
+                            <td><span class="camp-tasa-badge">@(c.TasaExito is null ? "-" : $"{c.TasaExito:0.0}%")</span></td>
                             <td class="camp-acciones-cell" @onclick:stopPropagation="true">
                                 <button class="integ-menu-btn" title="Más opciones" @onclick="() => ToggleMenu(c.IdCampania)">⋮</button>
                                 @if (menuAbiertoId == c.IdCampania)

@@ -21,12 +21,18 @@ public class BLLHistorialAcciones
         var hastaExclusive = hasta.Date.AddDays(1);
 
         var campanasDelPeriodo = (await _accesoDatos.Leer<CampanaConCanal>(
-            @"SELECT DISTINCT camp.IdCampaña AS IdCampania, camp.TasaExito, camp.ClientesAlcanzados, camp.Meta, ca.Nombre AS Canal
+              @"SELECT camp.IdCampaña AS IdCampania, camp.Meta, ca.Nombre AS Canal,
+              CAST(100.0 * COUNT(DISTINCT CASE WHEN ha.Resultado = @rescatado THEN ha.IdCliente END)
+               / NULLIF(COUNT(DISTINCT CASE WHEN ha.Resultado IS NOT NULL AND ha.Resultado <> @error THEN ha.IdCliente END), 0)
+               AS decimal(5,1)) AS TasaExito,
+               (SELECT COUNT(DISTINCT x.IdCliente) FROM HistorialAcciones x
+               WHERE x.IdCampaña = camp.IdCampaña AND x.Resultado = @rescatado) AS Recuperados
               FROM Campaña camp
               JOIN Canal ca ON ca.IdCanal = camp.IdCanal
               JOIN HistorialAcciones ha ON ha.IdCampaña = camp.IdCampaña
-              WHERE ha.FechaEnvio >= @desdeInclusive AND ha.FechaEnvio < @hastaExclusive",
-            new { desdeInclusive, hastaExclusive }, ct: ct)).ToList();
+              WHERE ha.FechaEnvio >= @desdeInclusive AND ha.FechaEnvio < @hastaExclusive
+              GROUP BY camp.IdCampaña, camp.Meta, ca.Nombre",
+            new { desdeInclusive, hastaExclusive, rescatado = HistorialAccion.ResultadoRescatado, error = HistorialAccion.ResultadoErrorEnvio }, ct: ct)).ToList();
 
         if (campanasDelPeriodo.Count == 0)
             return new MetricasCampana { HayCampanasEnPeriodo = false };
@@ -34,7 +40,7 @@ public class BLLHistorialAcciones
         var conMeta = campanasDelPeriodo.Where(c => c.Meta is > 0).ToList();
         var porcentajeKpi = conMeta.Count == 0
             ? 0m
-            : Math.Round((decimal)conMeta.Count(c => (c.ClientesAlcanzados ?? 0) >= c.Meta!.Value) / conMeta.Count * 100, 1);
+            : Math.Round((decimal)conMeta.Count(c => c.Recuperados >= c.Meta!.Value) / conMeta.Count * 100, 1);
 
         var conTasa = campanasDelPeriodo.Where(c => c.TasaExito.HasValue).ToList();
         if (conTasa.Count == 0)
@@ -149,7 +155,7 @@ public class BLLHistorialAcciones
     {
         public int IdCampania { get; set; }
         public decimal? TasaExito { get; set; }
-        public int? ClientesAlcanzados { get; set; }
+        public int Recuperados { get; set; }
         public int? Meta { get; set; }
         public string Canal { get; set; } = string.Empty;
     }
@@ -212,20 +218,9 @@ public class BLLHistorialAcciones
         return resultadoLista.ToList();
     }
 
-    private const string EmailUsuarioSistema = "sistema@mailtest.com";
     private const int DiasVentanaResultado = 7; 
-
-    public async Task<int> ObtenerIdUsuarioSistema(CancellationToken ct = default)
-    {
-        var usuario = (await _accesoDatos.Leer<HistorialAccion>(
-            "SELECT IdUsuario FROM Usuario WHERE Email = @email",
-            new { email = EmailUsuarioSistema }, ct: ct)).FirstOrDefault();
-
-        return usuario?.IdUsuario
-            ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}). Ejecutá el script de datos.");
-    }
-
-    public async Task<ResultadoEnvio> RegistrarAccion(int idCliente, int idCampania, int? idRegla, int idUsuario, string tipoAccion, DateTime fechaEnvio,
+   
+    public async Task<ResultadoEnvio> RegistrarAccion(int idCliente, int idCampania, int? idRegla, int? idUsuario, string tipoAccion, DateTime fechaEnvio,
                                       CancellationToken ct = default)
     {
         var envio = await EnviarMensajeCampania(idCliente, idCampania, ct);

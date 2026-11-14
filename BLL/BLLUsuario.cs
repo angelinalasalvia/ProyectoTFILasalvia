@@ -27,17 +27,14 @@ namespace BLL
             const string sql = "UPDATE Usuario SET Contrasena = @Contrasena WHERE Email = @Email";
             await _dal.Modificar(sql, new { Contrasena = nuevaClave, Email = (email ?? "").Trim() });
         }
-        
-        private const string EmailUsuarioSistema = "sistema@mailtest.com";
-
+                
         private const string ColumnasListado = "IdUsuario AS Id, Nombre, Apellido, Email, IdRol, Estado";
-        private const string FiltroListado = "Estado <> @Eliminado AND Email <> @EmailSistema";
+        private const string FiltroListado = "Estado <> @Eliminado";
 
-        
         public async Task<List<Usuario>> ObtenerUsuarios()
         {
             var sql = $"SELECT {ColumnasListado} FROM Usuario WHERE {FiltroListado} ORDER BY Nombre, Apellido";
-            var filas = await _dal.Leer<Usuario>(sql, new { Eliminado = EstadoUsuario.Eliminado, EmailSistema = EmailUsuarioSistema });
+            var filas = await _dal.Leer<Usuario>(sql, new { Eliminado = EstadoUsuario.Eliminado });
             return filas.ToList();
         }
 
@@ -45,7 +42,7 @@ namespace BLL
         public async Task<List<Usuario>> ObtenerUsuariosPorRol(int idRol)
         {
             var sql = $"SELECT {ColumnasListado} FROM Usuario WHERE {FiltroListado} AND IdRol = @IdRol ORDER BY Nombre, Apellido";
-            var filas = await _dal.Leer<Usuario>(sql, new { Eliminado = EstadoUsuario.Eliminado, EmailSistema = EmailUsuarioSistema, IdRol = idRol });
+            var filas = await _dal.Leer<Usuario>(sql, new { Eliminado = EstadoUsuario.Eliminado, IdRol = idRol });
             return filas.ToList();
         }
 
@@ -58,7 +55,7 @@ namespace BLL
                    AND (Nombre LIKE @Patron OR Apellido LIKE @Patron
                         OR (Nombre + ' ' + Apellido) LIKE @Patron OR Email LIKE @Patron)
                  ORDER BY Nombre, Apellido";
-            var filas = await _dal.Leer<Usuario>(sql, new { Eliminado = EstadoUsuario.Eliminado, EmailSistema = EmailUsuarioSistema, Patron = patron });
+            var filas = await _dal.Leer<Usuario>(sql, new { Eliminado = EstadoUsuario.Eliminado, Patron = patron });
             return filas.ToList();
         }
 

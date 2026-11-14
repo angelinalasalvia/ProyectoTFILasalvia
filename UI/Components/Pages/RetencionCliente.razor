@@ -320,8 +320,8 @@ else
 
         try
         {
-            // TODO (autenticación): usar el usuario logueado. Mientras tanto se registra con el usuario "Sistema".
-            var idUsuario = await BLLHistorialAcciones.ObtenerIdUsuarioSistema();
+            var idUsuario = Servicios.SessionManager.GetInstance().Usuario?.Id
+            ?? throw new InvalidOperationException("No hay una sesión iniciada.");
 
             var resultado = await BLLHistorialAcciones.RegistrarAccionManual(IdCliente, campanaSeleccionadaId, idUsuario, fechaHora);
 

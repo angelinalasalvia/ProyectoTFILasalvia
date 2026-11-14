@@ -78,10 +78,9 @@ public class BLLIntegracion
     }
 
     public async Task<int> RegistrarNuevaIntegracion(string tipo, string credenciales, string mapeo, string estado,
-        int? idUsuario = null, CancellationToken ct = default)
+    int idUsuario, CancellationToken ct = default)
     {
         var c = CredencialesIntegracion.Deserializar(credenciales);
-        var idCreador = idUsuario ?? await ObtenerIdUsuarioSistema(ct);
 
         string? servidor = c.Url;
         string? puerto = null;
@@ -97,7 +96,7 @@ public class BLLIntegracion
                 nombre = c.Nombre,
                 tipo,
                 estado,
-                idUsuario = idCreador,
+                idUsuario,
                 mapeo,
                 url = c.Url,
                 urlEventos = c.UrlEventos,
@@ -311,14 +310,5 @@ public class BLLIntegracion
 
     private string Descifrar(string valor) =>
         valor.StartsWith(PrefijoCifrado) ? _protector.Unprotect(valor[PrefijoCifrado.Length..]) : valor;
-
-    private async Task<int> ObtenerIdUsuarioSistema(CancellationToken ct)
-    {
-        var usuario = (await _accesoDatos.Leer<Integracion>(
-            "SELECT IdUsuario FROM Usuario WHERE Email = @email",
-            new { email = EmailUsuarioSistema }, ct: ct)).FirstOrDefault();
-
-        return usuario?.IdUsuario
-            ?? throw new InvalidOperationException($"Falta el usuario del sistema ({EmailUsuarioSistema}).");
-    }
+       
 }

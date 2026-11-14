@@ -13,7 +13,7 @@ public class HistorialAccion
     public string TipoAccion { get; set; } = string.Empty;
     public int IdCampania { get; set; }
     public int IdCliente { get; set; }
-    public int IdUsuario { get; set; }
+    public int? IdUsuario { get; set; }
     public int? IdRegla { get; set; } // regla que originó la acción (NULL en acciones manuales o anteriores al motor)
     public string Resultado { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;

@@ -752,7 +752,9 @@
             if (EsEdicion)
                 await BLLIntegracion.ActualizarConfiguracion(IdEdicion, credenciales, mapeoTexto, Integracion.EstadoActiva);
             else
-                await BLLIntegracion.RegistrarNuevaIntegracion(tipoSeleccionado, credenciales, mapeoTexto, Integracion.EstadoActiva);
+                await BLLIntegracion.RegistrarNuevaIntegracion(tipoSeleccionado, credenciales, mapeoTexto, Integracion.EstadoActiva,
+                Servicios.SessionManager.GetInstance().Usuario?.Id
+                    ?? throw new InvalidOperationException("No hay una sesión iniciada."));
         }
         catch (Exception ex)
         {

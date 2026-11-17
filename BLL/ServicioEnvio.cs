@@ -12,7 +12,7 @@ public record ResultadoEnvio(bool Exito, string Mensaje);
 
 public class ServicioEnvio
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(45) };
 
     private readonly IConfiguration _config;
     private readonly ILogger<ServicioEnvio> _logger;

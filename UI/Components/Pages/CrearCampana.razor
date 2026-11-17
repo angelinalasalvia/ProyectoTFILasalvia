@@ -330,15 +330,23 @@
         {
             var asuntoAGuardar = CanalActual == "Email" ? asuntoEmail : null;
             // CU06: el nombre no puede repetirse (en edición el nombre no se modifica).
+            // CU06: el nombre no puede repetirse (en edición el nombre no se modifica).
             if (!EsEdicion && await BLLCampana.ExisteCampanaConNombre(nombreCampana))
             {
                 errores.Add("nombreDuplicado");
                 mensajeConfirmacion = "";
                 return;
-            }            
+            }
+
+            if (EsEdicion)
+            {
+                // CU07 - ModificarCampaña
+                await BLLCampana.ModificarCampana(idCampaniaActual, idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value, metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
+                mensajeConfirmacion = "Campaña modificada exitosamente.";
+            }
             else
             {
-                // GuardarCampaña(string nombre, int idcanal, string mensaje, int idincentivo, int objetivo)
+                // CU06 - GuardarCampaña
                 await BLLCampana.GuardarCampana(nombreCampana.Trim(), idCanalSeleccionado, mensaje, idIncentivoSeleccionado!.Value, metaClientes!.Value, objetivoDescripcion, asuntoAGuardar);
                 mensajeConfirmacion = "Campaña creada exitosamente.";
             }
